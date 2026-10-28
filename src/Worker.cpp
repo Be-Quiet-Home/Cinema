@@ -224,6 +224,16 @@ Worker::_Resolve(BMessage* message)
 	if (end >= 0)
 		output.Truncate(end);
 
+	if (status == 0 && output.StartsWith("http")) {
+		// MediaPlayer's HTTP streaming does not follow redirects, and the
+		// addresses of YouTube's files go through two of them
+		BString final;
+		if (RunProgram({ "curl", "-s", "-o", "/dev/null", "-L", "-r", "0-0",
+				"--max-time", "20", "-w", "%{url_effective}", output },
+				&final) == 0 && final.StartsWith("http"))
+			output = final;
+	}
+
 	BMessage reply(status == 0 && output.StartsWith("http")
 		? kMsgStreamReady : kMsgStreamFailed);
 	reply.AddString("id", id);
