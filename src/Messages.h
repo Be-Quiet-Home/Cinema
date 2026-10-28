@@ -7,14 +7,23 @@
 
 
 enum {
-	kMsgSearch			= 'srch',	// "query", "generation"
+	// from the helper
 	kMsgResults			= 'rslt',	// "generation", "id", "title", "duration"
-	kMsgThumbnail		= 'thmb',	// "generation", "id", "path"
 	kMsgSearchFailed	= 'srfl',	// "generation"
+	kMsgFound			= 'fnd ',	// "id", "url"
+	kMsgLost			= 'lost',	// "id"
+	kMsgHelperGone		= 'gone',
+
+	// to and from the worker
+	kMsgThumbnails		= 'thms',	// "generation", "id"...
+	kMsgThumbnail		= 'thmb',	// "generation", "id", "path"
+	kMsgFollow			= 'folw',	// "id", "url"
+	kMsgStreamReady		= 'strm',	// "id", "url"
+
+	// in the window
 	kMsgPlay			= 'play',	// "id", "title"
-	kMsgResolve			= 'rslv',	// "id", "title"
-	kMsgStreamReady		= 'strm',	// "id", "title", "url"
-	kMsgStreamFailed	= 'stfl',	// "id"
+	kMsgSelected		= 'slct',	// "id": chosen, not played yet
+	kMsgPrefetch		= 'pref',	// "id"
 	kMsgCategory		= 'catg',	// "index"
 	kMsgSearchField		= 'sfld',	// the search field was confirmed
 	kMsgAnimate			= 'anim',

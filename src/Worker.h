@@ -11,25 +11,22 @@
 #include <String.h>
 
 
-/*!	Does the slow work on its own thread, with yt-dlp and curl: searches
-	(kMsgSearch), and the pictures of the videos found, or finds the address
-	of the video file to play (kMsgResolve). The answers go to the target.
-	Searches are kept for a few hours in the cache folder.
+/*!	Does the network work that is not yt-dlp's on its own thread, with curl:
+	gets the pictures of the videos (kMsgThumbnails), and follows the
+	redirects of the address of a video file (kMsgFollow), as MediaPlayer
+	does not. The answers go to the target.
 */
 class Worker : public BLooper {
 public:
-								Worker(const char* name, BMessenger target);
+								Worker(BMessenger target);
 
 	virtual	void				MessageReceived(BMessage* message);
 
+			const char*			Cache() const { return fCache.String(); }
+
 private:
-			void				_Search(BMessage* message);
-			bool				_RunSearch(const BString& query,
-									BString& results);
-			void				_Thumbnails(const BString& results,
-									int32 generation);
-			void				_Resolve(BMessage* message);
-			bool				_NewerSearchWaiting();
+			void				_Thumbnails(BMessage* message);
+			void				_Follow(BMessage* message);
 
 			BMessenger			fTarget;
 			BString				fCache;

@@ -326,6 +326,10 @@ VideoGrid::_Select(int32 index)
 	BRect frame = _TileFrame(fSelected).InsetByCopy(-6, -6);
 	Invalidate(frame);
 
+	BMessage selected(kMsgSelected);
+	selected.AddString("id", fVideos[fSelected].id);
+	Window()->PostMessage(&selected);
+
 	// keep it in sight
 	BRect bounds = Bounds();
 	if (frame.top < bounds.top)

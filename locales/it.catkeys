@@ -1,4 +1,4 @@
-1	italian	application/x-vnd.atomozero-Cinema	2518331879
+1	italian	application/x-vnd.atomozero-Cinema	1140761467
 YouTube could not be reached: is the network on?	Window		Non riesco a raggiungere YouTube: la rete è accesa?
 Search	Window		Cerca
 Cinema	System name		Cinema
@@ -10,6 +10,7 @@ OK	Window		OK
 animals documentary for children	Categories		documentari animali per bambini
 Animals	Categories		Animali
 songs for children	Categories		canzoni per bambini
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema ha bisogno di yt-dlp e python3, e di cinema-helper.py accanto
 MediaPlayer could not be started: %error%	Window		Non riesco ad aprire MediaPlayer: %error%
 cartoons for children full episodes	Categories		cartoni animati per bambini episodi completi
 Getting the video ready	Grid		Preparo il video
