@@ -29,7 +29,7 @@ static const char* kFormat = "18/b[height<=360][vcodec^=avc1]";
 
 
 /*!	The yt-dlp arguments common to every call: QuickJS solves YouTube's
-	JavaScript challenges.
+	JavaScript challenges when they are needed.
 */
 static std::vector<BString>
 yt_dlp(std::initializer_list<BString> arguments)
@@ -39,6 +39,13 @@ yt_dlp(std::initializer_list<BString> arguments)
 	all.insert(all.end(), arguments);
 	return all;
 }
+
+
+// YouTube's Android client gives the file without any JavaScript to run:
+// about 20 s on the AC100, against nearly two minutes for the web client
+// and its challenges in QuickJS. Its downloads are slowed down, but still
+// faster than these videos play.
+static const char* kAndroidClient = "youtube:player_client=android";
 
 
 static BString
@@ -207,7 +214,12 @@ Worker::_Resolve(BMessage* message)
 	watch << id;
 
 	BString output;
-	int status = RunProgram(yt_dlp({ "-f", kFormat, "-g", watch }), &output);
+	int status = RunProgram(yt_dlp({ "--extractor-args", kAndroidClient,
+		"-f", kFormat, "-g", watch }), &output);
+	if (status != 0 || !output.StartsWith("http")) {
+		output.Truncate(0);
+		status = RunProgram(yt_dlp({ "-f", kFormat, "-g", watch }), &output);
+	}
 	int32 end = output.FindFirst('\n');
 	if (end >= 0)
 		output.Truncate(end);
