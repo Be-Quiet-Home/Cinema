@@ -1,4 +1,4 @@
-1	portuguese	application/x-vnd.atomozero-Cinema	1973416081
+1	portuguese	application/x-vnd.atomozero-Cinema	2360571081
 YouTube could not be reached: is the network on?	Window		Não foi possível acessar o YouTube: a rede está ligada?
 Downloaded	Detail		Downloaded
 full documentary	Categories		documentário completo
@@ -16,6 +16,7 @@ Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Remover das abas
 Add to the tabs	Grid		Adicionar às abas
 news today	Categories		notícias de hoje
+%peers% sources	Window		%peers% fontes
 BitTorrent downloads need aria2c, which is not installed.	Window		Os downloads BitTorrent precisam do aria2c, que não está instalado.
 %views% views	Detail		%views% views
 Science	Categories		Ciência
@@ -26,7 +27,8 @@ Play	Detail		Play
 technology review	Categories		análise tecnologia
 Details	Grid		Details
 Continue watching	Window		Continuar a assistir
-Downloading the torrent	Window		Baixando o torrent
+%done% of %total%	Window		%done% de %total%
+%eta% left	Window		faltam %eta%
 Already downloaded	Grid		Já baixado
 The video could not be moved to the Trash: %error%	Window		Não foi possível mover o vídeo para a lixeira: %error%
 News	Categories		Notícias
@@ -37,6 +39,7 @@ Technology	Categories		Tecnologia
 See all	Home		Ver tudo
 Getting the details…	Detail		Getting the details…
 Downloading…	Grid		Baixando…
+Stop the download	Grid		Parar o download
 Search	Window		Pesquisar
 science explained	Categories		ciência explicada
 Download	Grid		Baixar

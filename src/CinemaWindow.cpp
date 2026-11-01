@@ -833,8 +833,9 @@ CinemaWindow::MessageReceived(BMessage* message)
 			// a torrent to download rather than something to look for
 			if (query.StartsWith("magnet:")
 				|| (query.IStartsWith("http") && query.IEndsWith(".torrent"))) {
+				// the field keeps its text: changing it now could pull it from
+				// under a selection the mouse is still making
 				_AddTorrent(query.String());
-				fSearchField->SetText("");
 				break;
 			}
 			// "@peertube words" searches another source than the menu's
@@ -940,15 +941,23 @@ CinemaWindow::MessageReceived(BMessage* message)
 			if (downloading == fDownloading.end())
 				break;
 			int32 percent = message->GetInt32("percent", 0);
-			downloading->second.SetInt32("percent", percent);
+			BMessage& download = downloading->second;
+			download.SetInt32("percent", percent);
+			for (const char* field : { "done", "total", "speed", "eta" })
+				download.SetString(field, message->GetString(field, ""));
+			download.SetInt32("peers", message->GetInt32("peers", -1));
 			fGrid->SetProgress(id, percent);
+			fGrid->SetStatus(id, _DownloadStatus(download).String());
 			fHome->SetProgress(id, percent);
 			fDetail->SetProgress(id.String(), percent);
-			if (strcmp(downloading->second.GetString("provider", ""),
-					"torrent") == 0)
-				_TorrentProgress(downloading->second);
 			break;
 		}
+		case kMsgCancelDownload:
+			fHelper->Cancel(message->GetString("id", ""));
+			break;
+		case kMsgDownloadCancelled:
+			_DownloadCancelled(message);
+			break;
 		case kMsgDownloaded:
 			_Downloaded(message);
 			break;
@@ -1099,7 +1108,26 @@ CinemaWindow::_ShowDownloads()
 	// what is still on its way for a search is not wanted any more
 	fGeneration++;
 	fDownloaded.clear();
-	std::vector<MediaItem> videos = Downloads::Load(&fDownloaded);
+	std::vector<MediaItem> videos;
+	// the ones on their way first, with how far they are
+	for (const auto& entry : fDownloading) {
+		const BMessage& download = entry.second;
+		MediaItem item;
+		item.id = entry.first;
+		item.provider = download.GetString("provider", fProvider);
+		item.kind = download.GetString("kind", "video");
+		item.title = download.GetString("title", "");
+		item.channel = download.GetString("channel", "");
+		item.duration = download.GetInt32("duration", 0);
+		item.progress = download.GetInt32("percent", 0);
+		item.status = _DownloadStatus(download);
+		BString picture(fWorker->Cache());
+		picture << "/" << entry.first << ".jpg";
+		item.picture = BTranslationUtils::GetBitmap(picture.String());
+		videos.push_back(item);
+	}
+	std::vector<MediaItem> saved = Downloads::Load(&fDownloaded);
+	videos.insert(videos.end(), saved.begin(), saved.end());
 	if (videos.empty()) {
 		fGrid->SetMessage(B_TRANSLATE("No videos downloaded yet: right click "
 			"a video, or press D"));
@@ -1131,6 +1159,8 @@ CinemaWindow::_Download(BMessage* message)
 	fDetail->SetProgress(id.String(), 0);
 	fHelper->Download(id.String(), folder.String(),
 		message->GetString("provider", _ProviderOf(id).String()));
+	if (_ShowingDownloads())
+		_ShowDownloads();
 }
 
 
@@ -1214,7 +1244,8 @@ CinemaWindow::_Trash(BMessage* message)
 void
 CinemaWindow::_AddTorrent(const char* source)
 {
-	bool supported = false;
+	// until the helper tells its providers, let it try
+	bool supported = fProviders.empty();
 	for (const Provider& provider : fProviders)
 		if (provider.id == "torrent")
 			supported = true;
@@ -1254,22 +1285,64 @@ CinemaWindow::_AddTorrent(const char* source)
 	download.AddString("channel id", "");
 	download.AddInt32("duration", 0);
 	_Download(&download);
-	auto started = fDownloading.find(source);
-	if (started != fDownloading.end())
-		_TorrentProgress(started->second);
+	// where it can be followed, and stopped
+	_ShowDownloads();
+}
+
+
+/*!	How far a download is, as its tile says it: "12.3MiB of 700.1MiB ·
+	1.2MiB/s · 8 sources · 9m31s left", with what is known of it.
+*/
+BString
+CinemaWindow::_DownloadStatus(const BMessage& download) const
+{
+	BString status;
+	BString done = download.GetString("done", "");
+	BString total = download.GetString("total", "");
+	if (!done.IsEmpty() && !total.IsEmpty() && total != "0B") {
+		status = B_TRANSLATE("%done% of %total%");
+		status.ReplaceFirst("%done%", done);
+		status.ReplaceFirst("%total%", total);
+	} else if (!done.IsEmpty())
+		status = done;
+	else
+		status.SetToFormat("%" B_PRId32 "%%", download.GetInt32("percent", 0));
+
+	BString speed = download.GetString("speed", "");
+	if (!speed.IsEmpty())
+		status << " · " << speed << "/s";
+	int32 peers = download.GetInt32("peers", -1);
+	if (peers >= 0) {
+		BString text(B_TRANSLATE("%peers% sources"));
+		BString number;
+		number << peers;
+		text.ReplaceFirst("%peers%", number);
+		status << " · " << text;
+	}
+	BString eta = download.GetString("eta", "");
+	if (!eta.IsEmpty()) {
+		BString text(B_TRANSLATE("%eta% left"));
+		text.ReplaceFirst("%eta%", eta);
+		status << " · " << text;
+	}
+	return status;
 }
 
 
 void
-CinemaWindow::_TorrentProgress(const BMessage& download)
+CinemaWindow::_DownloadCancelled(BMessage* message)
 {
-	BNotification notification(B_PROGRESS_NOTIFICATION);
-	notification.SetGroup(B_TRANSLATE_SYSTEM_NAME("Cinema"));
-	notification.SetTitle(B_TRANSLATE("Downloading the torrent"));
-	notification.SetContent(download.GetString("title", ""));
-	notification.SetMessageID(download.GetString("id", ""));
-	notification.SetProgress(download.GetInt32("percent", 0) / 100.0f);
-	notification.Send();
+	BString id = message->GetString("id", "");
+	auto downloading = fDownloading.find(id);
+	if (downloading == fDownloading.end())
+		return;
+	fDownloading.erase(downloading);
+	fGrid->SetProgress(id, -1);
+	fGrid->SetStatus(id, "");
+	fHome->SetProgress(id, -1);
+	fDetail->SetProgress(id.String(), -1);
+	if (_ShowingDownloads())
+		_ShowDownloads();
 }
 
 

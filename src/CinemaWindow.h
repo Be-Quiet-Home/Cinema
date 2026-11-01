@@ -56,7 +56,8 @@ private:
 			void				_AddTorrent(const char* source);
 			void				_AddFolder(const char* path);
 			void				_Dropped(BMessage* message);
-			void				_TorrentProgress(const BMessage& download);
+			BString				_DownloadStatus(const BMessage& download) const;
+			void				_DownloadCancelled(BMessage* message);
 			void				_SetProviders(BMessage* message);
 			void				_ShowCategory(int32 index);
 			void				_ShowChannel(const char* name,

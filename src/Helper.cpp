@@ -174,6 +174,16 @@ Helper::Download(const char* id, const char* folder, const char* provider)
 
 
 void
+Helper::Cancel(const char* id)
+{
+	Json request = Json::MakeObject();
+	request.Set("type", "cancel");
+	request.Set("id", id);
+	_Send(request);
+}
+
+
+void
 Helper::_Send(const Json& request)
 {
 	std::string line = request.ToString();
@@ -323,7 +333,17 @@ Helper::_Handle(const BString& line)
 		BMessage progress(kMsgDownloadProgress);
 		progress.AddString("id", answer.GetString("id", "").c_str());
 		progress.AddInt32("percent", answer.GetInt("percent", 0));
+		for (const char* field : { "done", "total", "speed", "eta" })
+			progress.AddString(field, answer.GetString(field, "").c_str());
+		progress.AddInt32("peers", answer.GetInt("peers", -1));
 		fTarget.SendMessage(&progress);
+		return;
+	}
+
+	if (type == "cancelled") {
+		BMessage cancelled(kMsgDownloadCancelled);
+		cancelled.AddString("id", answer.GetString("id", "").c_str());
+		fTarget.SendMessage(&cancelled);
 		return;
 	}
 

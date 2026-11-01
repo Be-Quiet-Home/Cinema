@@ -21,9 +21,13 @@ enum {
 	kMsgFound			= 'fnd ',	// "id", "url"
 	kMsgLost			= 'lost',	// "id"
 	kMsgHelperGone		= 'gone',
-	kMsgDownloadProgress = 'dwpr',	// "id", "percent"
+	kMsgDownloadProgress = 'dwpr',	// "id", "percent", and when known
+									// "done", "total", "speed", "eta",
+									// "peers"
 	kMsgDownloaded		= 'dwok',	// "id", "path"
 	kMsgDownloadFailed	= 'dwno',	// "id"
+	kMsgDownloadCancelled = 'dwcx',	// "id"
+	kMsgCancelDownload	= 'dwst',	// "id": stop it
 
 	// to and from the worker
 	kMsgThumbnails		= 'thms',	// "generation", "id"...

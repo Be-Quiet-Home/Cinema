@@ -160,6 +160,21 @@ VideoGrid::SetProgress(const char* id, int32 progress)
 
 
 void
+VideoGrid::SetStatus(const char* id, const char* status)
+{
+	for (size_t i = 0; i < fVideos.size(); i++) {
+		if (fVideos[i].id == id) {
+			if (fVideos[i].status != status) {
+				fVideos[i].status = status;
+				Invalidate(_TileFrame(i));
+			}
+			return;
+		}
+	}
+}
+
+
+void
 VideoGrid::SetDownloaded(const char* id, bool downloaded)
 {
 	for (size_t i = 0; i < fVideos.size(); i++) {
@@ -464,6 +479,20 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 		y += lineHeight;
 	}
 
+	// a download on its way: how far it is, in place of the channel
+	if (!video.status.IsEmpty() && video.progress >= 0) {
+		BFont small = Font(kChannelSize);
+		font_height smallHeight;
+		small.GetHeight(&smallHeight);
+		BString status(video.status);
+		small.TruncateString(&status, B_TRUNCATE_END, frame.Width());
+		float baseline = frame.bottom - kTitleHeight + 8
+			+ 2 * line_height(Font(kTitleSize)) + 4 + smallHeight.ascent;
+		DrawText(this, status.String(), BPoint(frame.left, baseline), small,
+			kAccent);
+		return;
+	}
+
 	// the channel, below: a link to its latest videos
 	BRect channel = _ChannelFrame(index);
 	if (channel.IsValid()) {
@@ -654,6 +683,12 @@ VideoGrid::_ShowMenu(int32 index, BPoint where)
 		BMenuItem* item = new BMenuItem(label, download);
 		item->SetEnabled(!video.downloaded && video.progress < 0);
 		menu->AddItem(item);
+		if (video.progress >= 0) {
+			BMessage* stop = new BMessage(kMsgCancelDownload);
+			stop->AddString("id", video.id);
+			menu->AddItem(new BMenuItem(B_TRANSLATE("Stop the download"),
+				stop));
+		}
 	} else {
 		BMessage* trash = new BMessage(kMsgTrash);
 		trash->AddString("id", video.id);

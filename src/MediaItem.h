@@ -38,6 +38,7 @@ struct MediaItem {
 	BString		path;			// the file, when downloaded
 	BBitmap*	picture;		// may be NULL
 	int32		progress;		// of its download, or -1
+	BString		status;			// of its download: done, speed, time left
 	bool		downloaded;
 
 				MediaItem() : duration(0), year(0), views(0), rating(0),

@@ -48,6 +48,7 @@ public:
 			bool				IsEmpty() const { return fVideos.empty(); }
 			void				SetPicture(const char* id, BBitmap* picture);
 			void				SetProgress(const char* id, int32 progress);
+			void				SetStatus(const char* id, const char* status);
 									// -1: not downloading
 			void				SetDownloaded(const char* id,
 									bool downloaded);

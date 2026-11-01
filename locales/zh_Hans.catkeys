@@ -1,4 +1,4 @@
-1	chinese	application/x-vnd.atomozero-Cinema	1973416081
+1	chinese	application/x-vnd.atomozero-Cinema	2360571081
 YouTube could not be reached: is the network on?	Window		无法连接到 YouTube：网络是否已开启？
 Downloaded	Detail		已下载
 full documentary	Categories		完整纪录片
@@ -16,6 +16,7 @@ Downloading…	Detail		正在下载…
 Remove from the tabs	Categories		从标签页中移除
 Add to the tabs	Grid		添加到标签页
 news today	Categories		今日新闻
+%peers% sources	Window		%peers% 个来源
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent 下载需要 aria2c，但尚未安装。
 %views% views	Detail		%views% 次观看
 Science	Categories		科学
@@ -26,7 +27,8 @@ Play	Detail		播放
 technology review	Categories		科技评测
 Details	Grid		详细信息
 Continue watching	Window		继续观看
-Downloading the torrent	Window		正在下载种子
+%done% of %total%	Window		%done% / %total%
+%eta% left	Window		剩余 %eta%
 Already downloaded	Grid		已经下载
 The video could not be moved to the Trash: %error%	Window		无法将视频移到废纸篓：%error%
 News	Categories		新闻
@@ -37,6 +39,7 @@ Technology	Categories		科技
 See all	Home		查看全部
 Getting the details…	Detail		正在获取详细信息…
 Downloading…	Grid		正在下载…
+Stop the download	Grid		停止下载
 Search	Window		搜索
 science explained	Categories		科学解说
 Download	Grid		下载

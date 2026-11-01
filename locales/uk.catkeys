@@ -1,4 +1,4 @@
-1	ukrainian	application/x-vnd.atomozero-Cinema	1973416081
+1	ukrainian	application/x-vnd.atomozero-Cinema	2360571081
 YouTube could not be reached: is the network on?	Window		Не вдається з'єднатися з YouTube: чи увімкнена мережа?
 Downloaded	Detail		Завантажено
 full documentary	Categories		повний документальний фільм
@@ -16,6 +16,7 @@ Downloading…	Detail		Завантаження…
 Remove from the tabs	Categories		Вилучити з вкладок
 Add to the tabs	Grid		Додати до вкладок
 news today	Categories		новини сьогодні
+%peers% sources	Window		%peers% джерел
 BitTorrent downloads need aria2c, which is not installed.	Window		Для завантажень BitTorrent потрібен aria2c, який не встановлено.
 %views% views	Detail		%views% переглядів
 Science	Categories		Наука
@@ -26,7 +27,8 @@ Play	Detail		Відтворити
 technology review	Categories		огляд технологій
 Details	Grid		Подробиці
 Continue watching	Window		Продовжити перегляд
-Downloading the torrent	Window		Завантаження торента
+%done% of %total%	Window		%done% з %total%
+%eta% left	Window		лишилось %eta%
 Already downloaded	Grid		Вже завантажено
 The video could not be moved to the Trash: %error%	Window		Не вдалося перемістити відео до смітника: %error%
 News	Categories		Новини
@@ -37,6 +39,7 @@ Technology	Categories		Технології
 See all	Home		Усі
 Getting the details…	Detail		Отримання подробиць…
 Downloading…	Grid		Завантаження…
+Stop the download	Grid		Зупинити завантаження
 Search	Window		Пошук
 science explained	Categories		наука простими словами
 Download	Grid		Завантажити

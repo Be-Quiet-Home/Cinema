@@ -1,4 +1,4 @@
-1	italian	application/x-vnd.atomozero-Cinema	1973416081
+1	italian	application/x-vnd.atomozero-Cinema	2360571081
 YouTube could not be reached: is the network on?	Window		Non riesco a raggiungere YouTube: la rete è accesa?
 Downloaded	Detail		Scaricato
 full documentary	Categories		documentario completo
@@ -16,6 +16,7 @@ Downloading…	Detail		Download in corso…
 Remove from the tabs	Categories		Rimuovi dalle schede
 Add to the tabs	Grid		Aggiungi alle schede
 news today	Categories		notizie di oggi
+%peers% sources	Window		%peers% fonti
 BitTorrent downloads need aria2c, which is not installed.	Window		Per scaricare con BitTorrent serve aria2c, che non è installato.
 %views% views	Detail		%views% visualizzazioni
 Science	Categories		Scienza
@@ -26,7 +27,8 @@ Play	Detail		Riproduci
 technology review	Categories		recensione tecnologia
 Details	Grid		Dettagli
 Continue watching	Window		Continua a guardare
-Downloading the torrent	Window		Scarico il torrent
+%done% of %total%	Window		%done% di %total%
+%eta% left	Window		%eta% rimasti
 Already downloaded	Grid		Già scaricato
 The video could not be moved to the Trash: %error%	Window		Non è stato possibile spostare il video nel Cestino: %error%
 News	Categories		Notizie
@@ -37,6 +39,7 @@ Technology	Categories		Tecnologia
 See all	Home		Vedi tutto
 Getting the details…	Detail		Prendo i dettagli…
 Downloading…	Grid		Download in corso…
+Stop the download	Grid		Ferma il download
 Search	Window		Cerca
 science explained	Categories		scienza spiegata
 Download	Grid		Scarica

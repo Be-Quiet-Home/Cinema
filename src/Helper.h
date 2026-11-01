@@ -41,6 +41,7 @@ public:
 									const char* provider = NULL);
 			void				Download(const char* id, const char* folder,
 									const char* provider = NULL);
+			void				Cancel(const char* id);
 									// NULL or empty: the default provider
 
 private:

@@ -181,6 +181,34 @@ def file_name(title):
 	return re.sub(r'[/\\:*?"<>|]', " ", str(title)).strip()[:150] or "video"
 
 
+def size_text(size):
+	"""A size as aria2 writes it: 512KiB, 12.3MiB."""
+	size = float(size)
+	for unit in ("B", "KiB", "MiB", "GiB"):
+		if size < 1024 or unit == "GiB":
+			return ("%d%s" if unit == "B" else "%.1f%s") % (size, unit)
+		size /= 1024
+
+
+def duration_text(seconds):
+	"""A time as aria2 writes it: 45s, 4m25s, 1h3m."""
+	seconds = int(seconds)
+	if seconds < 60:
+		return "%ds" % seconds
+	if seconds < 3600:
+		return "%dm%ds" % (seconds // 60, seconds % 60)
+	return "%dh%dm" % (seconds // 3600, seconds // 60 % 60)
+
+
+class Cancelled(Exception):
+	pass
+
+
+# the downloads asked to stop, and the programs of those that run one
+CANCELLED = set()
+RUNNING = {}
+
+
 def http_download(url, path, size=0, progress=None):
 	"""Downloads url to path, through a .part file that goes away if it
 	fails. size is used when the server does not tell the length."""
@@ -191,18 +219,22 @@ def http_download(url, path, size=0, progress=None):
 				open(temporary, "wb") as output_file:
 			total = as_int(response.headers.get("Content-Length"), size)
 			done = 0
-			last = -1
+			start = time.time()
 			while True:
 				block = response.read(256 * 1024)
 				if not block:
 					break
 				output_file.write(block)
 				done += len(block)
-				if progress is not None and total:
-					percent = int(100 * done / total)
-					if percent != last:
-						last = percent
-						progress(percent)
+				if progress is not None:
+					elapsed = max(time.time() - start, 0.001)
+					speed = done / elapsed
+					progress(int(100 * done / total) if total else 0,
+						done=size_text(done),
+						total=size_text(total) if total else "",
+						speed=size_text(speed),
+						eta=duration_text((total - done) / speed)
+							if total and speed > 0 else "")
 	except Exception:
 		try:
 			os.remove(temporary)
@@ -722,6 +754,21 @@ class PeerTubeProvider(Provider):
 			progress)
 
 
+# the programs started for downloads, stopped with the helper: they would
+# go on after Cinema otherwise
+CHILDREN = set()
+CHILDREN_LOCK = threading.Lock()
+
+
+def stop_children():
+	with CHILDREN_LOCK:
+		for process in list(CHILDREN):
+			try:
+				process.terminate()
+			except OSError:
+				pass
+
+
 VIDEO_EXTENSIONS = (".mp4", ".m4v", ".mkv", ".webm", ".avi", ".mov", ".ogv",
 	".mpg", ".mpeg", ".wmv", ".flv", ".ts")
 
@@ -736,7 +783,9 @@ class TorrentProvider(Provider):
 	name = "BitTorrent"
 	kinds = ("download",)
 
-	PERCENT = re.compile(r"\((\d+)%\)")
+	# [#2089b0 400KiB/33MiB(1%) CN:44 SD:3 DL:115KiB ETA:4m25s]
+	SUMMARY = re.compile(r"\[#\w+ (?:SEED\S* )?([\d.]+\w*B)/([\d.]+\w*B)"
+		r"\((\d+)%\)(.*?)\]")
 
 	def download(self, media_id, folder, progress=None):
 		key = hashlib.sha1(media_id.encode()).hexdigest()[:12]
@@ -754,15 +803,34 @@ class TorrentProvider(Provider):
 			process = subprocess.Popen(command, stdout=subprocess.PIPE,
 				stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
 				text=True, errors="replace")
-			last = -1
-			for line in process.stdout:
-				found = self.PERCENT.search(line)
-				if found and progress is not None:
-					percent = int(found.group(1))
-					if percent != last:
-						last = percent
-						progress(percent)
-			if process.wait() != 0:
+			with CHILDREN_LOCK:
+				CHILDREN.add(process)
+				RUNNING[media_id] = process
+			try:
+				for line in process.stdout:
+					found = self.SUMMARY.search(line)
+					if found and progress is not None:
+						rest = found.group(4)
+
+						def field(name):
+							value = re.search(name + r":(\S+)", rest)
+							return value.group(1) if value else ""
+
+						progress(int(found.group(3)), done=found.group(1),
+							total=found.group(2), speed=field("DL"),
+							peers=as_int(field("SD"), -1)
+								if field("SD") else as_int(field("CN"), -1),
+							eta=field("ETA"))
+			except Exception:
+				process.terminate()
+				raise
+			finally:
+				with CHILDREN_LOCK:
+					RUNNING.pop(media_id, None)
+			status = process.wait()
+			with CHILDREN_LOCK:
+				CHILDREN.discard(process)
+			if status != 0:
 				return None
 
 			videos = []
@@ -976,21 +1044,56 @@ def job_find(provider, media_id, kind):
 
 
 def job_download(provider, media_id, folder):
-	def progress(percent):
-		answer({"type": "progress", "id": media_id, "percent": percent})
+	last = [-1, 0.0]
 
+	def progress(percent, **details):
+		if media_id in CANCELLED:
+			raise Cancelled()
+		# twice a second at most, or when the percent changes
+		now = time.time()
+		if percent == last[0] and now - last[1] < 0.5:
+			return
+		last[0] = percent
+		last[1] = now
+		message = {"type": "progress", "id": media_id, "percent": percent}
+		message.update(details)
+		answer(message)
+
+	CANCELLED.discard(media_id)
 	try:
 		path = provider.download(media_id, folder, progress)
 	except Exception:
 		path = None
-	if path:
+	if media_id in CANCELLED:
+		CANCELLED.discard(media_id)
+		answer({"type": "cancelled", "id": media_id})
+	elif path:
 		answer({"type": "saved", "id": media_id, "path": path})
 	else:
 		answer({"type": "failed", "id": media_id})
 
 
+def cancel(media_id):
+	CANCELLED.add(media_id)
+	# a torrent may wait for its peers a long time between two lines
+	with CHILDREN_LOCK:
+		process = RUNNING.get(media_id)
+	if process is not None:
+		try:
+			process.terminate()
+		except OSError:
+			pass
+
+
 def work(request):
+	if request.get("type") == "cancel":
+		cancel(request.get("id", ""))
+		return
 	provider = PROVIDERS.get(request.get("provider") or DEFAULT_PROVIDER)
+	if provider is None and request.get("type") == "download":
+		# a torrent without aria2c, say: not something for another source
+		answer({"type": "failed", "id": request.get("id", "")})
+		return
 	if provider is None:
 		provider = PROVIDERS.get(DEFAULT_PROVIDER)
 	if provider is None:
@@ -1034,7 +1137,12 @@ def serve():
 			continue
 		if isinstance(request, dict):
 			work(request)
+	# Cinema is gone: so are its downloads
+	stop_children()
 
 
 if __name__ == "__main__":
-	serve()
+	try:
+		serve()
+	finally:
+		stop_children()

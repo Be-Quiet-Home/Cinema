@@ -1,4 +1,4 @@
-1	korean	application/x-vnd.atomozero-Cinema	1973416081
+1	korean	application/x-vnd.atomozero-Cinema	2360571081
 YouTube could not be reached: is the network on?	Window		YouTube에 연결할 수 없습니다. 네트워크가 켜져 있나요?
 Downloaded	Detail		다운로드됨
 full documentary	Categories		다큐멘터리 전편
@@ -16,6 +16,7 @@ Downloading…	Detail		다운로드 중…
 Remove from the tabs	Categories		탭에서 제거
 Add to the tabs	Grid		탭에 추가
 news today	Categories		오늘의 뉴스
+%peers% sources	Window		소스 %peers%개
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent 다운로드에는 aria2c가 필요하지만 설치되어 있지 않습니다.
 %views% views	Detail		조회수 %views%회
 Science	Categories		과학
@@ -26,7 +27,8 @@ Play	Detail		재생
 technology review	Categories		기술 리뷰
 Details	Grid		세부 정보
 Continue watching	Window		이어서 보기
-Downloading the torrent	Window		토렌트 다운로드 중
+%done% of %total%	Window		%total% 중 %done%
+%eta% left	Window		%eta% 남음
 Already downloaded	Grid		이미 다운로드됨
 The video could not be moved to the Trash: %error%	Window		동영상을 휴지통으로 옮길 수 없습니다: %error%
 News	Categories		뉴스
@@ -37,6 +39,7 @@ Technology	Categories		기술
 See all	Home		모두 보기
 Getting the details…	Detail		세부 정보를 가져오는 중…
 Downloading…	Grid		다운로드 중…
+Stop the download	Grid		다운로드 중지
 Search	Window		검색
 science explained	Categories		과학 설명
 Download	Grid		다운로드

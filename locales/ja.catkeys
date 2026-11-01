@@ -1,4 +1,4 @@
-1	japanese	application/x-vnd.atomozero-Cinema	1973416081
+1	japanese	application/x-vnd.atomozero-Cinema	2360571081
 YouTube could not be reached: is the network on?	Window		YouTube に接続できません。ネットワークはオンになっていますか?
 Downloaded	Detail		ダウンロード済み
 full documentary	Categories		ドキュメンタリー 全編
@@ -16,6 +16,7 @@ Downloading…	Detail		ダウンロード中…
 Remove from the tabs	Categories		タブから削除
 Add to the tabs	Grid		タブに追加
 news today	Categories		今日のニュース
+%peers% sources	Window		ソース %peers% 件
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent でのダウンロードには aria2c が必要ですが、インストールされていません。
 %views% views	Detail		%views% 回視聴
 Science	Categories		科学
@@ -26,7 +27,8 @@ Play	Detail		再生
 technology review	Categories		テクノロジー レビュー
 Details	Grid		詳細
 Continue watching	Window		続きを見る
-Downloading the torrent	Window		トレントをダウンロード中
+%done% of %total%	Window		%done% / %total%
+%eta% left	Window		残り %eta%
 Already downloaded	Grid		すでにダウンロード済み
 The video could not be moved to the Trash: %error%	Window		動画をゴミ箱に移動できませんでした: %error%
 News	Categories		ニュース
@@ -37,6 +39,7 @@ Technology	Categories		テクノロジー
 See all	Home		すべて表示
 Getting the details…	Detail		詳細を取得中…
 Downloading…	Grid		ダウンロード中…
+Stop the download	Grid		ダウンロードを停止
 Search	Window		検索
 science explained	Categories		科学 解説
 Download	Grid		ダウンロード

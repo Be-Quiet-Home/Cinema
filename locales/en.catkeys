@@ -1,4 +1,4 @@
-1	English	application/x-vnd.atomozero-Cinema	1973416081
+1	English	application/x-vnd.atomozero-Cinema	2360571081
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
 Downloaded	Detail		Downloaded
 full documentary	Categories		full documentary
@@ -16,6 +16,7 @@ Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Remove from the tabs
 Add to the tabs	Grid		Add to the tabs
 news today	Categories		news today
+%peers% sources	Window		%peers% sources
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent downloads need aria2c, which is not installed.
 %views% views	Detail		%views% views
 Science	Categories		Science
@@ -26,7 +27,8 @@ Play	Detail		Play
 technology review	Categories		technology review
 Details	Grid		Details
 Continue watching	Window		Continue watching
-Downloading the torrent	Window		Downloading the torrent
+%done% of %total%	Window		%done% of %total%
+%eta% left	Window		%eta% left
 Already downloaded	Grid		Already downloaded
 The video could not be moved to the Trash: %error%	Window		The video could not be moved to the Trash: %error%
 News	Categories		News
@@ -37,6 +39,7 @@ Technology	Categories		Technology
 See all	Home		See all
 Getting the details…	Detail		Getting the details…
 Downloading…	Grid		Downloading…
+Stop the download	Grid		Stop the download
 Search	Window		Search
 science explained	Categories		science explained
 Download	Grid		Download
