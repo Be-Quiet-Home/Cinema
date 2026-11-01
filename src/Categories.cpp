@@ -12,7 +12,11 @@
 #include <Catalog.h>
 #include <Directory.h>
 #include <FindDirectory.h>
+#include <LocaleRoster.h>
+#include <Message.h>
 #include <Path.h>
+
+#include <algorithm>
 
 
 #undef B_TRANSLATION_CONTEXT
@@ -44,6 +48,91 @@ write_examples(const char* path)
 
 
 static const char* kChannelPrefix = "channel:";
+static const char* kCatalogSignature = "x-vnd.atomozero-Cinema";
+
+
+struct DefaultCategory {
+	const char*	name;
+	const char*	query;
+};
+
+
+static const DefaultCategory kDefaultCategories[] = {
+	{ "News", "news today" },
+	{ "Music", "official music video" },
+	{ "Technology", "technology review" },
+	{ "Science", "science explained" },
+	{ "Documentaries", "full documentary" }
+};
+
+
+static void
+localize_defaults(std::vector<Category>& categories)
+{
+	const int32 count = (int32)(sizeof(kDefaultCategories)
+		/ sizeof(kDefaultCategories[0]));
+	std::vector<int32> matched(categories.size(), -1);
+	bool missing = false;
+
+	for (size_t i = 0; i < categories.size(); i++) {
+		const BString& name = categories[i].name;
+		const BString& query = categories[i].query;
+		for (int32 j = 0; j < count; j++) {
+			if ((name == kDefaultCategories[j].name
+					&& query == kDefaultCategories[j].query)
+				|| (name == B_TRANSLATE(kDefaultCategories[j].name)
+					&& query == B_TRANSLATE(kDefaultCategories[j].query))) {
+				matched[i] = j;
+				break;
+			}
+		}
+		if (matched[i] < 0)
+			missing = true;
+	}
+
+	// The file may have been written in another language before the user
+	// changed the system language: recognize its examples there too.
+	if (missing) {
+		BMessage languages;
+		if (BLocaleRoster::Default()->GetAvailableCatalogs(&languages,
+				kCatalogSignature) == B_OK) {
+			const char* language;
+			for (int32 l = 0;
+				languages.FindString("language", l, &language) == B_OK; l++) {
+				BCatalog catalog(kCatalogSignature, language);
+				for (size_t i = 0; i < categories.size(); i++) {
+					if (matched[i] >= 0)
+						continue;
+					for (int32 j = 0; j < count; j++) {
+						const char* translatedName = catalog.GetString(
+							kDefaultCategories[j].name,
+							B_TRANSLATION_CONTEXT);
+						const char* translatedQuery = catalog.GetString(
+							kDefaultCategories[j].query,
+							B_TRANSLATION_CONTEXT);
+						if (translatedName != NULL && translatedQuery != NULL
+							&& categories[i].name == translatedName
+							&& categories[i].query == translatedQuery) {
+							matched[i] = j;
+							break;
+						}
+					}
+				}
+				if (std::find(matched.begin(), matched.end(), -1)
+					== matched.end())
+					break;
+			}
+		}
+	}
+
+	for (size_t i = 0; i < categories.size(); i++) {
+		if (matched[i] < 0)
+			continue;
+		categories[i].name = B_TRANSLATE(kDefaultCategories[matched[i]].name);
+		categories[i].query = B_TRANSLATE(
+			kDefaultCategories[matched[i]].query);
+	}
+}
 
 
 static bool
@@ -98,6 +187,7 @@ LoadCategories()
 			categories.push_back(category);
 	}
 	fclose(file);
+	localize_defaults(categories);
 	return categories;
 }
 
