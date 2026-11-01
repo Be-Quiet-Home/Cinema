@@ -236,7 +236,8 @@ Gamepad::_Run()
 			_SendKey('d');
 		if ((pressed & 0x08) != 0)
 			_SendKey('f');
-		if ((pressed & (0x10 | 0x80)) != 0)
+		// L1, Select or Start (pads differ on the last two)
+		if ((pressed & (0x10 | 0x40 | 0x80)) != 0)
 			_SendFunctionKey(B_F6_KEY);
 
 		snooze(kPollInterval);

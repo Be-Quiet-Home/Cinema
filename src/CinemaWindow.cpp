@@ -117,7 +117,9 @@ CinemaWindow::CinemaWindow()
 
 	fWorker = new Worker(BMessenger(this));
 	fWorker->Run();
-	fGamepad = new Gamepad(BMessenger(this));
+	// to the preferred handler, so that the window gives the keys to the
+	// focus view as it does with the keyboard's
+	fGamepad = new Gamepad(BMessenger(NULL, this));
 
 	// the helper is next to the application
 	fHelper = new Helper(BMessenger(this));
