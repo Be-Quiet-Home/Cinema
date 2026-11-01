@@ -1173,6 +1173,25 @@ class LibraryProvider(Provider):
 				pass
 		return response
 
+	def check(self):
+		"""Whether TMDB takes the key, asked now, not from the cache."""
+		key = self.key()
+		if not key:
+			return False
+		query = {}
+		headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+		if len(key) > 40:
+			headers["Authorization"] = "Bearer " + key
+		else:
+			query["api_key"] = key
+		request = urllib.request.Request("%s/configuration?%s" % (self.API,
+			urllib.parse.urlencode(query)), headers=headers)
+		try:
+			with urllib.request.urlopen(request, timeout=30) as response:
+				return response.status == 200
+		except Exception:
+			return False
+
 	def image(self, path, size="w342"):
 		return self.IMAGES + size + path if path else ""
 
@@ -1449,9 +1468,18 @@ def cancel(media_id):
 			pass
 
 
+def job_check():
+	library = PROVIDERS.get("library")
+	ok = bool(library and library.check())
+	answer({"type": "checked", "ok": ok})
+
+
 def work(request):
 	if request.get("type") == "cancel":
 		cancel(request.get("id", ""))
+		return
+	if request.get("type") == "check":
+		threading.Thread(target=job_check, daemon=True).start()
 		return
 	provider = PROVIDERS.get(request.get("provider") or DEFAULT_PROVIDER)
 	if provider is None and request.get("type") == "download":
@@ -1487,7 +1515,19 @@ def work(request):
 	threading.Thread(target=thread[0], args=thread[1], daemon=True).start()
 
 
+def watch_parent():
+	"""Goes away with Cinema, even when it crashed and the pipe stays open
+	somewhere: a helper alone only holds memory."""
+	parent = os.getppid()
+	while True:
+		time.sleep(5)
+		if os.getppid() != parent:
+			stop_children()
+			os._exit(0)
+
+
 def serve():
+	threading.Thread(target=watch_parent, daemon=True).start()
 	answer({"type": "providers",
 		"providers": [provider.describe() for provider in PROVIDERS.values()]})
 	answer({"type": "ready"})
