@@ -52,6 +52,8 @@ public:
 			void				SetWatched(const char* id, bool watched,
 									int32 resume);
 			void				Select(const char* id);
+			bool				NextOf(const char* id, MediaItem& next) const;
+									// the item after id, if there is one
 									// -1: not downloading
 			void				SetDownloaded(const char* id,
 									bool downloaded);

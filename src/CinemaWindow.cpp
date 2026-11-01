@@ -1067,12 +1067,34 @@ CinemaWindow::MessageReceived(BMessage* message)
 			_SavePosition();
 			break;
 		case kMsgPlayerEnded:
+		{
 			// watched to the end
 			if (fPlayer->Duration() > 0)
 				Positions::Set(fPlayingId, fPlayer->Duration(),
 					fPlayer->Duration());
+			// an episode: the next one of the series, if it is in the list
+			MediaItem next;
+			bool episode = fPlayingKind == "episode"
+				&& fGrid->NextOf(fPlayingId, next) && next.kind == "episode";
+			BString finished = fPlayingId;
 			_ClosePlayer(false);
+			if (episode) {
+				fGrid->Select(next.id);
+				BMessage play(kMsgPlay);
+				play.AddString("id", next.id);
+				play.AddString("title", next.title);
+				play.AddString("provider", next.provider);
+				play.AddString("kind", next.kind);
+				play.AddString("channel", next.channel);
+				play.AddString("channel id", next.channelId);
+				play.AddInt32("duration", next.duration);
+				// a file of the library: played from where it is
+				if (next.provider == "library" || next.provider == "local")
+					play.AddString("path", next.id);
+				PostMessage(&play);
+			}
 			break;
+		}
 		case kMsgPlayerError:
 		{
 			// what the Media Kit cannot open here, MediaPlayer may
@@ -1113,6 +1135,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 			const char* provider = message->GetString("provider", NULL);
 			if (provider != NULL && provider[0] != '\0')
 				fItemProviders[id] = provider;
+			fNextKind = message->GetString("kind", "video");
 			if (strcmp(message->GetString("kind", ""), "series") == 0) {
 				// not something to play: its episodes
 				fChannelProviders[id] = provider != NULL ? provider : "library";
@@ -1586,6 +1609,8 @@ CinemaWindow::_OpenPlayer(const char* address, const char* title,
 	fPlayingId = id;
 	fPlayingAddress = address;
 	fPlayingTitle = title;
+	fPlayingKind = fNextKind;
+	fNextKind = "";
 	fPlayerReturn = fCard;
 	fCards->SetVisibleItem(3);
 	fCard = 3;

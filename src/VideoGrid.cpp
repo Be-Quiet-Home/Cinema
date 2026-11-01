@@ -188,6 +188,21 @@ VideoGrid::SetWatched(const char* id, bool watched, int32 resume)
 }
 
 
+bool
+VideoGrid::NextOf(const char* id, MediaItem& next) const
+{
+	for (size_t i = 0; i + 1 < fVideos.size(); i++) {
+		if (fVideos[i].id == id) {
+			next = fVideos[i + 1];
+			// the picture stays with the grid
+			next.picture = NULL;
+			return true;
+		}
+	}
+	return false;
+}
+
+
 void
 VideoGrid::Select(const char* id)
 {
