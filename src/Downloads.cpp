@@ -63,7 +63,12 @@ Load(std::map<BString, BString>* files)
 	};
 	std::vector<Found> found;
 
-	BDirectory folder(Folder().String());
+	// the downloads, and the torrents in a folder of their own
+	BString torrents(Folder());
+	torrents << "/Torrent";
+	BDirectory folders[2] = { BDirectory(Folder().String()),
+		BDirectory(torrents.String()) };
+	for (BDirectory& folder : folders) {
 	BEntry entry;
 	while (folder.GetNextEntry(&entry) == B_OK) {
 		BNode node(&entry);
@@ -93,6 +98,7 @@ Load(std::map<BString, BString>* files)
 		found.push_back(file);
 		if (files != NULL)
 			(*files)[id] = path.Path();
+	}
 	}
 
 	std::sort(found.begin(), found.end(),

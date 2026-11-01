@@ -69,6 +69,7 @@ private:
 			void				_SavePosition();
 			void				_ShowSettings();
 			void				_SendFolders();
+			void				_AddLibraryTabs();
 			void				_ShowAbout();
 			void				_PlayInMediaPlayer(const char* address,
 									const char* title);

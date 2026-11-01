@@ -850,7 +850,10 @@ class TorrentProvider(Provider):
 				return None
 			source = max(videos)[1]
 			stem, extension = os.path.splitext(os.path.basename(source))
-			path = os.path.join(folder, "%s [%s]%s"
+			# a folder of their own, which the library always reads
+			torrents = os.path.join(folder, "Torrent")
+			os.makedirs(torrents, exist_ok=True)
+			path = os.path.join(torrents, "%s [%s]%s"
 				% (file_name(stem), key[:8], extension))
 			shutil.move(source, path)
 			return path
@@ -1109,6 +1112,10 @@ class LibraryProvider(Provider):
 						folders.append(found.group(1).strip())
 		except OSError:
 			pass
+		# the films and series downloaded with BitTorrent
+		torrents = os.path.join(home, "Cinema", "Torrent")
+		if os.path.isdir(torrents) and torrents not in folders:
+			folders.append(torrents)
 		return folders
 
 	def files(self):

@@ -1364,6 +1364,15 @@ CinemaWindow::_Downloaded(BMessage* message)
 	_SavePending();
 
 	Downloads::Describe(message->GetString("path", ""), video);
+	if (strcmp(video.GetString("provider", ""), "torrent") == 0) {
+		size_t before = fCategories.size();
+		_AddLibraryTabs();
+		if (fCategories.size() != before) {
+			SaveCategories(fCategories);
+			fCategoryBar->SetCategories(fCategories);
+			fHomeLoaded = false;
+		}
+	}
 	fDownloaded[id] = message->GetString("path", "");
 	fGrid->SetDownloaded(id, true);
 	fHome->SetDownloaded(id.String(), true);
@@ -1556,23 +1565,7 @@ CinemaWindow::_AddFolder(const char* path)
 	category.channel = path;
 	fCategories.push_back(category);
 
-	// the library of what the folders hold, once
-	bool library = false;
-	for (const Category& existing : fCategories)
-		if (existing.provider == "library")
-			library = true;
-	if (!library) {
-		Category movies;
-		movies.name = B_TRANSLATE("Movies");
-		movies.provider = "library";
-		movies.channel = "movies";
-		fCategories.push_back(movies);
-		Category series;
-		series.name = B_TRANSLATE("TV series");
-		series.provider = "library";
-		series.channel = "series";
-		fCategories.push_back(series);
-	}
+	_AddLibraryTabs();
 	SaveCategories(fCategories);
 	fCategoryBar->SetCategories(fCategories);
 	fHomeLoaded = false;
@@ -1707,4 +1700,26 @@ CinemaWindow::_ShowAbout()
 		B_TRANSLATE("OK"));
 	alert->SetFlags(alert->Flags() | B_CLOSE_ON_ESCAPE);
 	alert->Go(NULL);
+}
+
+
+/*!	The Movies and TV series tabs, once: when a folder is added, or a
+	torrent is downloaded.
+*/
+void
+CinemaWindow::_AddLibraryTabs()
+{
+	for (const Category& existing : fCategories)
+		if (existing.provider == "library")
+			return;
+	Category movies;
+	movies.name = B_TRANSLATE("Movies");
+	movies.provider = "library";
+	movies.channel = "movies";
+	fCategories.push_back(movies);
+	Category series;
+	series.name = B_TRANSLATE("TV series");
+	series.provider = "library";
+	series.channel = "series";
+	fCategories.push_back(series);
 }
