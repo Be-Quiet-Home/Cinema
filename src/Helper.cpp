@@ -8,13 +8,12 @@
 
 #include <fcntl.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <Autolock.h>
-#include <StringList.h>
 
+#include "Json.h"
 #include "Messages.h"
 
 
@@ -22,6 +21,7 @@ Helper::Helper(BMessenger target)
 	:
 	fTarget(target),
 	fLock("helper"),
+	fProvider("youtube"),
 	fInput(-1),
 	fOutput(-1),
 	fProcess(-1),
@@ -91,52 +91,72 @@ Helper::Start(const char* script, const char* cache)
 
 
 void
+Helper::SetProvider(const char* id)
+{
+	BAutolock locker(fLock);
+	if (id != NULL && id[0] != '\0')
+		fProvider = id;
+}
+
+
+void
 Helper::Search(int32 generation, int32 count, const char* query)
 {
-	BString line;
-	line.SetToFormat("search\t%" B_PRId32 "\t%" B_PRId32 "\t%s", generation,
-		count, query);
-	line.ReplaceAll("\n", " ");
-	_Send(line);
+	Json request = Json::MakeObject();
+	request.Set("type", "search");
+	request.Set("tag", generation);
+	request.Set("provider", fProvider.String());
+	request.Set("count", count);
+	request.Set("query", query);
+	_Send(request);
 }
 
 
 void
 Helper::Channel(int32 generation, int32 count, const char* id)
 {
-	BString line;
-	line.SetToFormat("channel\t%" B_PRId32 "\t%" B_PRId32 "\t%s", generation,
-		count, id);
-	_Send(line);
+	Json request = Json::MakeObject();
+	request.Set("type", "channel");
+	request.Set("tag", generation);
+	request.Set("provider", fProvider.String());
+	request.Set("count", count);
+	request.Set("channel", id);
+	_Send(request);
 }
 
 
 void
 Helper::Find(const char* id)
 {
-	BString line("find\t");
-	line << id;
-	_Send(line);
+	Json request = Json::MakeObject();
+	request.Set("type", "find");
+	request.Set("provider", fProvider.String());
+	request.Set("id", id);
+	request.Set("kind", "video");
+	_Send(request);
 }
 
 
 void
 Helper::Download(const char* id, const char* folder)
 {
-	BString line("download\t");
-	line << id << "\t" << folder;
-	_Send(line);
+	Json request = Json::MakeObject();
+	request.Set("type", "download");
+	request.Set("provider", fProvider.String());
+	request.Set("id", id);
+	request.Set("folder", folder);
+	_Send(request);
 }
 
 
 void
-Helper::_Send(const BString& line)
+Helper::_Send(const Json& request)
 {
-	BString text(line);
-	text << "\n";
+	std::string line = request.ToString();
+	line += '\n';
 	BAutolock locker(fLock);
 	if (fInput >= 0)
-		write(fInput, text.String(), text.Length());
+		write(fInput, line.c_str(), line.size());
 }
 
 
@@ -169,51 +189,117 @@ Helper::_Read()
 }
 
 
+static std::string
+text_of(const Json& value, const char* key, const char* fallback)
+{
+	return value.GetString(key, fallback);
+}
+
+
 void
 Helper::_Handle(const BString& line)
 {
-	BStringList fields;
-	line.Split("\t", false, fields);
-	BString kind = fields.StringAt(0);
+	bool ok = false;
+	Json answer = Json::Parse(std::string(line.String()), &ok);
+	if (!ok)
+		return;
 
-	if (kind == "video" && fields.CountStrings() >= 5) {
-		int32 generation = atoi(fields.StringAt(1).String());
-		BMessage& results = fSearches[generation];
-		results.AddString("id", fields.StringAt(2));
-		results.AddString("title", fields.StringAt(3));
-		results.AddInt32("duration", atoi(fields.StringAt(4).String()));
-		results.AddString("channel", fields.StringAt(5));
-		results.AddString("channel id", fields.StringAt(6));
-	} else if ((kind == "done" || kind == "nothing")
-		&& fields.CountStrings() >= 2) {
-		int32 generation = atoi(fields.StringAt(1).String());
-		BMessage results = fSearches[generation];
-		fSearches.erase(generation);
-		results.what = kind == "done" ? kMsgResults : kMsgSearchFailed;
-		results.AddInt32("generation", generation);
+	BString type(answer.GetString("type", "").c_str());
+
+	if (type == "providers") {
+		BMessage message(kMsgProviders);
+		const Json* providers = answer.Find("providers");
+		if (providers != NULL && providers->IsArray()) {
+			for (const Json& provider : providers->Elements()) {
+				BMessage one;
+				one.AddString("id", provider.GetString("id", "").c_str());
+				one.AddString("name",
+					provider.GetString("name", "").c_str());
+				const Json* kinds = provider.Find("kinds");
+				if (kinds != NULL && kinds->IsArray())
+					for (const Json& kind : kinds->Elements())
+						one.AddString("kinds", kind.String().c_str());
+				message.AddMessage("provider", &one);
+			}
+		}
+		fTarget.SendMessage(&message);
+		return;
+	}
+
+	if (type == "results") {
+		BMessage results(kMsgResults);
+		results.AddInt32("generation", answer.GetInt("tag", -1));
+		const Json* items = answer.Find("items");
+		if (items != NULL && items->IsArray()) {
+			for (const Json& item : items->Elements()) {
+				results.AddString("provider",
+					text_of(item, "provider", fProvider.String()).c_str());
+				results.AddString("kind",
+					text_of(item, "kind", "video").c_str());
+				results.AddString("id",
+					text_of(item, "id", "").c_str());
+				results.AddString("title",
+					text_of(item, "title", "").c_str());
+				results.AddString("description",
+					text_of(item, "description", "").c_str());
+				results.AddString("channel",
+					text_of(item, "channel", "").c_str());
+				results.AddString("channel id",
+					text_of(item, "channel_id", "").c_str());
+				results.AddInt32("duration", item.GetInt("duration", 0));
+				results.AddInt32("year", item.GetInt("year", 0));
+				results.AddDouble("rating", item.GetDouble("rating", 0));
+				results.AddString("poster",
+					text_of(item, "poster", "").c_str());
+				results.AddString("thumbnail",
+					text_of(item, "thumbnail", "").c_str());
+			}
+		}
 		fTarget.SendMessage(&results);
-	} else if (kind == "found" && fields.CountStrings() >= 3) {
-		BMessage found(kMsgFound);
-		found.AddString("id", fields.StringAt(1));
-		found.AddString("url", fields.StringAt(2));
-		fTarget.SendMessage(&found);
-	} else if (kind == "progress" && fields.CountStrings() >= 3) {
-		BMessage progress(kMsgDownloadProgress);
-		progress.AddString("id", fields.StringAt(1));
-		progress.AddInt32("percent", atoi(fields.StringAt(2).String()));
-		fTarget.SendMessage(&progress);
-	} else if (kind == "saved" && fields.CountStrings() >= 3) {
-		BMessage saved(kMsgDownloaded);
-		saved.AddString("id", fields.StringAt(1));
-		saved.AddString("path", fields.StringAt(2));
-		fTarget.SendMessage(&saved);
-	} else if (kind == "failed" && fields.CountStrings() >= 2) {
-		BMessage failed(kMsgDownloadFailed);
-		failed.AddString("id", fields.StringAt(1));
+		return;
+	}
+
+	if (type == "nothing") {
+		BMessage failed(kMsgSearchFailed);
+		failed.AddInt32("generation", answer.GetInt("tag", -1));
 		fTarget.SendMessage(&failed);
-	} else if (kind == "lost" && fields.CountStrings() >= 2) {
+		return;
+	}
+
+	if (type == "found") {
+		BMessage found(kMsgFound);
+		found.AddString("id", answer.GetString("id", "").c_str());
+		found.AddString("url", answer.GetString("url", "").c_str());
+		fTarget.SendMessage(&found);
+		return;
+	}
+
+	if (type == "lost") {
 		BMessage lost(kMsgLost);
-		lost.AddString("id", fields.StringAt(1));
+		lost.AddString("id", answer.GetString("id", "").c_str());
 		fTarget.SendMessage(&lost);
+		return;
+	}
+
+	if (type == "progress") {
+		BMessage progress(kMsgDownloadProgress);
+		progress.AddString("id", answer.GetString("id", "").c_str());
+		progress.AddInt32("percent", answer.GetInt("percent", 0));
+		fTarget.SendMessage(&progress);
+		return;
+	}
+
+	if (type == "saved") {
+		BMessage saved(kMsgDownloaded);
+		saved.AddString("id", answer.GetString("id", "").c_str());
+		saved.AddString("path", answer.GetString("path", "").c_str());
+		fTarget.SendMessage(&saved);
+		return;
+	}
+
+	if (type == "failed") {
+		BMessage failed(kMsgDownloadFailed);
+		failed.AddString("id", answer.GetString("id", "").c_str());
+		fTarget.SendMessage(&failed);
 	}
 }

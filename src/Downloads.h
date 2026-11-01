@@ -11,21 +11,21 @@
 #include <map>
 #include <vector>
 
-#include "VideoGrid.h"
+#include "MediaItem.h"
 
 
 class BMessage;
 
 
 /*!	The videos downloaded to watch offline, in the Cinema folder of the home
-	folder. What they are (id, title, channel, length) is kept in attributes
-	of the files, their pictures in its .pictures folder.
+	folder. What they are (provider, kind, id, title, channel, length) is kept
+	in attributes of the files, their pictures in its .pictures folder.
 */
 namespace Downloads {
 
 BString				Folder();
 						// made if needed; empty if it can't be
-std::vector<Video>	Load(std::map<BString, BString>* files);
+std::vector<MediaItem>	Load(std::map<BString, BString>* files);
 						// the newest first, with their files and pictures;
 						// files: their paths, by id
 void				KeepPicture(const char* cache, const char* id);

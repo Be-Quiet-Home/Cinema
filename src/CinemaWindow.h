@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "Categories.h"
+#include "Provider.h"
 
 
 class BMessageRunner;
@@ -42,6 +43,7 @@ private:
 	};
 
 			void				_Search(const char* query);
+			void				_SetProviders(BMessage* message);
 			void				_ShowCategory(int32 index);
 			void				_ShowChannel(const char* name,
 									const char* id);
@@ -61,6 +63,8 @@ private:
 			void				_SetFullScreen(bool fullScreen);
 
 			std::vector<Category> fCategories;
+			std::vector<Provider> fProviders;	// as the helper says
+			BString				fProvider;	// the one searched
 			CategoryBar*		fCategoryBar;
 			BTextControl*		fSearchField;
 			VideoGrid*			fGrid;

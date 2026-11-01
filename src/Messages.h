@@ -8,8 +8,13 @@
 
 enum {
 	// from the helper
-	kMsgResults			= 'rslt',	// "generation", "id", "title", "duration",
-									// "channel", "channel id"
+	kMsgProviders		= 'prvs',	// "provider" messages: "id", "name",
+									// "kinds"
+	kMsgResults			= 'rslt',	// "generation", then for each video
+									// "provider", "kind", "id", "title",
+									// "description", "channel", "channel id",
+									// "duration", "year", "rating", "poster",
+									// "thumbnail"
 	kMsgSearchFailed	= 'srfl',	// "generation"
 	kMsgFound			= 'fnd ',	// "id", "url"
 	kMsgLost			= 'lost',	// "id"
@@ -26,8 +31,8 @@ enum {
 
 	// in the window
 	kMsgPlay			= 'play',	// "id", "title", "path" if downloaded
-	kMsgDownload		= 'dwnl',	// "id", "title", "channel", "channel id",
-									// "duration"
+	kMsgDownload		= 'dwnl',	// "provider", "kind", "id", "title",
+									// "channel", "channel id", "duration"
 	kMsgShowDownloads	= 'dwsh',
 	kMsgTrash			= 'trsh',	// "id", "path": a download to the Trash
 	kMsgSelected		= 'slct',	// "id": chosen, not played yet

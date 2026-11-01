@@ -49,6 +49,7 @@ CinemaWindow::CinemaWindow()
 	BWindow(BRect(50, 50, 1000, 650), B_TRANSLATE_SYSTEM_NAME("Cinema"),
 		B_TITLED_WINDOW, B_AUTO_UPDATE_SIZE_LIMITS | B_QUIT_ON_WINDOW_CLOSE),
 	fCategories(LoadCategories()),
+	fProvider("youtube"),
 	fGeneration(0),
 	fPrefetchRunner(NULL),
 	fFullScreen(false)
@@ -103,7 +104,7 @@ CinemaWindow::CinemaWindow()
 	ResizeTo(frame.Width() - 40, frame.Height() - 60);
 
 	// which videos can be watched offline
-	for (Video& video : Downloads::Load(&fDownloaded))
+	for (MediaItem& video : Downloads::Load(&fDownloaded))
 		delete video.picture;
 	if (!fCategories.empty()) {
 		_ShowCategory(0);
@@ -153,6 +154,31 @@ CinemaWindow::_Search(const char* query)
 	fGeneration++;
 	fGrid->SetMessage(B_TRANSLATE("Looking for the videos" B_UTF8_ELLIPSIS));
 	fHelper->Search(fGeneration, kResultCount, query);
+}
+
+
+/*!	YouTube if the helper has it, otherwise the first provider that searches:
+	the others are there for when there are more.
+*/
+void
+CinemaWindow::_SetProviders(BMessage* message)
+{
+	fProviders = ProvidersFromMessage(*message);
+
+	BString chosen;
+	for (const Provider& provider : fProviders)
+		if (provider.id == "youtube")
+			chosen = provider.id;
+	if (chosen.IsEmpty())
+		for (const Provider& provider : fProviders)
+			if (provider.Supports("search")) {
+				chosen = provider.id;
+				break;
+			}
+	if (chosen.IsEmpty() || chosen == fProvider)
+		return;
+	fProvider = chosen;
+	fHelper->SetProvider(fProvider.String());
 }
 
 
@@ -246,17 +272,24 @@ CinemaWindow::_RemoveCategory(int32 index)
 void
 CinemaWindow::_ShowResults(BMessage* message)
 {
-	std::vector<Video> videos;
+	std::vector<MediaItem> videos;
 	BMessage thumbnails(kMsgThumbnails);
 	thumbnails.AddInt32("generation", fGeneration);
 	const char* id;
 	for (int32 i = 0; message->FindString("id", i, &id) == B_OK; i++) {
-		Video video;
+		MediaItem video;
 		video.id = id;
+		video.provider = message->GetString("provider", i, fProvider);
+		video.kind = message->GetString("kind", i, "video");
 		video.title = message->GetString("title", i, "");
+		video.description = message->GetString("description", i, "");
 		video.duration = message->GetInt32("duration", i, 0);
 		video.channel = message->GetString("channel", i, "");
 		video.channelId = message->GetString("channel id", i, "");
+		video.year = message->GetInt32("year", i, 0);
+		video.rating = message->GetDouble("rating", i, 0);
+		video.poster = message->GetString("poster", i, "");
+		video.thumbnail = message->GetString("thumbnail", i, "");
 		video.downloaded = fDownloaded.count(video.id) > 0;
 		auto downloading = fDownloading.find(video.id);
 		if (downloading != fDownloading.end())
@@ -357,6 +390,9 @@ CinemaWindow::MessageReceived(BMessage* message)
 			fGrid->MakeFocus(true);
 			break;
 		}
+		case kMsgProviders:
+			_SetProviders(message);
+			break;
 		case kMsgResults:
 			if (message->GetInt32("generation", -1) == fGeneration)
 				_ShowResults(message);
@@ -527,7 +563,7 @@ CinemaWindow::_ShowDownloads()
 	// what is still on its way for a search is not wanted any more
 	fGeneration++;
 	fDownloaded.clear();
-	std::vector<Video> videos = Downloads::Load(&fDownloaded);
+	std::vector<MediaItem> videos = Downloads::Load(&fDownloaded);
 	if (videos.empty()) {
 		fGrid->SetMessage(B_TRANSLATE("No videos downloaded yet: right click "
 			"a video, or press D"));

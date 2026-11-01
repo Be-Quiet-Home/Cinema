@@ -25,6 +25,8 @@
 namespace Downloads {
 
 static const char* kIdAttribute = "Cinema:id";
+static const char* kProviderAttribute = "Cinema:provider";
+static const char* kKindAttribute = "Cinema:kind";
 static const char* kChannelAttribute = "Cinema:channel";
 static const char* kChannelIdAttribute = "Cinema:channel_id";
 static const char* kDurationAttribute = "Cinema:duration";
@@ -52,11 +54,11 @@ picture_path(const char* id)
 }
 
 
-std::vector<Video>
+std::vector<MediaItem>
 Load(std::map<BString, BString>* files)
 {
 	struct Found {
-		Video	video;
+		MediaItem	video;
 		time_t	time;
 	};
 	std::vector<Found> found;
@@ -74,6 +76,11 @@ Load(std::map<BString, BString>* files)
 		Found file;
 		file.video.id = id;
 		file.video.path = path.Path();
+		if (node.ReadAttrString(kProviderAttribute, &file.video.provider)
+				!= B_OK)
+			file.video.provider = "youtube";
+		if (node.ReadAttrString(kKindAttribute, &file.video.kind) != B_OK)
+			file.video.kind = "video";
 		if (node.ReadAttrString(kTitleAttribute, &file.video.title) != B_OK)
 			file.video.title = path.Leaf();
 		node.ReadAttrString(kChannelAttribute, &file.video.channel);
@@ -90,7 +97,7 @@ Load(std::map<BString, BString>* files)
 
 	std::sort(found.begin(), found.end(),
 		[](const Found& a, const Found& b) { return a.time > b.time; });
-	std::vector<Video> videos;
+	std::vector<MediaItem> videos;
 	for (Found& file : found) {
 		file.video.picture = BTranslationUtils::GetBitmap(
 			picture_path(file.video.id).String());
@@ -135,6 +142,10 @@ Describe(const char* path, const BMessage& video)
 		return;
 	BString text = video.GetString("id", "");
 	node.WriteAttrString(kIdAttribute, &text);
+	text = video.GetString("provider", "youtube");
+	node.WriteAttrString(kProviderAttribute, &text);
+	text = video.GetString("kind", "video");
+	node.WriteAttrString(kKindAttribute, &text);
 	text = video.GetString("title", "");
 	node.WriteAttrString(kTitleAttribute, &text);
 	text = video.GetString("channel", "");

@@ -10,12 +10,14 @@
 #include <Messenger.h>
 #include <String.h>
 
-#include <map>
+
+class Json;
 
 
-/*!	cinema-helper, the Python program next to Cinema that keeps yt-dlp loaded:
-	it searches and finds the files of the videos. Its answers are sent to the
-	target as kMsgResults or kMsgSearchFailed, kMsgFound or kMsgLost, and
+/*!	cinema-helper, the Python program next to Cinema that keeps the providers
+	loaded: today yt-dlp. It searches and finds the files of the videos, and
+	talks one JSON object per line. Its answers are sent to the target as
+	kMsgProviders, kMsgResults or kMsgSearchFailed, kMsgFound or kMsgLost, and
 	kMsgDownloadProgress then kMsgDownloaded or kMsgDownloadFailed.
 */
 class Helper {
@@ -24,6 +26,8 @@ public:
 								~Helper();
 
 			status_t			Start(const char* script, const char* cache);
+			void				SetProvider(const char* id);
+									// the one the next requests are for
 			void				Search(int32 generation, int32 count,
 									const char* query);
 			void				Channel(int32 generation, int32 count,
@@ -35,15 +39,15 @@ private:
 	static	status_t			_ReaderEntry(void* data);
 			void				_Read();
 			void				_Handle(const BString& line);
-			void				_Send(const BString& line);
+			void				_Send(const Json& request);
 
 			BMessenger			fTarget;
 			BLocker				fLock;
+			BString				fProvider;	// "youtube" until it says
 			int					fInput;		// its standard input
 			int					fOutput;	// its standard output
 			pid_t				fProcess;
 			thread_id			fReader;
-			std::map<int32, BMessage> fSearches;	// by generation
 };
 
 

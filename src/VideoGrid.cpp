@@ -70,14 +70,14 @@ VideoGrid::AttachedToWindow()
 void
 VideoGrid::_Clear()
 {
-	for (Video& video : fVideos)
+	for (MediaItem& video : fVideos)
 		delete video.picture;
 	fVideos.clear();
 }
 
 
 void
-VideoGrid::SetVideos(const std::vector<Video>& videos)
+VideoGrid::SetVideos(const std::vector<MediaItem>& videos)
 {
 	_Clear();
 	fVideos = videos;
@@ -204,7 +204,7 @@ line_height(const BFont& font)
 BRect
 VideoGrid::_ChannelFrame(int32 index) const
 {
-	const Video& video = fVideos[index];
+	const MediaItem& video = fVideos[index];
 	if (video.channel.IsEmpty() || video.channelId.IsEmpty())
 		return BRect();
 	BRect frame = _TileFrame(index);
@@ -294,7 +294,7 @@ duration_text(int32 seconds)
 void
 VideoGrid::_DrawTile(int32 index, BRect frame)
 {
-	const Video& video = fVideos[index];
+	const MediaItem& video = fVideos[index];
 	bool selected = index == fSelected;
 	bool hover = index == fHover;
 
@@ -478,7 +478,7 @@ VideoGrid::_Download(int32 index)
 {
 	if (index < 0 || index >= (int32)fVideos.size())
 		return;
-	const Video& video = fVideos[index];
+	const MediaItem& video = fVideos[index];
 	if (video.downloaded || video.progress >= 0 || !video.path.IsEmpty())
 		return;
 	BMessage download = _DownloadMessage(index);
@@ -489,8 +489,10 @@ VideoGrid::_Download(int32 index)
 BMessage
 VideoGrid::_DownloadMessage(int32 index) const
 {
-	const Video& video = fVideos[index];
+	const MediaItem& video = fVideos[index];
 	BMessage download(kMsgDownload);
+	download.AddString("provider", video.provider);
+	download.AddString("kind", video.kind);
 	download.AddString("id", video.id);
 	download.AddString("title", video.title);
 	download.AddString("channel", video.channel);
@@ -503,7 +505,7 @@ VideoGrid::_DownloadMessage(int32 index) const
 void
 VideoGrid::_ShowMenu(int32 index, BPoint where)
 {
-	const Video& video = fVideos[index];
+	const MediaItem& video = fVideos[index];
 	BPopUpMenu* menu = new BPopUpMenu("video", false, false);
 	BMessage* play = new BMessage(kMsgPlay);
 	play->AddString("id", video.id);

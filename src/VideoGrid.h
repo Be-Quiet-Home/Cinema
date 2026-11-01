@@ -12,25 +12,11 @@
 
 #include <vector>
 
+#include "MediaItem.h"
+
 
 class BBitmap;
 class BMessageRunner;
-
-
-struct Video {
-	BString		id;
-	BString		title;
-	BString		channel;
-	BString		channelId;
-	int32		duration;	// in seconds
-	BBitmap*	picture;	// may be NULL
-	BString		path;		// the file, when shown from the downloads
-	int32		progress;	// of its download, or -1
-	bool		downloaded;
-
-				Video() : duration(0), picture(NULL), progress(-1),
-					downloaded(false) {}
-};
 
 
 /*!	The videos found, as big pictures in rows. A click, or Enter on the chosen
@@ -53,7 +39,7 @@ public:
 									const BMessage* dragMessage);
 	virtual	void				MessageReceived(BMessage* message);
 
-			void				SetVideos(const std::vector<Video>& videos);
+			void				SetVideos(const std::vector<MediaItem>& videos);
 			void				SetPicture(const char* id, BBitmap* picture);
 			void				SetProgress(const char* id, int32 progress);
 									// -1: not downloading
@@ -79,7 +65,7 @@ private:
 			void				_DrawTile(int32 index, BRect frame);
 			void				_DrawBusy();
 
-			std::vector<Video>	fVideos;
+			std::vector<MediaItem>	fVideos;
 			BString				fMessage;
 			BString				fBusy;
 			int32				fSelected;
