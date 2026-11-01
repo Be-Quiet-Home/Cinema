@@ -1,13 +1,14 @@
-1	English	application/x-vnd.atomozero-Cinema	560541691
+1	English	application/x-vnd.atomozero-Cinema	237470864
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
 Cinema	System name		Cinema
 Downloaded	Detail		Downloaded
 No videos found	Window		No videos found
 full documentary	Categories		full documentary
+OK	Window		OK
 Technology	Categories		Technology
 Add this channel to the tabs	Categories		Add this channel to the tabs
-OK	Window		OK
 Show the latest videos	Grid		Show the latest videos
+See all	Home		See all
 Music	Categories		Music
 Play	Grid		Play
 Video downloaded	Window		Video downloaded
@@ -15,6 +16,7 @@ Getting the details…	Detail		Getting the details…
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema needs yt-dlp and python3, and cinema-helper.py next to it
 Download	Detail		Download
 Getting the video ready	Grid		Getting the video ready
+Downloaded	Window		Downloaded
 Downloading…	Grid		Downloading…
 Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Remove from the tabs
@@ -38,6 +40,8 @@ technology review	Categories		technology review
 # or name = channel:<id> for the latest videos of a channel	Categories		# or name = channel:<id> for the latest videos of a channel
 MediaPlayer could not be started: %error%	Window		MediaPlayer could not be started: %error%
 Move to Trash	Grid		Move to Trash
+Continue watching	Window		Continue watching
+Home	Categories		Home
 Downloaded	Categories		Downloaded
 Already downloaded	Grid		Already downloaded
 The video could not be moved to the Trash: %error%	Window		The video could not be moved to the Trash: %error%

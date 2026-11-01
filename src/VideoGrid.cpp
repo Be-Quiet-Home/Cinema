@@ -40,11 +40,13 @@ static const float kRadius = 6;
 VideoGrid::VideoGrid()
 	:
 	BView("videos", B_WILL_DRAW | B_FRAME_EVENTS | B_NAVIGABLE
-		| B_FULL_UPDATE_ON_RESIZE),
+		| B_FULL_UPDATE_ON_RESIZE | B_SCROLL_VIEW_AWARE),
 	fSelected(0),
 	fHover(-1),
 	fHoverChannel(-1),
 	fDots(0),
+	fShelf(false),
+	fShelfTileWidth(0),
 	fAnimation(NULL)
 {
 	SetViewColor(B_TRANSPARENT_COLOR);
@@ -62,7 +64,8 @@ void
 VideoGrid::AttachedToWindow()
 {
 	BView::AttachedToWindow();
-	MakeFocus(true);
+	if (!fShelf)
+		MakeFocus(true);
 	_UpdateScrollBar();
 }
 
@@ -88,6 +91,41 @@ VideoGrid::SetVideos(const std::vector<MediaItem>& videos)
 	ScrollTo(0, 0);
 	_UpdateScrollBar();
 	Invalidate();
+}
+
+
+void
+VideoGrid::SetShelfMode(float tileWidth)
+{
+	fShelf = true;
+	fShelfTileWidth = tileWidth;
+	_UpdateScrollBar();
+	Invalidate();
+}
+
+
+float
+VideoGrid::ShelfHeightFor(float tileWidth)
+{
+	float pictureHeight = roundf(tileWidth * 9 / 16);
+	return 2 * kGap + pictureHeight + kTitleHeight;
+}
+
+
+float
+VideoGrid::ShelfHeight() const
+{
+	return ShelfHeightFor(fShelfTileWidth);
+}
+
+
+bool
+VideoGrid::HasVideo(const char* id) const
+{
+	for (const MediaItem& video : fVideos)
+		if (video.id == id)
+			return true;
+	return false;
 }
 
 
@@ -163,14 +201,35 @@ VideoGrid::SetBusy(const char* title)
 int32
 VideoGrid::_Columns() const
 {
+	if (fShelf) {
+		float width = Bounds().Width() - 2 * kGap + kGap;
+		return std::max<int32>(1,
+			(int32)(width / (fShelfTileWidth + kGap)));
+	}
 	float width = Bounds().Width() + 1 - kGap;
 	return std::max<int32>(1, (int32)(width / (kMinTileWidth + kGap)));
+}
+
+
+int32
+VideoGrid::_VisibleCount() const
+{
+	if (!fShelf)
+		return fVideos.size();
+	return std::min<int32>(fVideos.size(), _Columns());
 }
 
 
 BRect
 VideoGrid::_TileFrame(int32 index) const
 {
+	if (fShelf) {
+		float pictureHeight = roundf(fShelfTileWidth * 9 / 16);
+		float tileHeight = pictureHeight + kTitleHeight;
+		float left = kGap + (index % _Columns()) * (fShelfTileWidth + kGap);
+		return BRect(left, kGap, left + fShelfTileWidth,
+			kGap + tileHeight);
+	}
 	int32 columns = _Columns();
 	float tileWidth = (Bounds().Width() + 1 - kGap) / columns - kGap;
 	float pictureHeight = roundf(tileWidth * 9 / 16);
@@ -184,7 +243,7 @@ VideoGrid::_TileFrame(int32 index) const
 int32
 VideoGrid::_TileAt(BPoint where) const
 {
-	for (size_t i = 0; i < fVideos.size(); i++) {
+	for (int32 i = 0; i < _VisibleCount(); i++) {
 		if (_TileFrame(i).Contains(where))
 			return i;
 	}
@@ -234,6 +293,11 @@ VideoGrid::_UpdateScrollBar()
 	BScrollBar* bar = ScrollBar(B_VERTICAL);
 	if (bar == NULL)
 		return;
+	if (fShelf) {
+		bar->SetRange(0, 0);
+		bar->SetProportion(1);
+		return;
+	}
 	float content = fVideos.empty() ? 0
 		: _TileFrame(fVideos.size() - 1).bottom + kGap;
 	float visible = Bounds().Height() + 1;
@@ -252,6 +316,16 @@ VideoGrid::FrameResized(float width, float height)
 
 
 void
+VideoGrid::MakeFocus(bool focus)
+{
+	BView::MakeFocus(focus);
+	Invalidate();
+	if (focus && fShelf && Window() != NULL)
+		Window()->PostMessage(kMsgShelfFocus);
+}
+
+
+void
 VideoGrid::Draw(BRect updateRect)
 {
 	SetDrawingMode(B_OP_COPY);
@@ -264,7 +338,7 @@ VideoGrid::Draw(BRect updateRect)
 			bounds.top + bounds.Height() / 2 - 40, bounds.right,
 			bounds.top + bounds.Height() / 2), Font(18), kTextDim);
 	} else {
-		for (size_t i = 0; i < fVideos.size(); i++) {
+		for (int32 i = 0; i < _VisibleCount(); i++) {
 			BRect frame = _TileFrame(i);
 			if (frame.Intersects(updateRect))
 				_DrawTile(i, frame);
@@ -295,7 +369,7 @@ void
 VideoGrid::_DrawTile(int32 index, BRect frame)
 {
 	const MediaItem& video = fVideos[index];
-	bool selected = index == fSelected;
+	bool selected = index == fSelected && (!fShelf || IsFocus());
 	bool hover = index == fHover;
 
 	BRect picture(frame.left, frame.top, frame.right,
@@ -436,9 +510,10 @@ VideoGrid::_DrawBusy()
 void
 VideoGrid::_Select(int32 index)
 {
-	if (fVideos.empty())
+	int32 count = _VisibleCount();
+	if (count <= 0)
 		return;
-	index = std::max<int32>(0, std::min<int32>(index, fVideos.size() - 1));
+	index = std::max<int32>(0, std::min<int32>(index, count - 1));
 	if (index == fSelected)
 		return;
 	Invalidate(_TileFrame(fSelected).InsetByCopy(-6, -6));
@@ -450,12 +525,16 @@ VideoGrid::_Select(int32 index)
 	selected.AddString("id", fVideos[fSelected].id);
 	Window()->PostMessage(&selected);
 
-	// keep it in sight
-	BRect bounds = Bounds();
-	if (frame.top < bounds.top)
-		ScrollTo(0, std::max(0.0f, frame.top - kGap));
-	else if (frame.bottom > bounds.bottom)
-		ScrollTo(0, frame.bottom + kGap - bounds.Height());
+	if (!fShelf) {
+		_UpdateScrollBar();
+		BRect bounds = Bounds();
+		if (frame.top < bounds.top)
+			ScrollTo(0, std::max(0.0f, frame.top - kGap));
+		else if (frame.bottom > bounds.bottom) {
+			ScrollTo(0, std::max(0.0f,
+				frame.bottom + kGap - bounds.Height()));
+		}
+	}
 }
 
 
@@ -467,6 +546,11 @@ VideoGrid::_Play(int32 index)
 	BMessage play(kMsgPlay);
 	play.AddString("id", fVideos[index].id);
 	play.AddString("title", fVideos[index].title);
+	play.AddString("provider", fVideos[index].provider);
+	play.AddString("kind", fVideos[index].kind);
+	play.AddString("channel", fVideos[index].channel);
+	play.AddString("channel id", fVideos[index].channelId);
+	play.AddInt32("duration", fVideos[index].duration);
 	if (!fVideos[index].path.IsEmpty())
 		play.AddString("path", fVideos[index].path);
 	Window()->PostMessage(&play);
@@ -549,6 +633,11 @@ VideoGrid::_ShowMenu(int32 index, BPoint where)
 	BMessage* play = new BMessage(kMsgPlay);
 	play->AddString("id", video.id);
 	play->AddString("title", video.title);
+	play->AddString("provider", video.provider);
+	play->AddString("kind", video.kind);
+	play->AddString("channel", video.channel);
+	play->AddString("channel id", video.channelId);
+	play->AddInt32("duration", video.duration);
 	if (!video.path.IsEmpty())
 		play->AddString("path", video.path);
 	menu->AddItem(new BMenuItem(B_TRANSLATE("Play"), play));
@@ -578,6 +667,15 @@ void
 VideoGrid::KeyDown(const char* bytes, int32 count)
 {
 	int32 columns = _Columns();
+	if (fShelf && (bytes[0] == B_UP_ARROW || bytes[0] == B_DOWN_ARROW)) {
+		if (_VisibleCount() <= 0)
+			return;
+		BMessage move(kMsgShelfMove);
+		move.AddString("id", fVideos[fSelected].id);
+		move.AddInt32("delta", bytes[0] == B_UP_ARROW ? -1 : 1);
+		Window()->PostMessage(&move);
+		return;
+	}
 	switch (bytes[0]) {
 		case B_LEFT_ARROW:
 			_Select(fSelected - 1);

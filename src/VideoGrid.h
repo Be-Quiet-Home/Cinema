@@ -33,6 +33,7 @@ public:
 	virtual	void				AttachedToWindow();
 	virtual	void				Draw(BRect updateRect);
 	virtual	void				FrameResized(float width, float height);
+	virtual	void				MakeFocus(bool focus = true);
 	virtual	void				KeyDown(const char* bytes, int32 count);
 	virtual	void				MouseDown(BPoint where);
 	virtual	void				MouseMoved(BPoint where, uint32 transit,
@@ -40,6 +41,11 @@ public:
 	virtual	void				MessageReceived(BMessage* message);
 
 			void				SetVideos(const std::vector<MediaItem>& videos);
+			void				SetShelfMode(float tileWidth);
+			float				ShelfHeight() const;
+			static float			ShelfHeightFor(float tileWidth);
+			bool				HasVideo(const char* id) const;
+			bool				IsEmpty() const { return fVideos.empty(); }
 			void				SetPicture(const char* id, BBitmap* picture);
 			void				SetProgress(const char* id, int32 progress);
 									// -1: not downloading
@@ -52,6 +58,7 @@ public:
 private:
 			void				_Clear();
 			int32				_Columns() const;
+			int32				_VisibleCount() const;
 			BRect				_TileFrame(int32 index) const;
 			int32				_TileAt(BPoint where) const;
 			BRect				_ChannelFrame(int32 index) const;
@@ -74,6 +81,8 @@ private:
 			int32				fHover;
 			int32				fHoverChannel;
 			int32				fDots;
+			bool				fShelf;
+			float				fShelfTileWidth;
 			BMessageRunner*		fAnimation;
 };
 

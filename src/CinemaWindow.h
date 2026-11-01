@@ -13,8 +13,10 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <deque>
 
 #include "Categories.h"
+#include "MediaItem.h"
 #include "Provider.h"
 
 
@@ -24,6 +26,7 @@ class BTextControl;
 class CategoryBar;
 class DetailView;
 class Helper;
+class HomeView;
 class VideoGrid;
 class Worker;
 
@@ -52,6 +55,15 @@ private:
 			void				_AddChannel(const char* name, const char* id);
 			void				_RemoveCategory(int32 index);
 			void				_ShowDownloads();
+			void				_ShowHome();
+			void				_LoadHome();
+			void				_StartHomeRequests();
+			void				_HomeResults(BMessage* message, int32 shelf);
+			void				_HomeFailed(BMessage* message, int32 shelf);
+			std::vector<MediaItem> _Videos(BMessage* message);
+			void				_Thumbnails(
+								const std::vector<MediaItem>& videos,
+								int32 generation);
 			bool				_ShowingDownloads() const;
 			void				_ShowDetails(BMessage* message);
 			void				_Details(BMessage* message);
@@ -75,12 +87,25 @@ private:
 			BTextControl*		fSearchField;
 			VideoGrid*			fGrid;
 			DetailView*			fDetail;
+			HomeView*			fHome;
 			BCardLayout*		fCards;
 			BString				fDetailsId;		// what the detail view shows
 			bool				fDetailsShown;
 			Helper*				fHelper;
 			Worker*				fWorker;
 			int32				fGeneration;
+			int32				fHomeGeneration;
+			bool				fHomeLoaded;
+			std::map<int32, int32> fHomeRequests;
+			struct HomeRequest {
+				int32			generation;
+				int32			shelf;
+				int32			category;
+			};
+			std::deque<HomeRequest> fHomeQueue;
+			int32				fHomeActive;
+			int32				fDetailsReturn;
+			int32				fCard;
 
 			std::map<BString, Stream> fStreams;	// the files found, by id
 			std::set<BString>	fFinding;		// asked to the helper

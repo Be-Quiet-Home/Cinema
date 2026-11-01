@@ -1,13 +1,14 @@
-1	spanish	application/x-vnd.atomozero-Cinema	560541691
+1	spanish	application/x-vnd.atomozero-Cinema	237470864
 YouTube could not be reached: is the network on?	Window		No se puede acceder a YouTube: ¿está activa la red?
 Cinema	System name		Cinema
 Downloaded	Detail		Downloaded
 No videos found	Window		No se encontraron vídeos
 full documentary	Categories		documental completo
+OK	Window		Aceptar
 Technology	Categories		Tecnología
 Add this channel to the tabs	Categories		Añadir este canal a las pestañas
-OK	Window		Aceptar
 Show the latest videos	Grid		Mostrar los últimos vídeos
+See all	Home		Ver todo
 Music	Categories		Música
 Play	Grid		Reproducir
 Video downloaded	Window		Vídeo descargado
@@ -15,6 +16,7 @@ Getting the details…	Detail		Getting the details…
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema necesita yt-dlp y python3, y cinema-helper.py a su lado
 Download	Detail		Download
 Getting the video ready	Grid		Preparando el vídeo
+Downloaded	Window		Descargados
 Downloading…	Grid		Descargando…
 Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Quitar de las pestañas
@@ -38,6 +40,8 @@ technology review	Categories		análisis tecnología
 # or name = channel:<id> for the latest videos of a channel	Categories		# o nombre = channel:<id> para los últimos vídeos de un canal
 MediaPlayer could not be started: %error%	Window		No se pudo abrir MediaPlayer: %error%
 Move to Trash	Grid		Mover a la papelera
+Continue watching	Window		Seguir viendo
+Home	Categories		Inicio
 Downloaded	Categories		Descargados
 Already downloaded	Grid		Ya descargado
 The video could not be moved to the Trash: %error%	Window		No se pudo mover el vídeo a la papelera: %error%

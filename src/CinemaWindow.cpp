@@ -29,6 +29,8 @@
 #include "DetailView.h"
 #include "Downloads.h"
 #include "Helper.h"
+#include "History.h"
+#include "HomeView.h"
 #include "Messages.h"
 #include "Style.h"
 #include "VideoGrid.h"
@@ -55,6 +57,11 @@ CinemaWindow::CinemaWindow()
 	fProvider("youtube"),
 	fDetailsShown(false),
 	fGeneration(0),
+	fHomeGeneration(0),
+	fHomeLoaded(false),
+	fHomeActive(0),
+	fDetailsReturn(0),
+	fCard(2),
 	fPrefetchRunner(NULL),
 	fFullScreen(false)
 {
@@ -68,15 +75,20 @@ CinemaWindow::CinemaWindow()
 	BScrollView* scroll = new BScrollView("scroll", fGrid, 0, false, true,
 		B_NO_BORDER);
 	fDetail = new DetailView(BMessenger(this));
+	fHome = new HomeView;
+	BScrollView* homeScroll = new BScrollView("home-scroll", fHome, 0,
+		false, true, B_NO_BORDER);
 
-	// the grid and the detail view take turns in the same place
+	// the home, the grid and the detail view take turns in the same place
 	BView* pages = new BView("pages", B_WILL_DRAW);
 	pages->SetViewColor(Style::kBackground);
 	fCards = new BCardLayout();
 	pages->SetLayout(fCards);
 	pages->AddChild(scroll);
 	pages->AddChild(fDetail);
-	fCards->SetVisibleItem(0);
+	pages->AddChild(homeScroll);
+	fCards->SetVisibleItem(2);
+	fCard = 2;
 
 	// the field as high as the text, not as the bar
 	BLayoutItem* textItem = fSearchField->CreateTextViewLayoutItem();
@@ -120,13 +132,7 @@ CinemaWindow::CinemaWindow()
 	// which videos can be watched offline
 	for (MediaItem& video : Downloads::Load(&fDownloaded))
 		delete video.picture;
-	if (!fCategories.empty()) {
-		_ShowCategory(0);
-	} else {
-		fGrid->SetMessage(B_TRANSLATE("Type what to look for at the top "
-			"right"));
-	}
-	fGrid->MakeFocus(true);
+	_ShowHome();
 }
 
 
@@ -178,6 +184,8 @@ void
 CinemaWindow::_Search(const char* query)
 {
 	_CloseDetails();
+	fCards->SetVisibleItem(0);
+	fCard = 0;
 	fGeneration++;
 	fGrid->SetMessage(B_TRANSLATE("Looking for the videos" B_UTF8_ELLIPSIS));
 	fHelper->Search(fGeneration, kResultCount, query);
@@ -215,7 +223,9 @@ CinemaWindow::_ShowCategory(int32 index)
 	if (index < 0 || index >= (int32)fCategories.size())
 		return;
 	_CloseDetails();
-	fCategoryBar->SetSelected(index);
+	fCards->SetVisibleItem(0);
+	fCard = 0;
+	fCategoryBar->SetSelected(fCategoryBar->CategoryTab(index));
 	fChannelId = "";
 	const Category& category = fCategories[index];
 	if (category.IsChannel()) {
@@ -235,6 +245,8 @@ CinemaWindow::_ShowChannel(const char* name, const char* id)
 	if (id[0] == '\0')
 		return;
 	_CloseDetails();
+	fCards->SetVisibleItem(0);
+	fCard = 0;
 	// one of the tabs already?
 	for (size_t i = 0; i < fCategories.size(); i++) {
 		if (fCategories[i].channel == id) {
@@ -268,15 +280,20 @@ CinemaWindow::_AddChannel(const char* name, const char* id)
 	SaveCategories(fCategories);
 
 	int32 selected = fCategoryBar->Selected();
-	if (selected == fCategoryBar->DownloadsIndex())
-		selected++;	// it comes after the categories
 	fCategoryBar->SetCategories(fCategories);
 	if (fChannelId == id) {
 		// the tab of its own becomes one of the others
-		fCategoryBar->SetSelected(fCategories.size() - 1);
+		fCategoryBar->SetSelected(
+			fCategoryBar->CategoryTab(fCategories.size() - 1));
 		fChannelId = "";
 	} else if (selected >= 0)
 		fCategoryBar->SetSelected(selected);
+	fHomeLoaded = false;
+	fHomeRequests.clear();
+	fHomeQueue.clear();
+	fHomeActive = 0;
+	if (fCard == 2 && !fDetailsShown)
+		_ShowHome();
 }
 
 
@@ -290,20 +307,25 @@ CinemaWindow::_RemoveCategory(int32 index)
 
 	// what is shown stays: only the tab goes
 	int32 selected = fCategoryBar->Selected();
+	int32 tab = fCategoryBar->CategoryTab(index);
 	fCategoryBar->SetCategories(fCategories);
-	if (selected == index)
+	if (selected == tab)
 		fCategoryBar->SetSelected(-1);
-	else if (selected > index)
+	else if (selected > tab)
 		fCategoryBar->SetSelected(selected - 1);
+	fHomeLoaded = false;
+	fHomeRequests.clear();
+	fHomeQueue.clear();
+	fHomeActive = 0;
+	if (fCard == 2 && !fDetailsShown)
+		_ShowHome();
 }
 
 
-void
-CinemaWindow::_ShowResults(BMessage* message)
+std::vector<MediaItem>
+CinemaWindow::_Videos(BMessage* message)
 {
 	std::vector<MediaItem> videos;
-	BMessage thumbnails(kMsgThumbnails);
-	thumbnails.AddInt32("generation", fGeneration);
 	const char* id;
 	for (int32 i = 0; message->FindString("id", i, &id) == B_OK; i++) {
 		MediaItem video;
@@ -325,18 +347,156 @@ CinemaWindow::_ShowResults(BMessage* message)
 			video.progress = downloading->second.GetInt32("percent", 0);
 		video.picture = NULL;
 		videos.push_back(video);
-		thumbnails.AddString("id", id);
 	}
+	return videos;
+}
+
+
+void
+CinemaWindow::_Thumbnails(const std::vector<MediaItem>& videos,
+	int32 generation)
+{
+	BMessage thumbnails(kMsgThumbnails);
+	thumbnails.AddInt32("generation", generation);
+	for (const MediaItem& video : videos)
+		thumbnails.AddString("id", video.id);
+	fWorker->PostMessage(&thumbnails);
+}
+
+
+void
+CinemaWindow::_ShowResults(BMessage* message)
+{
+	std::vector<MediaItem> videos = _Videos(message);
 	if (videos.empty()) {
 		fGrid->SetMessage(B_TRANSLATE("No videos found"));
 		return;
 	}
 	fGrid->SetVideos(videos);
-	fWorker->PostMessage(&thumbnails);
+	_Thumbnails(videos, fGeneration);
 
 	// the first one is chosen already
 	fWanted = videos[0].id;
 	_PrefetchWanted();
+}
+
+
+void
+CinemaWindow::_ShowHome()
+{
+	_CloseDetails();
+	fCategoryBar->SetSelected(fCategoryBar->HomeIndex());
+	fChannelId = "";
+	if (!fHomeLoaded)
+		_LoadHome();
+	fCards->SetVisibleItem(2);
+	fCard = 2;
+	fHome->MakeFirstFocus();
+}
+
+
+void
+CinemaWindow::_LoadHome()
+{
+	fHomeRequests.clear();
+	fHomeQueue.clear();
+	fHomeActive = 0;
+	std::vector<ShelfSpec> shelves;
+
+	std::vector<MediaItem> history = History::Load(fWorker->Cache());
+	if (!history.empty()) {
+		ShelfSpec spec;
+		spec.title = B_TRANSLATE("Continue watching");
+		spec.videos = history;
+		shelves.push_back(spec);
+	}
+
+	fDownloaded.clear();
+	std::vector<MediaItem> downloads = Downloads::Load(&fDownloaded);
+	if (!downloads.empty()) {
+		ShelfSpec spec;
+		spec.title = B_TRANSLATE("Downloaded");
+		spec.seeAll = BMessage(kMsgShowDownloads);
+		spec.videos = downloads;
+		shelves.push_back(spec);
+	}
+
+	for (size_t i = 0; i < fCategories.size(); i++) {
+		ShelfSpec spec;
+		spec.title = fCategories[i].name;
+		BMessage seeAll(kMsgCategory);
+		seeAll.AddInt32("index", i);
+		spec.seeAll = seeAll;
+		spec.message = B_TRANSLATE("Looking for the videos"
+			B_UTF8_ELLIPSIS);
+		int32 shelf = shelves.size();
+		shelves.push_back(spec);
+		int32 generation = --fHomeGeneration;
+		fHomeRequests[generation] = shelf;
+		fHomeQueue.push_back({generation, shelf, (int32)i});
+	}
+
+	if (shelves.empty())
+		fHome->SetMessage(B_TRANSLATE("Type what to look for at the top "
+			"right"));
+	else
+		fHome->SetShelves(shelves);
+	fHomeLoaded = true;
+	_StartHomeRequests();
+}
+
+
+/*!	The shelves are filled a few at a time: a search costs a yt-dlp, and
+	they would all run together otherwise.
+*/
+void
+CinemaWindow::_StartHomeRequests()
+{
+	static const int32 kAtOnce = 2;
+	while (fHomeActive < kAtOnce && !fHomeQueue.empty()) {
+		HomeRequest request = fHomeQueue.front();
+		fHomeQueue.pop_front();
+		if (fHomeRequests.find(request.generation) == fHomeRequests.end()
+			|| request.category < 0
+			|| request.category >= (int32)fCategories.size())
+			continue;
+		const Category& category = fCategories[request.category];
+		if (category.IsChannel())
+			fHelper->Channel(request.generation, kResultCount,
+				category.channel);
+		else
+			fHelper->Search(request.generation, kResultCount,
+				category.query);
+		fHomeActive++;
+	}
+}
+
+
+void
+CinemaWindow::_HomeResults(BMessage* message, int32 shelf)
+{
+	std::vector<MediaItem> videos = _Videos(message);
+	if (videos.empty())
+		fHome->SetShelfMessage(shelf, B_TRANSLATE("No videos found"));
+	else {
+		fHome->SetShelfVideos(shelf, videos);
+		_Thumbnails(videos, message->GetInt32("generation", -1));
+	}
+	if (fHomeActive > 0)
+		fHomeActive--;
+	_StartHomeRequests();
+}
+
+
+void
+CinemaWindow::_HomeFailed(BMessage* message, int32 shelf)
+{
+	fHome->SetShelfMessage(shelf, B_TRANSLATE("YouTube could not be reached: "
+		"is the network on?"));
+	(void)message;
+	if (fHomeActive > 0)
+		fHomeActive--;
+	_StartHomeRequests();
 }
 
 
@@ -368,6 +528,8 @@ CinemaWindow::_ShowDetails(BMessage* message)
 	if (item.id.IsEmpty())
 		return;
 
+	if (!fDetailsShown)
+		fDetailsReturn = fCard;
 	fDetailsId = item.id;
 	fDetailsShown = true;
 	fDetail->SetItem(item);
@@ -380,6 +542,7 @@ CinemaWindow::_ShowDetails(BMessage* message)
 		fDetail->SetPicture(BTranslationUtils::GetBitmap(path.String()));
 
 	fCards->SetVisibleItem(1);
+	fCard = 1;
 	fDetail->MakeFocus(true);
 	fHelper->Details(item.provider.String(), item.id.String(),
 		item.kind.String());
@@ -443,10 +606,15 @@ CinemaWindow::_CloseDetails()
 	if (!fDetailsShown)
 		return;
 	fDetailsShown = false;
-	fDetailsId = "";
-	fCards->SetVisibleItem(0);
+	fCards->SetVisibleItem(fDetailsReturn);
+	fCard = fDetailsReturn;
 	fDetail->SetItem(MediaItem());
-	fGrid->MakeFocus(true);
+	if (fDetailsReturn == 2) {
+		if (!fHome->MoveFocus(fDetailsId.String(), 0))
+			fHome->MakeFirstFocus();
+	} else
+		fGrid->MakeFocus(true);
+	fDetailsId = "";
 }
 
 
@@ -475,7 +643,8 @@ CinemaWindow::_Find(const BString& id)
 void
 CinemaWindow::_PrefetchWanted()
 {
-	if (fWanted.IsEmpty() || _Ready(fWanted) || !fFinding.empty())
+	if (fWanted.IsEmpty() || _Ready(fWanted) || !fFinding.empty()
+		|| fDownloaded.count(fWanted) > 0)
 		return;
 	_Find(fWanted);
 }
@@ -502,6 +671,16 @@ CinemaWindow::MessageReceived(BMessage* message)
 			_SetFullScreen(!fFullScreen);
 			break;
 
+		case kMsgHome:
+			_ShowHome();
+			break;
+		case kMsgShelfMove:
+			fHome->MoveFocus(message->GetString("id", ""),
+				message->GetInt32("delta", 0));
+			break;
+		case kMsgShelfFocus:
+			fHome->Invalidate();
+			break;
 		case kMsgCategory:
 			_ShowCategory(message->GetInt32("index", -1));
 			break;
@@ -533,22 +712,41 @@ CinemaWindow::MessageReceived(BMessage* message)
 			_SetProviders(message);
 			break;
 		case kMsgResults:
-			if (message->GetInt32("generation", -1) == fGeneration)
+		{
+			int32 generation = message->GetInt32("generation", -1);
+			auto home = fHomeRequests.find(generation);
+			if (home != fHomeRequests.end())
+				_HomeResults(message, home->second);
+			else if (generation == fGeneration)
 				_ShowResults(message);
 			break;
+		}
 		case kMsgSearchFailed:
-			if (message->GetInt32("generation", -1) == fGeneration) {
+		{
+			int32 generation = message->GetInt32("generation", -1);
+			auto home = fHomeRequests.find(generation);
+			if (home != fHomeRequests.end())
+				_HomeFailed(message, home->second);
+			else if (generation == fGeneration) {
 				fGrid->SetMessage(B_TRANSLATE("YouTube could not be reached: "
 					"is the network on?"));
 			}
 			break;
+		}
 		case kMsgThumbnail:
-			if (message->GetInt32("generation", -1) == fGeneration) {
-				fGrid->SetPicture(message->GetString("id", ""),
-					BTranslationUtils::GetBitmap(
-						message->GetString("path", "")));
-			}
+		{
+			int32 generation = message->GetInt32("generation", -1);
+			BBitmap* picture = BTranslationUtils::GetBitmap(
+				message->GetString("path", ""));
+			auto home = fHomeRequests.find(generation);
+			if (home != fHomeRequests.end())
+				fHome->SetPicture(message->GetString("id", ""), picture);
+			else if (generation == fGeneration)
+				fGrid->SetPicture(message->GetString("id", ""), picture);
+			else
+				delete picture;
 			break;
+		}
 
 		case kMsgShowDetails:
 			_ShowDetails(message);
@@ -591,6 +789,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 			int32 percent = message->GetInt32("percent", 0);
 			downloading->second.SetInt32("percent", percent);
 			fGrid->SetProgress(id, percent);
+			fHome->SetProgress(id, percent);
 			fDetail->SetProgress(id.String(), percent);
 			break;
 		}
@@ -613,6 +812,20 @@ CinemaWindow::MessageReceived(BMessage* message)
 			if (path == NULL && downloaded != fDownloaded.end()
 				&& BEntry(downloaded->second.String()).Exists())
 				path = downloaded->second.String();
+
+			MediaItem recent;
+			recent.id = id;
+			recent.title = title;
+			recent.provider = message->GetString("provider", fProvider);
+			recent.kind = message->GetString("kind", "video");
+			recent.channel = message->GetString("channel", "");
+			recent.channelId = message->GetString("channel id", "");
+			recent.duration = message->GetInt32("duration", 0);
+			recent.path = path != NULL ? path : "";
+			recent.downloaded = path != NULL;
+			History::Remember(recent, fWorker->Cache());
+			fHomeLoaded = false;
+
 			if (path != NULL) {
 				// downloaded: no need for the network
 				_Play(path, title.String());
@@ -625,6 +838,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 			fWaiting = id;
 			fWaitingTitle = title;
 			fGrid->SetBusy(title.String());
+			fHome->SetBusy(id.String(), title.String());
 			_Find(id);
 			break;
 		}
@@ -644,6 +858,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 			if (id == fWaiting) {
 				fWaiting = "";
 				fGrid->SetBusy(NULL);
+				fHome->ClearBusy();
 				_Play(stream.url.String(), fWaitingTitle.String());
 			}
 			_PrefetchWanted();
@@ -658,6 +873,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 			if (id == fWaiting) {
 				fWaiting = "";
 				fGrid->SetBusy(NULL);
+				fHome->ClearBusy();
 				(new BAlert(fWaitingTitle.String(),
 					B_TRANSLATE("This video can't be played here, try another "
 						"one."), B_TRANSLATE("OK")))->Go(NULL);
@@ -666,7 +882,12 @@ CinemaWindow::MessageReceived(BMessage* message)
 			break;
 		}
 		case kMsgHelperGone:
+			fHomeQueue.clear();
+			fHomeActive = 0;
 			fGrid->SetBusy(NULL);
+			fHome->ClearBusy();
+			fHome->FailPending(B_TRANSLATE("Cinema needs yt-dlp and "
+				"python3, and cinema-helper.py next to it"));
 			fGrid->SetMessage(B_TRANSLATE("Cinema needs yt-dlp and python3, "
 				"and cinema-helper.py next to it"));
 			break;
@@ -712,6 +933,8 @@ void
 CinemaWindow::_ShowDownloads()
 {
 	_CloseDetails();
+	fCards->SetVisibleItem(0);
+	fCard = 0;
 	fCategoryBar->SetSelected(fCategoryBar->DownloadsIndex());
 	fChannelId = "";
 	// what is still on its way for a search is not wanted any more
@@ -723,6 +946,7 @@ CinemaWindow::_ShowDownloads()
 			"a video, or press D"));
 	} else
 		fGrid->SetVideos(videos);
+	fHomeLoaded = false;
 	fGrid->MakeFocus(true);
 }
 
@@ -744,6 +968,7 @@ CinemaWindow::_Download(BMessage* message)
 	download.SetInt32("percent", 0);
 	fDownloading[id] = download;
 	fGrid->SetProgress(id, 0);
+	fHome->SetProgress(id, 0);
 	fDetail->SetProgress(id.String(), 0);
 	fHelper->Download(id.String(), folder.String());
 }
@@ -762,7 +987,9 @@ CinemaWindow::_Downloaded(BMessage* message)
 	Downloads::Describe(message->GetString("path", ""), video);
 	fDownloaded[id] = message->GetString("path", "");
 	fGrid->SetDownloaded(id, true);
+	fHome->SetDownloaded(id.String(), true);
 	fDetail->SetDownloaded(id.String(), true);
+	fHomeLoaded = false;
 	if (_ShowingDownloads())
 		_ShowDownloads();
 
@@ -784,6 +1011,7 @@ CinemaWindow::_DownloadFailed(BMessage* message)
 	BString title = downloading->second.GetString("title", "");
 	fDownloading.erase(downloading);
 	fGrid->SetProgress(id, -1);
+	fHome->SetProgress(id, -1);
 	fDetail->SetProgress(id.String(), -1);
 
 	BNotification notification(B_ERROR_NOTIFICATION);
@@ -805,8 +1033,12 @@ CinemaWindow::_Trash(BMessage* message)
 		(new BAlert("Cinema", text.String(), B_TRANSLATE("OK")))->Go(NULL);
 		return;
 	}
+	fHomeLoaded = false;
 	if (_ShowingDownloads())
 		_ShowDownloads();
-	else
+	else {
 		fDownloaded.erase(message->GetString("id", ""));
+		if (fCard == 2 && !fDetailsShown)
+			_ShowHome();
+	}
 }

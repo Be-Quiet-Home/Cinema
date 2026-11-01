@@ -35,10 +35,14 @@ enum {
 	kMsgStreamReady		= 'strm',	// "id", "url"
 
 	// in the window
-	kMsgPlay			= 'play',	// "id", "title", "path" if downloaded
+	kMsgPlay			= 'play',	// "id", "title", "path" if downloaded,
+									// and what the history needs
 	kMsgDownload		= 'dwnl',	// "provider", "kind", "id", "title",
 									// "channel", "channel id", "duration"
 	kMsgShowDownloads	= 'dwsh',
+	kMsgHome			= 'home',
+	kMsgShelfMove		= 'shmv',
+	kMsgShelfFocus		= 'shfc',
 	kMsgTrash			= 'trsh',	// "id", "path": a download to the Trash
 	kMsgSelected		= 'slct',	// "id": chosen, not played yet
 	kMsgShowDetails		= 'dtsh',	// "provider", "kind", "id", "title",

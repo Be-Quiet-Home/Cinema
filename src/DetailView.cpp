@@ -895,6 +895,11 @@ DetailView::_Play()
 	BMessage play(kMsgPlay);
 	play.AddString("id", fItem.id);
 	play.AddString("title", fItem.title);
+	play.AddString("provider", fItem.provider);
+	play.AddString("kind", fItem.kind);
+	play.AddString("channel", fItem.channel);
+	play.AddString("channel id", fItem.channelId);
+	play.AddInt32("duration", fItem.duration);
 	if (!fItem.path.IsEmpty())
 		play.AddString("path", fItem.path);
 	fTarget.SendMessage(&play);
