@@ -5,8 +5,8 @@
 # build-hpkg.sh: builds Cinema and makes its package, on Haiku or RenkuOS.
 # The package goes to the current folder.
 set -e
-VERSION="1.0.0"
-REVISION="2"
+VERSION="1.1.0"
+REVISION="1"
 ARCH=$(getarch)
 TOP=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$(pwd)
