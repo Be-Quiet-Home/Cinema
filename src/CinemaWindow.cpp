@@ -1297,6 +1297,15 @@ CinemaWindow::_ShowDownloads()
 		videos.push_back(item);
 	}
 	std::vector<MediaItem> saved = Downloads::Load(&fDownloaded);
+	for (MediaItem& item : saved) {
+		// a torrent has no picture of its own: the one the library found
+		// for the same file, if it showed it already
+		if (item.picture != NULL || item.path.IsEmpty())
+			continue;
+		BString picture(fWorker->Cache());
+		picture << "/" << PictureName(item.path) << ".jpg";
+		item.picture = BTranslationUtils::GetBitmap(picture.String());
+	}
 	videos.insert(videos.end(), saved.begin(), saved.end());
 	if (videos.empty()) {
 		fGrid->SetMessage(B_TRANSLATE("No videos downloaded yet: right click "
