@@ -764,11 +764,51 @@ CHILDREN_LOCK = threading.Lock()
 
 def stop_children():
 	with CHILDREN_LOCK:
-		for process in list(CHILDREN):
+		children = list(CHILDREN)
+	for process in children:
+		try:
+			process.terminate()
+		except OSError:
+			pass
+	# aria2 may take a moment to save where it is; not more
+	deadline = time.time() + 3
+	for process in children:
+		try:
+			process.wait(max(0.1, deadline - time.time()))
+		except Exception:
 			try:
-				process.terminate()
+				process.kill()
 			except OSError:
 				pass
+
+
+def stop_others(work):
+	"""Stops the aria2c left working in work by a helper that went away:
+	two of them on the same files would spoil them."""
+	try:
+		lines = subprocess.run(["ps"], capture_output=True, text=True,
+			timeout=10).stdout.splitlines()
+	except (OSError, subprocess.SubprocessError):
+		return
+	mine = set()
+	with CHILDREN_LOCK:
+		mine = {process.pid for process in CHILDREN}
+	for line in lines:
+		if "aria2c" not in line or "--dir=" + work not in line:
+			continue
+		# the team id comes before the threads and the two times
+		fields = line.split()
+		if len(fields) < 4 or not fields[-4].isdigit():
+			continue
+		pid = int(fields[-4])
+		if pid in mine:
+			continue
+		try:
+			os.kill(pid, 15)
+			time.sleep(2)
+			os.kill(pid, 9)
+		except OSError:
+			pass
 
 
 VIDEO_EXTENSIONS = (".mp4", ".m4v", ".mkv", ".webm", ".avi", ".mov", ".ogv",
@@ -795,6 +835,7 @@ class TorrentProvider(Provider):
 		# download goes on from where it was
 		work = os.path.join(folder, ".torrent-" + key)
 		os.makedirs(work, exist_ok=True)
+		stop_others(work)
 		complete = False
 		try:
 			command = ["aria2c", "--dir=" + work, "--seed-time=0",
