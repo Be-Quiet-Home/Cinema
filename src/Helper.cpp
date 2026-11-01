@@ -188,6 +188,16 @@ Helper::Download(const char* id, const char* folder, const char* provider)
 
 
 void
+Helper::CheckTmdb()
+{
+	Json request = Json::MakeObject();
+	request.Set("type", "check");
+	request.Set("provider", "library");
+	_Send(request);
+}
+
+
+void
 Helper::Cancel(const char* id)
 {
 	Json request = Json::MakeObject();
@@ -351,6 +361,13 @@ Helper::_Handle(const BString& line)
 			progress.AddString(field, answer.GetString(field, "").c_str());
 		progress.AddInt32("peers", answer.GetInt("peers", -1));
 		fTarget.SendMessage(&progress);
+		return;
+	}
+
+	if (type == "checked") {
+		BMessage checked(kMsgTmdbChecked);
+		checked.AddBool("ok", answer.GetBool("ok", false));
+		fTarget.SendMessage(&checked);
 		return;
 	}
 

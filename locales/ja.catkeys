@@ -1,23 +1,31 @@
-1	japanese	application/x-vnd.atomozero-Cinema	1485132134
+1	japanese	application/x-vnd.atomozero-Cinema	2224778090
 YouTube could not be reached: is the network on?	Window		YouTube に接続できません。ネットワークはオンになっていますか?
 TV series	Window		テレビシリーズ
 Downloaded	Detail		ダウンロード済み
+Search first in:	Settings		最初に検索する場所:
 full documentary	Categories		ドキュメンタリー 全編
 Add this channel to the tabs	Categories		このチャンネルをタブに追加
 OK	Window		OK
 Show the latest videos	Grid		最新の動画を表示
+The key works.	Settings		キーは有効です。
 Music	Categories		音楽
 Play	Grid		再生
 Video downloaded	Window		動画をダウンロードしました
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: YouTube、Internet Archive、PeerTube、BitTorrent、そして自分のフォルダーの動画を見る Haiku と RenkuOS 用のアプリ。
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema には yt-dlp と python3、そして同じ場所に cinema-helper.py が必要です
+Remove	Settings		削除
 Download	Detail		ダウンロード
-Downloaded	Window		ダウンロード済み
 Getting the video ready	Grid		動画を準備中
+Downloaded	Window		ダウンロード済み
+Settings…	Window		設定…
 Downloading…	Detail		ダウンロード中…
 Remove from the tabs	Categories		タブから削除
 Add to the tabs	Grid		タブに追加
 news today	Categories		今日のニュース
+Get a key…	Settings		キーを取得…
 %peers% sources	Window		ソース %peers% 件
+Library	Settings		ライブラリ
+Cinema settings	Settings		Cinema の設定
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent でのダウンロードには aria2c が必要ですが、インストールされていません。
 %views% views	Detail		%views% 回視聴
 Science	Categories		科学
@@ -25,6 +33,8 @@ Back	Detail		戻る
 Classic cartoons	Categories		名作アニメ
 Documentaries	Categories		ドキュメンタリー
 Play	Detail		再生
+TMDB does not accept this key.	Settings		TMDB はこのキーを受け付けません。
+Play the videos in Cinema, not in MediaPlayer	Settings		MediaPlayer ではなく Cinema で動画を再生
 Details	Grid		詳細
 technology review	Categories		テクノロジー レビュー
 Continue watching	Window		続きを見る
@@ -32,14 +42,22 @@ Continue watching	Window		続きを見る
 Getting the video ready	Player		動画を準備中
 %eta% left	Window		残り %eta%
 Already downloaded	Grid		すでにダウンロード済み
+Go on from where a video was left	Settings		動画を止めたところから再開
+Add…	Settings		追加…
 The video could not be moved to the Trash: %error%	Window		動画をゴミ箱に移動できませんでした: %error%
+Search	Settings		検索
 News	Categories		ニュース
 Type what to look for at the top right	Window		右上に探したいものを入力してください
 Cinema	System name		Cinema
+Folders of the library	Settings		ライブラリのフォルダー
 No videos found	Window		動画が見つかりません
 Technology	Categories		テクノロジー
 See all	Home		すべて表示
+TMDB key:	Settings		TMDB キー:
 Getting the details…	Detail		詳細を取得中…
+With a key, the library gets posters, plots and casts. It is free.	Settings		キーがあると、ライブラリにポスター、あらすじ、キャストが表示されます。無料です。
+Check	Settings		確認
+Playback	Settings		再生
 Downloading…	Grid		ダウンロード中…
 Stop the download	Grid		ダウンロードを停止
 Search	Window		検索
@@ -57,4 +75,6 @@ MediaPlayer could not be started: %error%	Window		MediaPlayer を起動できま
 Move to Trash	Grid		ゴミ箱に移動
 Downloaded	Categories		ダウンロード済み
 Home	Categories		ホーム
+Checking…	Settings		確認中…
 This video can't be played here, try another one.	Window		この動画はここでは再生できません。別の動画をお試しください。
+About Cinema	Window		Cinema について

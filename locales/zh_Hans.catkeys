@@ -1,23 +1,31 @@
-1	chinese	application/x-vnd.atomozero-Cinema	1485132134
+1	chinese	application/x-vnd.atomozero-Cinema	2224778090
 YouTube could not be reached: is the network on?	Window		无法连接到 YouTube：网络是否已开启？
 TV series	Window		电视剧
 Downloaded	Detail		已下载
+Search first in:	Settings		优先搜索：
 full documentary	Categories		完整纪录片
 Add this channel to the tabs	Categories		将此频道添加到标签页
 OK	Window		确定
 Show the latest videos	Grid		显示最新视频
+The key works.	Settings		密钥有效。
 Music	Categories		音乐
 Play	Grid		播放
 Video downloaded	Window		视频已下载
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema：适用于 Haiku 和 RenkuOS 的视频应用，来自 YouTube、Internet Archive、PeerTube、BitTorrent 以及你自己的文件夹。
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema 需要 yt-dlp 和 python3，并且 cinema-helper.py 需在同一位置
+Remove	Settings		移除
 Download	Detail		下载
-Downloaded	Window		已下载的视频
 Getting the video ready	Grid		正在准备视频
+Downloaded	Window		已下载的视频
+Settings…	Window		设置…
 Downloading…	Detail		正在下载…
 Remove from the tabs	Categories		从标签页中移除
 Add to the tabs	Grid		添加到标签页
 news today	Categories		今日新闻
+Get a key…	Settings		获取密钥…
 %peers% sources	Window		%peers% 个来源
+Library	Settings		媒体库
+Cinema settings	Settings		Cinema 设置
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent 下载需要 aria2c，但尚未安装。
 %views% views	Detail		%views% 次观看
 Science	Categories		科学
@@ -25,6 +33,8 @@ Back	Detail		返回
 Classic cartoons	Categories		经典动画
 Documentaries	Categories		纪录片
 Play	Detail		播放
+TMDB does not accept this key.	Settings		TMDB 不接受此密钥。
+Play the videos in Cinema, not in MediaPlayer	Settings		在 Cinema 中播放视频，而不是在 MediaPlayer 中
 Details	Grid		详细信息
 technology review	Categories		科技评测
 Continue watching	Window		继续观看
@@ -32,14 +42,22 @@ Continue watching	Window		继续观看
 Getting the video ready	Player		正在准备视频
 %eta% left	Window		剩余 %eta%
 Already downloaded	Grid		已经下载
+Go on from where a video was left	Settings		从上次停下的地方继续播放视频
+Add…	Settings		添加…
 The video could not be moved to the Trash: %error%	Window		无法将视频移到废纸篓：%error%
+Search	Settings		搜索
 News	Categories		新闻
 Type what to look for at the top right	Window		在右上角输入要搜索的内容
 Cinema	System name		Cinema
+Folders of the library	Settings		媒体库文件夹
 No videos found	Window		未找到视频
 Technology	Categories		科技
 See all	Home		查看全部
+TMDB key:	Settings		TMDB 密钥：
 Getting the details…	Detail		正在获取详细信息…
+With a key, the library gets posters, plots and casts. It is free.	Settings		有了密钥，媒体库会获取海报、剧情简介和演员表。它是免费的。
+Check	Settings		检查
+Playback	Settings		播放
 Downloading…	Grid		正在下载…
 Stop the download	Grid		停止下载
 Search	Window		搜索
@@ -57,4 +75,6 @@ MediaPlayer could not be started: %error%	Window		无法启动 MediaPlayer：%er
 Move to Trash	Grid		移到废纸篓
 Downloaded	Categories		已下载
 Home	Categories		主页
+Checking…	Settings		正在检查…
 This video can't be played here, try another one.	Window		此视频无法在这里播放，请换一个试试。
+About Cinema	Window		关于 Cinema

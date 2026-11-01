@@ -40,7 +40,9 @@
 #include "HomeView.h"
 #include "Player.h"
 #include "PlayerView.h"
+#include "MenuButton.h"
 #include "Positions.h"
+#include "SettingsWindow.h"
 #include "Messages.h"
 #include "Style.h"
 #include "VideoGrid.h"
@@ -105,6 +107,10 @@ CinemaWindow::CinemaWindow()
 	pages->AddChild(scroll);
 	pages->AddChild(fDetail);
 	pages->AddChild(homeScroll);
+	fSettings = Settings::Load();
+	fSearchProvider = fSettings.searchSource;
+	AddShortcut(',', B_COMMAND_KEY, new BMessage(kMsgShowSettings));
+
 	// the player, the fourth card
 	fPlayer = new Player(BMessenger(this));
 	fPlayerView = new PlayerView(fPlayer);
@@ -132,7 +138,8 @@ CinemaWindow::CinemaWindow()
 		.Add(fCategoryBar, 10)
 		.Add(fSourceField, 0)
 		.Add(textItem)
-		.Add(searchButton);
+		.Add(searchButton)
+		.Add(new MenuButton);
 
 	BLayoutBuilder::Group<>(this, B_VERTICAL, 0)
 		.Add(top)
@@ -821,6 +828,10 @@ CinemaWindow::_PrefetchWanted()
 void
 CinemaWindow::_Play(const char* url, const char* title, const char* id)
 {
+	if (!fSettings.playInCinema) {
+		_PlayInMediaPlayer(url, title);
+		return;
+	}
 	// in the window, from where it was left
 	_OpenPlayer(url, title, id != NULL && id[0] != '\0' ? id : url);
 }
@@ -1005,6 +1016,47 @@ CinemaWindow::MessageReceived(BMessage* message)
 			fDetail->SetProgress(id.String(), percent);
 			break;
 		}
+		case kMsgShowSettings:
+			_ShowSettings();
+			break;
+		case kMsgShowAbout:
+			_ShowAbout();
+			break;
+		case kMsgSettingsClosed:
+			fSettingsWindow = BMessenger();
+			break;
+		case kMsgSettingsChanged:
+		{
+			fSettings = Settings::Load();
+			if (!fSettings.searchSource.IsEmpty())
+				fSearchProvider = fSettings.searchSource;
+			_UpdateSources();
+			break;
+		}
+		case kMsgAddFolder:
+			_AddFolder(message->GetString("path", ""));
+			_SendFolders();
+			break;
+		case kMsgRemoveFolder:
+		{
+			BString path = message->GetString("path", "");
+			for (size_t i = 0; i < fCategories.size(); i++) {
+				if (fCategories[i].provider == "local"
+					&& fCategories[i].channel == path) {
+					_RemoveCategory(i);
+					break;
+				}
+			}
+			_SendFolders();
+			break;
+		}
+		case kMsgCheckTmdb:
+			fHelper->CheckTmdb();
+			break;
+		case kMsgTmdbChecked:
+			fSettingsWindow.SendMessage(message);
+			break;
+
 		case kMsgPlayerOpened:
 			fPlayerView->SetOpened(true);
 			break;
@@ -1540,7 +1592,7 @@ CinemaWindow::_OpenPlayer(const char* address, const char* title,
 	fPlayerShown = true;
 	fPlayerView->Start(title);
 	fPlayerView->MakeFocus(true);
-	fPlayer->Open(address, Positions::ResumeAt(id));
+	fPlayer->Open(address, fSettings.resume ? Positions::ResumeAt(id) : 0);
 
 	delete fPlayerSaver;
 	BMessage save(kMsgPlayerSave);
@@ -1573,4 +1625,61 @@ CinemaWindow::_ClosePlayer(bool save)
 	fGrid->SetWatched(fPlayingId, position.watched, position.duration > 0
 		? (int32)(position.position * 1000 / position.duration) : 0);
 	_FocusContent();
+}
+
+
+void
+CinemaWindow::_ShowSettings()
+{
+	if (fSettingsWindow.IsValid()) {
+		// open already: to the front
+		BLooper* looper = NULL;
+		fSettingsWindow.Target(&looper);
+		BWindow* window = dynamic_cast<BWindow*>(looper);
+		if (window != NULL && window->Lock()) {
+			window->Activate();
+			window->Unlock();
+		}
+		return;
+	}
+	std::vector<BString> folders;
+	for (const Category& category : fCategories) {
+		if (category.provider == "local")
+			folders.push_back(category.channel);
+	}
+	SettingsWindow* window = new SettingsWindow(BMessenger(this),
+		fProviders, folders);
+	fSettingsWindow = BMessenger(window);
+	window->Show();
+}
+
+
+void
+CinemaWindow::_SendFolders()
+{
+	if (!fSettingsWindow.IsValid())
+		return;
+	BMessage folders(kMsgSettingsFolders);
+	for (const Category& category : fCategories) {
+		if (category.provider == "local")
+			folders.AddString("path", category.channel);
+	}
+	fSettingsWindow.SendMessage(&folders);
+}
+
+
+void
+CinemaWindow::_ShowAbout()
+{
+	BString text(B_TRANSLATE("Cinema: videos for Haiku and RenkuOS, from "
+		"YouTube, the Internet Archive, PeerTube, BitTorrent and your own "
+		"folders."));
+	text << "\n\n© 2026 Andrea Bernardi\n"
+		"https://github.com/atomozero/Cinema\n\n"
+		"This product uses the TMDB API but is not endorsed or certified by "
+		"TMDB.";
+	BAlert* alert = new BAlert(B_TRANSLATE("About Cinema"), text.String(),
+		B_TRANSLATE("OK"));
+	alert->SetFlags(alert->Flags() | B_CLOSE_ON_ESCAPE);
+	alert->Go(NULL);
 }

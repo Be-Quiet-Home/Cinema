@@ -71,6 +71,17 @@ enum {
 	kMsgPlayerSave		= 'plsv',	// where it is, to go on later
 	kMsgPlayerClose		= 'plcl',
 	kMsgPlayInMediaPlayer = 'plmp',	// the same address, in MediaPlayer
+
+	// the settings
+	kMsgShowSettings	= 'stng',
+	kMsgShowAbout		= 'abou',
+	kMsgSettingsChanged	= 'stch',
+	kMsgSettingsClosed	= 'stcl',
+	kMsgSettingsFolders	= 'stfd',	// "path": the folders of the library
+	kMsgAddFolder		= 'fadd',	// "path"
+	kMsgRemoveFolder	= 'frem',	// "path"
+	kMsgCheckTmdb		= 'tmck',
+	kMsgTmdbChecked		= 'tmok',	// "ok"
 	kMsgAnimate			= 'anim',
 	kMsgFullScreen		= 'fuls',	// F: full screen, or back
 	kMsgFocusContent	= 'fcnt',	// leave the tabs, back to the videos

@@ -42,6 +42,8 @@ public:
 			void				Download(const char* id, const char* folder,
 									const char* provider = NULL);
 			void				Cancel(const char* id);
+			void				CheckTmdb();
+									// answered with kMsgTmdbChecked
 									// NULL or empty: the default provider
 
 private:

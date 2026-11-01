@@ -1,23 +1,31 @@
-1	English	application/x-vnd.atomozero-Cinema	1485132134
+1	English	application/x-vnd.atomozero-Cinema	2224778090
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
 TV series	Window		TV series
 Downloaded	Detail		Downloaded
+Search first in:	Settings		Search first in:
 full documentary	Categories		full documentary
 Add this channel to the tabs	Categories		Add this channel to the tabs
 OK	Window		OK
 Show the latest videos	Grid		Show the latest videos
+The key works.	Settings		The key works.
 Music	Categories		Music
 Play	Grid		Play
 Video downloaded	Window		Video downloaded
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema needs yt-dlp and python3, and cinema-helper.py next to it
+Remove	Settings		Remove
 Download	Detail		Download
-Downloaded	Window		Downloaded
 Getting the video ready	Grid		Getting the video ready
+Downloaded	Window		Downloaded
+Settings…	Window		Settings…
 Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Remove from the tabs
 Add to the tabs	Grid		Add to the tabs
 news today	Categories		news today
+Get a key…	Settings		Get a key…
 %peers% sources	Window		%peers% sources
+Library	Settings		Library
+Cinema settings	Settings		Cinema settings
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent downloads need aria2c, which is not installed.
 %views% views	Detail		%views% views
 Science	Categories		Science
@@ -25,6 +33,8 @@ Back	Detail		Back
 Classic cartoons	Categories		Classic cartoons
 Documentaries	Categories		Documentaries
 Play	Detail		Play
+TMDB does not accept this key.	Settings		TMDB does not accept this key.
+Play the videos in Cinema, not in MediaPlayer	Settings		Play the videos in Cinema, not in MediaPlayer
 Details	Grid		Details
 technology review	Categories		technology review
 Continue watching	Window		Continue watching
@@ -32,14 +42,22 @@ Continue watching	Window		Continue watching
 Getting the video ready	Player		Getting the video ready
 %eta% left	Window		%eta% left
 Already downloaded	Grid		Already downloaded
+Go on from where a video was left	Settings		Go on from where a video was left
+Add…	Settings		Add…
 The video could not be moved to the Trash: %error%	Window		The video could not be moved to the Trash: %error%
+Search	Settings		Search
 News	Categories		News
 Type what to look for at the top right	Window		Type what to look for at the top right
 Cinema	System name		Cinema
+Folders of the library	Settings		Folders of the library
 No videos found	Window		No videos found
 Technology	Categories		Technology
 See all	Home		See all
+TMDB key:	Settings		TMDB key:
 Getting the details…	Detail		Getting the details…
+With a key, the library gets posters, plots and casts. It is free.	Settings		With a key, the library gets posters, plots and casts. It is free.
+Check	Settings		Check
+Playback	Settings		Playback
 Downloading…	Grid		Downloading…
 Stop the download	Grid		Stop the download
 Search	Window		Search
@@ -57,4 +75,6 @@ MediaPlayer could not be started: %error%	Window		MediaPlayer could not be start
 Move to Trash	Grid		Move to Trash
 Downloaded	Categories		Downloaded
 Home	Categories		Home
+Checking…	Settings		Checking…
 This video can't be played here, try another one.	Window		This video can't be played here, try another one.
+About Cinema	Window		About Cinema

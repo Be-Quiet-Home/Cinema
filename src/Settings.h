@@ -1,0 +1,32 @@
+/*
+ * Copyright 2026, Andrea Bernardi
+ * SPDX-License-Identifier: MIT
+ */
+#ifndef SETTINGS_H
+#define SETTINGS_H
+
+
+#include <String.h>
+
+
+/*!	What the settings window changes, kept in the settings folder
+	(Cinema/settings). The key of TMDB has a file of its own
+	(Cinema/tmdb_key), which the helper reads; the folders of the library
+	are the local tabs of the categories file.
+*/
+struct Settings {
+	bool		playInCinema;	// or in MediaPlayer
+	bool		resume;			// from where it was left
+	BString		searchSource;	// the provider searched first, or empty
+
+				Settings() : playInCinema(true), resume(true) {}
+
+	static	Settings	Load();
+			void		Save() const;
+
+	static	BString		TmdbKey();
+	static	void		SetTmdbKey(const char* key);
+};
+
+
+#endif	// SETTINGS_H

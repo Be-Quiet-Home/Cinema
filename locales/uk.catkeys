@@ -1,23 +1,31 @@
-1	ukrainian	application/x-vnd.atomozero-Cinema	1485132134
+1	ukrainian	application/x-vnd.atomozero-Cinema	2224778090
 YouTube could not be reached: is the network on?	Window		Не вдається з'єднатися з YouTube: чи увімкнена мережа?
 TV series	Window		Серіали
 Downloaded	Detail		Завантажено
+Search first in:	Settings		Спершу шукати в:
 full documentary	Categories		повний документальний фільм
 Add this channel to the tabs	Categories		Додати цей канал до вкладок
 OK	Window		Гаразд
 Show the latest videos	Grid		Показати останні відео
+The key works.	Settings		Ключ працює.
 Music	Categories		Музика
 Play	Grid		Відтворити
 Video downloaded	Window		Відео завантажено
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: відео для Haiku та RenkuOS з YouTube, Internet Archive, PeerTube, BitTorrent і ваших власних тек.
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Для Cinema потрібні yt-dlp і python3, а також cinema-helper.py поруч
+Remove	Settings		Вилучити
 Download	Detail		Завантажити
-Downloaded	Window		Завантажені
 Getting the video ready	Grid		Підготовка відео
+Downloaded	Window		Завантажені
+Settings…	Window		Налаштування…
 Downloading…	Detail		Завантаження…
 Remove from the tabs	Categories		Вилучити з вкладок
 Add to the tabs	Grid		Додати до вкладок
 news today	Categories		новини сьогодні
+Get a key…	Settings		Отримати ключ…
 %peers% sources	Window		%peers% джерел
+Library	Settings		Бібліотека
+Cinema settings	Settings		Налаштування Cinema
 BitTorrent downloads need aria2c, which is not installed.	Window		Для завантажень BitTorrent потрібен aria2c, який не встановлено.
 %views% views	Detail		%views% переглядів
 Science	Categories		Наука
@@ -25,6 +33,8 @@ Back	Detail		Назад
 Classic cartoons	Categories		Класичні мультфільми
 Documentaries	Categories		Документальні фільми
 Play	Detail		Відтворити
+TMDB does not accept this key.	Settings		TMDB не приймає цей ключ.
+Play the videos in Cinema, not in MediaPlayer	Settings		Відтворювати відео в Cinema, а не в MediaPlayer
 Details	Grid		Подробиці
 technology review	Categories		огляд технологій
 Continue watching	Window		Продовжити перегляд
@@ -32,14 +42,22 @@ Continue watching	Window		Продовжити перегляд
 Getting the video ready	Player		Підготовка відео
 %eta% left	Window		лишилось %eta%
 Already downloaded	Grid		Вже завантажено
+Go on from where a video was left	Settings		Продовжувати відео з місця зупинки
+Add…	Settings		Додати…
 The video could not be moved to the Trash: %error%	Window		Не вдалося перемістити відео до смітника: %error%
+Search	Settings		Пошук
 News	Categories		Новини
 Type what to look for at the top right	Window		Введіть угорі праворуч, що шукати
 Cinema	System name		Cinema
+Folders of the library	Settings		Теки бібліотеки
 No videos found	Window		Відео не знайдено
 Technology	Categories		Технології
 See all	Home		Усі
+TMDB key:	Settings		Ключ TMDB:
 Getting the details…	Detail		Отримання подробиць…
+With a key, the library gets posters, plots and casts. It is free.	Settings		З ключем бібліотека отримує постери, сюжети та акторський склад. Він безкоштовний.
+Check	Settings		Перевірити
+Playback	Settings		Відтворення
 Downloading…	Grid		Завантаження…
 Stop the download	Grid		Зупинити завантаження
 Search	Window		Пошук
@@ -57,4 +75,6 @@ MediaPlayer could not be started: %error%	Window		Не вдалося запус
 Move to Trash	Grid		Перемістити до смітника
 Downloaded	Categories		Завантажені
 Home	Categories		Головна
+Checking…	Settings		Перевірка…
 This video can't be played here, try another one.	Window		Це відео не можна відтворити тут, спробуйте інше.
+About Cinema	Window		Про Cinema

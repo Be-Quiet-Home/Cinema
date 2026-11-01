@@ -1,23 +1,31 @@
-1	german	application/x-vnd.atomozero-Cinema	1485132134
+1	german	application/x-vnd.atomozero-Cinema	2224778090
 YouTube could not be reached: is the network on?	Window		YouTube ist nicht erreichbar: Ist das Netzwerk an?
 TV series	Window		Serien
 Downloaded	Detail		Downloaded
+Search first in:	Settings		Zuerst suchen in:
 full documentary	Categories		ganze Dokumentation
 Add this channel to the tabs	Categories		Diesen Kanal zu den Reitern hinzufügen
 OK	Window		OK
 Show the latest videos	Grid		Neueste Videos anzeigen
+The key works.	Settings		Der Schlüssel funktioniert.
 Music	Categories		Musik
 Play	Grid		Abspielen
 Video downloaded	Window		Video heruntergeladen
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: Videos für Haiku und RenkuOS, von YouTube, dem Internet Archive, PeerTube, BitTorrent und aus deinen eigenen Ordnern.
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema braucht yt-dlp und python3, und cinema-helper.py daneben
+Remove	Settings		Entfernen
 Download	Detail		Download
-Downloaded	Window		Heruntergeladen
 Getting the video ready	Grid		Das Video wird vorbereitet
+Downloaded	Window		Heruntergeladen
+Settings…	Window		Einstellungen…
 Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Aus den Reitern entfernen
 Add to the tabs	Grid		Zu den Reitern hinzufügen
 news today	Categories		Nachrichten heute
+Get a key…	Settings		Schlüssel holen…
 %peers% sources	Window		%peers% Quellen
+Library	Settings		Bibliothek
+Cinema settings	Settings		Cinema-Einstellungen
 BitTorrent downloads need aria2c, which is not installed.	Window		Für BitTorrent-Downloads wird aria2c benötigt, das nicht installiert ist.
 %views% views	Detail		%views% views
 Science	Categories		Wissenschaft
@@ -25,6 +33,8 @@ Back	Detail		Back
 Classic cartoons	Categories		Zeichentrickklassiker
 Documentaries	Categories		Dokumentationen
 Play	Detail		Play
+TMDB does not accept this key.	Settings		TMDB akzeptiert diesen Schlüssel nicht.
+Play the videos in Cinema, not in MediaPlayer	Settings		Videos in Cinema abspielen, nicht in MediaPlayer
 Details	Grid		Details
 technology review	Categories		Technik Test
 Continue watching	Window		Weiterschauen
@@ -32,14 +42,22 @@ Continue watching	Window		Weiterschauen
 Getting the video ready	Player		Das Video wird vorbereitet
 %eta% left	Window		noch %eta%
 Already downloaded	Grid		Bereits heruntergeladen
+Go on from where a video was left	Settings		Videos dort fortsetzen, wo sie angehalten wurden
+Add…	Settings		Hinzufügen…
 The video could not be moved to the Trash: %error%	Window		Das Video konnte nicht in den Papierkorb verschoben werden: %error%
+Search	Settings		Suche
 News	Categories		Nachrichten
 Type what to look for at the top right	Window		Oben rechts eingeben, wonach gesucht werden soll
 Cinema	System name		Cinema
+Folders of the library	Settings		Ordner der Bibliothek
 No videos found	Window		Keine Videos gefunden
 Technology	Categories		Technik
 See all	Home		Alle ansehen
+TMDB key:	Settings		TMDB-Schlüssel:
 Getting the details…	Detail		Getting the details…
+With a key, the library gets posters, plots and casts. It is free.	Settings		Mit einem Schlüssel erhält die Bibliothek Poster, Handlungen und Besetzungen. Er ist kostenlos.
+Check	Settings		Prüfen
+Playback	Settings		Wiedergabe
 Downloading…	Grid		Wird heruntergeladen…
 Stop the download	Grid		Download anhalten
 Search	Window		Suchen
@@ -57,4 +75,6 @@ MediaPlayer could not be started: %error%	Window		MediaPlayer konnte nicht gesta
 Move to Trash	Grid		In den Papierkorb verschieben
 Downloaded	Categories		Heruntergeladen
 Home	Categories		Start
+Checking…	Settings		Wird geprüft…
 This video can't be played here, try another one.	Window		Dieses Video kann hier nicht abgespielt werden, versuche ein anderes.
+About Cinema	Window		Über Cinema

@@ -7,6 +7,7 @@
 
 
 #include <Message.h>
+#include <Messenger.h>
 #include <String.h>
 #include <Window.h>
 
@@ -16,6 +17,7 @@
 #include <deque>
 
 #include "Categories.h"
+#include "Settings.h"
 #include "MediaItem.h"
 #include "Provider.h"
 
@@ -65,6 +67,9 @@ private:
 									const char* title, const char* id);
 			void				_ClosePlayer(bool save = true);
 			void				_SavePosition();
+			void				_ShowSettings();
+			void				_SendFolders();
+			void				_ShowAbout();
 			void				_PlayInMediaPlayer(const char* address,
 									const char* title);
 			void				_SetProviders(BMessage* message);
@@ -122,6 +127,8 @@ private:
 			BString				fPlayingAddress;
 			BString				fPlayingTitle;
 			BMessageRunner*		fPlayerSaver;
+			Settings			fSettings;
+			BMessenger			fSettingsWindow;
 			BString				fDetailsId;		// what the detail view shows
 			bool				fDetailsShown;
 			Helper*				fHelper;

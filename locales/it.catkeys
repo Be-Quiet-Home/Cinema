@@ -1,23 +1,31 @@
-1	italian	application/x-vnd.atomozero-Cinema	1485132134
+1	italian	application/x-vnd.atomozero-Cinema	2224778090
 YouTube could not be reached: is the network on?	Window		Non riesco a raggiungere YouTube: la rete è accesa?
 TV series	Window		Serie TV
 Downloaded	Detail		Scaricato
+Search first in:	Settings		Cerca prima in:
 full documentary	Categories		documentario completo
 Add this channel to the tabs	Categories		Aggiungi questo canale alle schede
 OK	Window		OK
 Show the latest videos	Grid		Mostra gli ultimi video
+The key works.	Settings		La chiave funziona.
 Music	Categories		Musica
 Play	Grid		Riproduci
 Video downloaded	Window		Video scaricato
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: video per Haiku e RenkuOS, da YouTube, Internet Archive, PeerTube, BitTorrent e dalle tue cartelle.
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema ha bisogno di yt-dlp e python3, e di cinema-helper.py accanto
+Remove	Settings		Rimuovi
 Download	Detail		Scarica
-Downloaded	Window		Scaricati
 Getting the video ready	Grid		Preparo il video
+Downloaded	Window		Scaricati
+Settings…	Window		Impostazioni…
 Downloading…	Detail		Download in corso…
 Remove from the tabs	Categories		Rimuovi dalle schede
 Add to the tabs	Grid		Aggiungi alle schede
 news today	Categories		notizie di oggi
+Get a key…	Settings		Ottieni una chiave…
 %peers% sources	Window		%peers% fonti
+Library	Settings		Libreria
+Cinema settings	Settings		Impostazioni di Cinema
 BitTorrent downloads need aria2c, which is not installed.	Window		Per scaricare con BitTorrent serve aria2c, che non è installato.
 %views% views	Detail		%views% visualizzazioni
 Science	Categories		Scienza
@@ -25,6 +33,8 @@ Back	Detail		Indietro
 Classic cartoons	Categories		Cartoni classici
 Documentaries	Categories		Documentari
 Play	Detail		Riproduci
+TMDB does not accept this key.	Settings		TMDB non accetta questa chiave.
+Play the videos in Cinema, not in MediaPlayer	Settings		Riproduci i video in Cinema, non in MediaPlayer
 Details	Grid		Dettagli
 technology review	Categories		recensione tecnologia
 Continue watching	Window		Continua a guardare
@@ -32,14 +42,22 @@ Continue watching	Window		Continua a guardare
 Getting the video ready	Player		Preparo il video
 %eta% left	Window		%eta% rimasti
 Already downloaded	Grid		Già scaricato
+Go on from where a video was left	Settings		Riprendi i video da dove erano rimasti
+Add…	Settings		Aggiungi…
 The video could not be moved to the Trash: %error%	Window		Non è stato possibile spostare il video nel Cestino: %error%
+Search	Settings		Ricerca
 News	Categories		Notizie
 Type what to look for at the top right	Window		Scrivi in alto a destra cosa cercare
 Cinema	System name		Cinema
+Folders of the library	Settings		Cartelle della libreria
 No videos found	Window		Nessun video trovato
 Technology	Categories		Tecnologia
 See all	Home		Vedi tutto
+TMDB key:	Settings		Chiave TMDB:
 Getting the details…	Detail		Prendo i dettagli…
+With a key, the library gets posters, plots and casts. It is free.	Settings		Con una chiave, la libreria riceve locandine, trame e cast. È gratuita.
+Check	Settings		Verifica
+Playback	Settings		Riproduzione
 Downloading…	Grid		Download in corso…
 Stop the download	Grid		Ferma il download
 Search	Window		Cerca
@@ -57,4 +75,6 @@ MediaPlayer could not be started: %error%	Window		Non riesco ad aprire MediaPlay
 Move to Trash	Grid		Sposta nel Cestino
 Downloaded	Categories		Scaricati
 Home	Categories		Home
+Checking…	Settings		Verifica in corso…
 This video can't be played here, try another one.	Window		Questo video non si può vedere qui, provane un altro.
+About Cinema	Window		Informazioni su Cinema
