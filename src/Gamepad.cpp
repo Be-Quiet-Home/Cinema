@@ -125,8 +125,9 @@ Gamepad::_Open(BJoystick& joystick)
 		char name[B_OS_NAME_LENGTH];
 		if (joystick.GetDeviceName(i, name, sizeof(name)) != B_OK)
 			continue;
-		if (joystick.Open(name, true) == B_OK
-			|| joystick.Open(name, false) == B_OK) {
+		// Open() returns the file descriptor on success, not B_OK.
+		if (joystick.Open(name, true) >= 0
+			|| joystick.Open(name, false) >= 0) {
 			joystick.SetMaxLatency(0);
 			return true;
 		}
