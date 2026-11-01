@@ -21,6 +21,7 @@
 
 
 class BCardLayout;
+class BMenuField;
 class BMessageRunner;
 class BTextControl;
 class CategoryBar;
@@ -48,7 +49,14 @@ private:
 		bigtime_t	found;
 	};
 
-			void				_Search(const char* query);
+			void				_Search(const char* query,
+									const char* provider = NULL);
+			BString				_ProviderOf(const BString& id) const;
+			void				_UpdateSources();
+			void				_AddTorrent(const char* source);
+			void				_AddFolder(const char* path);
+			void				_Dropped(BMessage* message);
+			void				_TorrentProgress(const BMessage& download);
 			void				_SetProviders(BMessage* message);
 			void				_ShowCategory(int32 index);
 			void				_ShowChannel(const char* name,
@@ -89,6 +97,8 @@ private:
 			BString				fProvider;	// the one searched
 			CategoryBar*		fCategoryBar;
 			BTextControl*		fSearchField;
+			BMenuField*			fSourceField;
+			BString				fSearchProvider;	// chosen in fSourceField
 			VideoGrid*			fGrid;
 			DetailView*			fDetail;
 			HomeView*			fHome;
@@ -121,6 +131,10 @@ private:
 			bool				fFullScreen;
 			BString				fChannelName;	// shown in a tab of its own
 			BString				fChannelId;
+			BString				fChannelProvider;
+			std::map<BString, BString> fItemProviders;
+									// where each video shown comes from
+			std::map<BString, BString> fChannelProviders;
 			std::map<BString, BString> fDownloaded;
 									// the files in the folder, by id
 			std::map<BString, BMessage> fDownloading;

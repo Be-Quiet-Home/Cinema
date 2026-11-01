@@ -1,50 +1,54 @@
-1	japanese	application/x-vnd.atomozero-Cinema	237470864
+1	japanese	application/x-vnd.atomozero-Cinema	1973416081
 YouTube could not be reached: is the network on?	Window		YouTube に接続できません。ネットワークはオンになっていますか?
-Cinema	System name		Cinema
 Downloaded	Detail		ダウンロード済み
-No videos found	Window		動画が見つかりません
 full documentary	Categories		ドキュメンタリー 全編
-OK	Window		OK
-Technology	Categories		テクノロジー
 Add this channel to the tabs	Categories		このチャンネルをタブに追加
+OK	Window		OK
 Show the latest videos	Grid		最新の動画を表示
-See all	Home		すべて表示
 Music	Categories		音楽
-Play	Grid		再生
 Video downloaded	Window		動画をダウンロードしました
-Getting the details…	Detail		詳細を取得中…
+Play	Grid		再生
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema には yt-dlp と python3、そして同じ場所に cinema-helper.py が必要です
 Download	Detail		ダウンロード
-Getting the video ready	Grid		動画を準備中
 Downloaded	Window		ダウンロード済み
-Downloading…	Grid		ダウンロード中…
+Getting the video ready	Grid		動画を準備中
 Downloading…	Detail		ダウンロード中…
 Remove from the tabs	Categories		タブから削除
 Add to the tabs	Grid		タブに追加
-science explained	Categories		科学 解説
-Search	Window		検索
 news today	Categories		今日のニュース
+BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent でのダウンロードには aria2c が必要ですが、インストールされていません。
+%views% views	Detail		%views% 回視聴
+Science	Categories		科学
+Back	Detail		戻る
+Classic cartoons	Categories		名作アニメ
+Documentaries	Categories		ドキュメンタリー
+Play	Detail		再生
+technology review	Categories		テクノロジー レビュー
+Details	Grid		詳細
+Continue watching	Window		続きを見る
+Downloading the torrent	Window		トレントをダウンロード中
+Already downloaded	Grid		すでにダウンロード済み
+The video could not be moved to the Trash: %error%	Window		動画をゴミ箱に移動できませんでした: %error%
+News	Categories		ニュース
+Type what to look for at the top right	Window		右上に探したいものを入力してください
+Cinema	System name		Cinema
+No videos found	Window		動画が見つかりません
+Technology	Categories		テクノロジー
+See all	Home		すべて表示
+Getting the details…	Detail		詳細を取得中…
+Downloading…	Grid		ダウンロード中…
+Search	Window		検索
+science explained	Categories		科学 解説
 Download	Grid		ダウンロード
 official music video	Categories		公式ミュージックビデオ
 The video could not be downloaded	Window		動画をダウンロードできませんでした
 Looking for the videos…	Window		動画を検索中…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# 上部バーのタブを1行に1つ: 名前 = YouTube で検索する内容
-%views% views	Detail		%views% 回視聴
-Back	Detail		戻る
-Science	Categories		科学
-Play	Detail		再生
-Documentaries	Categories		ドキュメンタリー
+Classic films	Categories		名作映画
 No videos downloaded yet: right click a video, or press D	Window		ダウンロードした動画はまだありません: 動画を右クリックするか、D を押してください
-Details	Grid		詳細
-technology review	Categories		テクノロジー レビュー
 # or name = channel:<id> for the latest videos of a channel	Categories		# または 名前 = channel:<id> でチャンネルの最新動画
 MediaPlayer could not be started: %error%	Window		MediaPlayer を起動できません: %error%
 Move to Trash	Grid		ゴミ箱に移動
-Continue watching	Window		続きを見る
-Home	Categories		ホーム
 Downloaded	Categories		ダウンロード済み
-Already downloaded	Grid		すでにダウンロード済み
-The video could not be moved to the Trash: %error%	Window		動画をゴミ箱に移動できませんでした: %error%
+Home	Categories		ホーム
 This video can't be played here, try another one.	Window		この動画はここでは再生できません。別の動画をお試しください。
-News	Categories		ニュース
-Type what to look for at the top right	Window		右上に探したいものを入力してください

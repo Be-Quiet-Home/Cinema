@@ -1,50 +1,54 @@
-1	italian	application/x-vnd.atomozero-Cinema	237470864
+1	italian	application/x-vnd.atomozero-Cinema	1973416081
 YouTube could not be reached: is the network on?	Window		Non riesco a raggiungere YouTube: la rete è accesa?
-Cinema	System name		Cinema
 Downloaded	Detail		Scaricato
-No videos found	Window		Nessun video trovato
 full documentary	Categories		documentario completo
-OK	Window		OK
-Technology	Categories		Tecnologia
 Add this channel to the tabs	Categories		Aggiungi questo canale alle schede
+OK	Window		OK
 Show the latest videos	Grid		Mostra gli ultimi video
-See all	Home		Vedi tutto
 Music	Categories		Musica
-Play	Grid		Riproduci
 Video downloaded	Window		Video scaricato
-Getting the details…	Detail		Prendo i dettagli…
+Play	Grid		Riproduci
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema ha bisogno di yt-dlp e python3, e di cinema-helper.py accanto
 Download	Detail		Scarica
-Getting the video ready	Grid		Preparo il video
 Downloaded	Window		Scaricati
-Downloading…	Grid		Download in corso…
+Getting the video ready	Grid		Preparo il video
 Downloading…	Detail		Download in corso…
 Remove from the tabs	Categories		Rimuovi dalle schede
 Add to the tabs	Grid		Aggiungi alle schede
-science explained	Categories		scienza spiegata
-Search	Window		Cerca
 news today	Categories		notizie di oggi
+BitTorrent downloads need aria2c, which is not installed.	Window		Per scaricare con BitTorrent serve aria2c, che non è installato.
+%views% views	Detail		%views% visualizzazioni
+Science	Categories		Scienza
+Back	Detail		Indietro
+Classic cartoons	Categories		Cartoni classici
+Documentaries	Categories		Documentari
+Play	Detail		Riproduci
+technology review	Categories		recensione tecnologia
+Details	Grid		Dettagli
+Continue watching	Window		Continua a guardare
+Downloading the torrent	Window		Scarico il torrent
+Already downloaded	Grid		Già scaricato
+The video could not be moved to the Trash: %error%	Window		Non è stato possibile spostare il video nel Cestino: %error%
+News	Categories		Notizie
+Type what to look for at the top right	Window		Scrivi in alto a destra cosa cercare
+Cinema	System name		Cinema
+No videos found	Window		Nessun video trovato
+Technology	Categories		Tecnologia
+See all	Home		Vedi tutto
+Getting the details…	Detail		Prendo i dettagli…
+Downloading…	Grid		Download in corso…
+Search	Window		Cerca
+science explained	Categories		scienza spiegata
 Download	Grid		Scarica
 official music video	Categories		video musicale ufficiale
 The video could not be downloaded	Window		Non è stato possibile scaricare il video
 Looking for the videos…	Window		Cerco i video…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Una scheda della barra in alto per riga: nome = cosa cercare su YouTube
-%views% views	Detail		%views% visualizzazioni
-Back	Detail		Indietro
-Science	Categories		Scienza
-Play	Detail		Riproduci
-Documentaries	Categories		Documentari
+Classic films	Categories		Film classici
 No videos downloaded yet: right click a video, or press D	Window		Nessun video scaricato: clic destro su un video, oppure premi D
-Details	Grid		Dettagli
-technology review	Categories		recensione tecnologia
 # or name = channel:<id> for the latest videos of a channel	Categories		# oppure nome = channel:<id> per gli ultimi video di un canale
 MediaPlayer could not be started: %error%	Window		Non riesco ad aprire MediaPlayer: %error%
 Move to Trash	Grid		Sposta nel Cestino
-Continue watching	Window		Continua a guardare
-Home	Categories		Home
 Downloaded	Categories		Scaricati
-Already downloaded	Grid		Già scaricato
-The video could not be moved to the Trash: %error%	Window		Non è stato possibile spostare il video nel Cestino: %error%
+Home	Categories		Home
 This video can't be played here, try another one.	Window		Questo video non si può vedere qui, provane un altro.
-News	Categories		Notizie
-Type what to look for at the top right	Window		Scrivi in alto a destra cosa cercare

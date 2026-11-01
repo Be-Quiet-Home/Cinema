@@ -99,13 +99,24 @@ Helper::SetProvider(const char* id)
 }
 
 
+BString
+Helper::_Provider(const char* provider)
+{
+	if (provider != NULL && provider[0] != '\0')
+		return provider;
+	BAutolock locker(fLock);
+	return fProvider;
+}
+
+
 void
-Helper::Search(int32 generation, int32 count, const char* query)
+Helper::Search(int32 generation, int32 count, const char* query,
+	const char* provider)
 {
 	Json request = Json::MakeObject();
 	request.Set("type", "search");
 	request.Set("tag", generation);
-	request.Set("provider", fProvider.String());
+	request.Set("provider", _Provider(provider).String());
 	request.Set("count", count);
 	request.Set("query", query);
 	_Send(request);
@@ -113,12 +124,13 @@ Helper::Search(int32 generation, int32 count, const char* query)
 
 
 void
-Helper::Channel(int32 generation, int32 count, const char* id)
+Helper::Channel(int32 generation, int32 count, const char* id,
+	const char* provider)
 {
 	Json request = Json::MakeObject();
 	request.Set("type", "channel");
 	request.Set("tag", generation);
-	request.Set("provider", fProvider.String());
+	request.Set("provider", _Provider(provider).String());
 	request.Set("count", count);
 	request.Set("channel", id);
 	_Send(request);
@@ -130,9 +142,7 @@ Helper::Details(const char* provider, const char* id, const char* kind)
 {
 	Json request = Json::MakeObject();
 	request.Set("type", "details");
-	request.Set("provider",
-		provider != NULL && provider[0] != '\0' ? provider
-			: fProvider.String());
+	request.Set("provider", _Provider(provider).String());
 	request.Set("id", id);
 	request.Set("kind", kind != NULL && kind[0] != '\0' ? kind : "video");
 	_Send(request);
@@ -140,11 +150,11 @@ Helper::Details(const char* provider, const char* id, const char* kind)
 
 
 void
-Helper::Find(const char* id)
+Helper::Find(const char* id, const char* provider)
 {
 	Json request = Json::MakeObject();
 	request.Set("type", "find");
-	request.Set("provider", fProvider.String());
+	request.Set("provider", _Provider(provider).String());
 	request.Set("id", id);
 	request.Set("kind", "video");
 	_Send(request);
@@ -152,11 +162,11 @@ Helper::Find(const char* id)
 
 
 void
-Helper::Download(const char* id, const char* folder)
+Helper::Download(const char* id, const char* folder, const char* provider)
 {
 	Json request = Json::MakeObject();
 	request.Set("type", "download");
-	request.Set("provider", fProvider.String());
+	request.Set("provider", _Provider(provider).String());
 	request.Set("id", id);
 	request.Set("folder", folder);
 	_Send(request);

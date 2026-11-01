@@ -1,50 +1,54 @@
-1	ukrainian	application/x-vnd.atomozero-Cinema	237470864
+1	ukrainian	application/x-vnd.atomozero-Cinema	1973416081
 YouTube could not be reached: is the network on?	Window		Не вдається з'єднатися з YouTube: чи увімкнена мережа?
-Cinema	System name		Cinema
 Downloaded	Detail		Завантажено
-No videos found	Window		Відео не знайдено
 full documentary	Categories		повний документальний фільм
-OK	Window		Гаразд
-Technology	Categories		Технології
 Add this channel to the tabs	Categories		Додати цей канал до вкладок
+OK	Window		Гаразд
 Show the latest videos	Grid		Показати останні відео
-See all	Home		Усі
 Music	Categories		Музика
-Play	Grid		Відтворити
 Video downloaded	Window		Відео завантажено
-Getting the details…	Detail		Отримання подробиць…
+Play	Grid		Відтворити
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Для Cinema потрібні yt-dlp і python3, а також cinema-helper.py поруч
 Download	Detail		Завантажити
-Getting the video ready	Grid		Підготовка відео
 Downloaded	Window		Завантажені
-Downloading…	Grid		Завантаження…
+Getting the video ready	Grid		Підготовка відео
 Downloading…	Detail		Завантаження…
 Remove from the tabs	Categories		Вилучити з вкладок
 Add to the tabs	Grid		Додати до вкладок
-science explained	Categories		наука простими словами
-Search	Window		Пошук
 news today	Categories		новини сьогодні
+BitTorrent downloads need aria2c, which is not installed.	Window		Для завантажень BitTorrent потрібен aria2c, який не встановлено.
+%views% views	Detail		%views% переглядів
+Science	Categories		Наука
+Back	Detail		Назад
+Classic cartoons	Categories		Класичні мультфільми
+Documentaries	Categories		Документальні фільми
+Play	Detail		Відтворити
+technology review	Categories		огляд технологій
+Details	Grid		Подробиці
+Continue watching	Window		Продовжити перегляд
+Downloading the torrent	Window		Завантаження торента
+Already downloaded	Grid		Вже завантажено
+The video could not be moved to the Trash: %error%	Window		Не вдалося перемістити відео до смітника: %error%
+News	Categories		Новини
+Type what to look for at the top right	Window		Введіть угорі праворуч, що шукати
+Cinema	System name		Cinema
+No videos found	Window		Відео не знайдено
+Technology	Categories		Технології
+See all	Home		Усі
+Getting the details…	Detail		Отримання подробиць…
+Downloading…	Grid		Завантаження…
+Search	Window		Пошук
+science explained	Categories		наука простими словами
 Download	Grid		Завантажити
 official music video	Categories		офіційний кліп
 The video could not be downloaded	Window		Не вдалося завантажити відео
 Looking for the videos…	Window		Пошук відео…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Одна вкладка верхньої панелі на рядок: назва = що шукати на YouTube
-%views% views	Detail		%views% переглядів
-Back	Detail		Назад
-Science	Categories		Наука
-Play	Detail		Відтворити
-Documentaries	Categories		Документальні фільми
+Classic films	Categories		Класичні фільми
 No videos downloaded yet: right click a video, or press D	Window		Ще немає завантажених відео: клацніть правою кнопкою на відео або натисніть D
-Details	Grid		Подробиці
-technology review	Categories		огляд технологій
 # or name = channel:<id> for the latest videos of a channel	Categories		# або назва = channel:<id> для останніх відео каналу
 MediaPlayer could not be started: %error%	Window		Не вдалося запустити MediaPlayer: %error%
 Move to Trash	Grid		Перемістити до смітника
-Continue watching	Window		Продовжити перегляд
-Home	Categories		Головна
 Downloaded	Categories		Завантажені
-Already downloaded	Grid		Вже завантажено
-The video could not be moved to the Trash: %error%	Window		Не вдалося перемістити відео до смітника: %error%
+Home	Categories		Головна
 This video can't be played here, try another one.	Window		Це відео не можна відтворити тут, спробуйте інше.
-News	Categories		Новини
-Type what to look for at the top right	Window		Введіть угорі праворуч, що шукати

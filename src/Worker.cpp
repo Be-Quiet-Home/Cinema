@@ -80,8 +80,10 @@ Worker::_Thumbnails(BMessage* message)
 		BString path(fCache);
 		path << "/" << id << ".jpg";
 		if (!BEntry(path.String()).Exists()) {
-			BString url;
-			url.SetToFormat("https://i.ytimg.com/vi/%s/mqdefault.jpg", id);
+			// the address the provider gave, or YouTube's from the id
+			BString url = message->GetString("url", i, "");
+			if (url.IsEmpty())
+				url.SetToFormat("https://i.ytimg.com/vi/%s/mqdefault.jpg", id);
 			if (!_Get(url.String(), path.String()))
 				continue;
 		}

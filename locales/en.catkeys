@@ -1,50 +1,54 @@
-1	English	application/x-vnd.atomozero-Cinema	237470864
+1	English	application/x-vnd.atomozero-Cinema	1973416081
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
-Cinema	System name		Cinema
 Downloaded	Detail		Downloaded
-No videos found	Window		No videos found
 full documentary	Categories		full documentary
-OK	Window		OK
-Technology	Categories		Technology
 Add this channel to the tabs	Categories		Add this channel to the tabs
+OK	Window		OK
 Show the latest videos	Grid		Show the latest videos
-See all	Home		See all
 Music	Categories		Music
-Play	Grid		Play
 Video downloaded	Window		Video downloaded
-Getting the details…	Detail		Getting the details…
+Play	Grid		Play
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema needs yt-dlp and python3, and cinema-helper.py next to it
 Download	Detail		Download
-Getting the video ready	Grid		Getting the video ready
 Downloaded	Window		Downloaded
-Downloading…	Grid		Downloading…
+Getting the video ready	Grid		Getting the video ready
 Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Remove from the tabs
 Add to the tabs	Grid		Add to the tabs
-science explained	Categories		science explained
-Search	Window		Search
 news today	Categories		news today
+BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent downloads need aria2c, which is not installed.
+%views% views	Detail		%views% views
+Science	Categories		Science
+Back	Detail		Back
+Classic cartoons	Categories		Classic cartoons
+Documentaries	Categories		Documentaries
+Play	Detail		Play
+technology review	Categories		technology review
+Details	Grid		Details
+Continue watching	Window		Continue watching
+Downloading the torrent	Window		Downloading the torrent
+Already downloaded	Grid		Already downloaded
+The video could not be moved to the Trash: %error%	Window		The video could not be moved to the Trash: %error%
+News	Categories		News
+Type what to look for at the top right	Window		Type what to look for at the top right
+Cinema	System name		Cinema
+No videos found	Window		No videos found
+Technology	Categories		Technology
+See all	Home		See all
+Getting the details…	Detail		Getting the details…
+Downloading…	Grid		Downloading…
+Search	Window		Search
+science explained	Categories		science explained
 Download	Grid		Download
 official music video	Categories		official music video
 The video could not be downloaded	Window		The video could not be downloaded
 Looking for the videos…	Window		Looking for the videos…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# One tab of the top bar per line: name = what to search on YouTube
-%views% views	Detail		%views% views
-Back	Detail		Back
-Science	Categories		Science
-Play	Detail		Play
-Documentaries	Categories		Documentaries
+Classic films	Categories		Classic films
 No videos downloaded yet: right click a video, or press D	Window		No videos downloaded yet: right click a video, or press D
-Details	Grid		Details
-technology review	Categories		technology review
 # or name = channel:<id> for the latest videos of a channel	Categories		# or name = channel:<id> for the latest videos of a channel
 MediaPlayer could not be started: %error%	Window		MediaPlayer could not be started: %error%
 Move to Trash	Grid		Move to Trash
-Continue watching	Window		Continue watching
-Home	Categories		Home
 Downloaded	Categories		Downloaded
-Already downloaded	Grid		Already downloaded
-The video could not be moved to the Trash: %error%	Window		The video could not be moved to the Trash: %error%
+Home	Categories		Home
 This video can't be played here, try another one.	Window		This video can't be played here, try another one.
-News	Categories		News
-Type what to look for at the top right	Window		Type what to look for at the top right

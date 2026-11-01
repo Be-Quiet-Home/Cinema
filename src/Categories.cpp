@@ -43,6 +43,11 @@ write_examples(const char* path)
 		B_TRANSLATE("science explained"));
 	fprintf(file, "%s = %s\n", B_TRANSLATE("Documentaries"),
 		B_TRANSLATE("full documentary"));
+	// public domain films and cartoons of the Internet Archive
+	fprintf(file, "%s = @archive channel:feature_films\n",
+		B_TRANSLATE("Classic films"));
+	fprintf(file, "%s = @archive channel:animationandcartoons\n",
+		B_TRANSLATE("Classic cartoons"));
 	fclose(file);
 }
 
@@ -174,6 +179,15 @@ LoadCategories()
 		text.CopyInto(category.query, equals + 1, text.Length() - equals - 1);
 		category.name.Trim();
 		category.query.Trim();
+		if (category.query.ByteAt(0) == '@') {
+			// "@archive channel:feature_films": the provider first
+			int32 space = category.query.FindFirst(' ');
+			if (space < 0)
+				continue;
+			category.query.CopyInto(category.provider, 1, space - 1);
+			category.query.Remove(0, space);
+			category.query.Trim();
+		}
 		if (category.query.StartsWith(kChannelPrefix)) {
 			category.query.CopyInto(category.channel, strlen(kChannelPrefix),
 				category.query.Length() - strlen(kChannelPrefix));
@@ -220,11 +234,16 @@ SaveCategories(const std::vector<Category>& categories)
 	for (const Category& category : categories) {
 		BString name(category.name);
 		name.ReplaceAll("=", "-");
+		BString provider;
+		if (!category.provider.IsEmpty())
+			provider << "@" << category.provider << " ";
 		if (category.IsChannel()) {
-			fprintf(file, "%s = %s%s\n", name.String(), kChannelPrefix,
-				category.channel.String());
-		} else
-			fprintf(file, "%s = %s\n", name.String(), category.query.String());
+			fprintf(file, "%s = %s%s%s\n", name.String(), provider.String(),
+				kChannelPrefix, category.channel.String());
+		} else {
+			fprintf(file, "%s = %s%s\n", name.String(), provider.String(),
+				category.query.String());
+		}
 	}
 	if (fclose(file) == 0)
 		rename(temporary.String(), path.Path());

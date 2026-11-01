@@ -1,50 +1,54 @@
-1	german	application/x-vnd.atomozero-Cinema	237470864
+1	german	application/x-vnd.atomozero-Cinema	1973416081
 YouTube could not be reached: is the network on?	Window		YouTube ist nicht erreichbar: Ist das Netzwerk an?
-Cinema	System name		Cinema
 Downloaded	Detail		Downloaded
-No videos found	Window		Keine Videos gefunden
 full documentary	Categories		ganze Dokumentation
-OK	Window		OK
-Technology	Categories		Technik
 Add this channel to the tabs	Categories		Diesen Kanal zu den Reitern hinzufügen
+OK	Window		OK
 Show the latest videos	Grid		Neueste Videos anzeigen
-See all	Home		Alle ansehen
 Music	Categories		Musik
-Play	Grid		Abspielen
 Video downloaded	Window		Video heruntergeladen
-Getting the details…	Detail		Getting the details…
+Play	Grid		Abspielen
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema braucht yt-dlp und python3, und cinema-helper.py daneben
 Download	Detail		Download
-Getting the video ready	Grid		Das Video wird vorbereitet
 Downloaded	Window		Heruntergeladen
-Downloading…	Grid		Wird heruntergeladen…
+Getting the video ready	Grid		Das Video wird vorbereitet
 Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Aus den Reitern entfernen
 Add to the tabs	Grid		Zu den Reitern hinzufügen
-science explained	Categories		Wissenschaft erklärt
-Search	Window		Suchen
 news today	Categories		Nachrichten heute
+BitTorrent downloads need aria2c, which is not installed.	Window		Für BitTorrent-Downloads wird aria2c benötigt, das nicht installiert ist.
+%views% views	Detail		%views% views
+Science	Categories		Wissenschaft
+Back	Detail		Back
+Classic cartoons	Categories		Zeichentrickklassiker
+Documentaries	Categories		Dokumentationen
+Play	Detail		Play
+technology review	Categories		Technik Test
+Details	Grid		Details
+Continue watching	Window		Weiterschauen
+Downloading the torrent	Window		Torrent wird heruntergeladen
+Already downloaded	Grid		Bereits heruntergeladen
+The video could not be moved to the Trash: %error%	Window		Das Video konnte nicht in den Papierkorb verschoben werden: %error%
+News	Categories		Nachrichten
+Type what to look for at the top right	Window		Oben rechts eingeben, wonach gesucht werden soll
+Cinema	System name		Cinema
+No videos found	Window		Keine Videos gefunden
+Technology	Categories		Technik
+See all	Home		Alle ansehen
+Getting the details…	Detail		Getting the details…
+Downloading…	Grid		Wird heruntergeladen…
+Search	Window		Suchen
+science explained	Categories		Wissenschaft erklärt
 Download	Grid		Herunterladen
 official music video	Categories		offizielles Musikvideo
 The video could not be downloaded	Window		Das Video konnte nicht heruntergeladen werden
 Looking for the videos…	Window		Suche nach Videos…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Ein Reiter der oberen Leiste pro Zeile: Name = was auf YouTube gesucht wird
-%views% views	Detail		%views% views
-Back	Detail		Back
-Science	Categories		Wissenschaft
-Play	Detail		Play
-Documentaries	Categories		Dokumentationen
+Classic films	Categories		Filmklassiker
 No videos downloaded yet: right click a video, or press D	Window		Noch keine Videos heruntergeladen: Rechtsklick auf ein Video oder D drücken
-Details	Grid		Details
-technology review	Categories		Technik Test
 # or name = channel:<id> for the latest videos of a channel	Categories		# oder Name = channel:<ID> für die neuesten Videos eines Kanals
 MediaPlayer could not be started: %error%	Window		MediaPlayer konnte nicht gestartet werden: %error%
 Move to Trash	Grid		In den Papierkorb verschieben
-Continue watching	Window		Weiterschauen
-Home	Categories		Start
 Downloaded	Categories		Heruntergeladen
-Already downloaded	Grid		Bereits heruntergeladen
-The video could not be moved to the Trash: %error%	Window		Das Video konnte nicht in den Papierkorb verschoben werden: %error%
+Home	Categories		Start
 This video can't be played here, try another one.	Window		Dieses Video kann hier nicht abgespielt werden, versuche ein anderes.
-News	Categories		Nachrichten
-Type what to look for at the top right	Window		Oben rechts eingeben, wonach gesucht werden soll

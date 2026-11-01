@@ -30,19 +30,25 @@ public:
 			void				SetProvider(const char* id);
 									// the one the next requests are for
 			void				Search(int32 generation, int32 count,
-									const char* query);
+									const char* query,
+									const char* provider = NULL);
 			void				Channel(int32 generation, int32 count,
-									const char* id);
+									const char* id,
+									const char* provider = NULL);
 			void				Details(const char* provider, const char* id,
 									const char* kind);
-			void				Find(const char* id);
-			void				Download(const char* id, const char* folder);
+			void				Find(const char* id,
+									const char* provider = NULL);
+			void				Download(const char* id, const char* folder,
+									const char* provider = NULL);
+									// NULL or empty: the default provider
 
 private:
 	static	status_t			_ReaderEntry(void* data);
 			void				_Read();
 			void				_Handle(const BString& line);
 			void				_Send(const Json& request);
+			BString				_Provider(const char* provider);
 
 			BMessenger			fTarget;
 			BLocker				fLock;

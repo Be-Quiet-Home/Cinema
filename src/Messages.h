@@ -56,6 +56,7 @@ enum {
 	kMsgAddChannel		= 'addc',	// the channel shown, to the tabs
 	kMsgRemoveCategory	= 'rmct',	// "index"
 	kMsgSearchField		= 'sfld',	// the search field was confirmed
+	kMsgSearchSource	= 'ssrc',	// "provider": where to search
 	kMsgAnimate			= 'anim',
 	kMsgFullScreen		= 'fuls',	// F: full screen, or back
 	kMsgFocusContent	= 'fcnt',	// leave the tabs, back to the videos

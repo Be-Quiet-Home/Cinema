@@ -427,14 +427,16 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 		SetPenSize(1);
 	}
 
-	// the length, in a corner of the picture
-	BFont small = Font(12, true);
-	BString length = duration_text(video.duration);
-	float width = small.StringWidth(length.String()) + 10;
-	BRect badge(picture.right - 6 - width, picture.bottom - 24,
-		picture.right - 6, picture.bottom - 6);
-	FillRound(this, badge, 3, (rgb_color){ 0, 0, 0, 200 });
-	DrawCentered(this, length.String(), badge, small, kText);
+	// the length, in a corner of the picture, when it is known
+	if (video.duration > 0) {
+		BFont small = Font(12, true);
+		BString length = duration_text(video.duration);
+		float width = small.StringWidth(length.String()) + 10;
+		BRect badge(picture.right - 6 - width, picture.bottom - 24,
+			picture.right - 6, picture.bottom - 6);
+		FillRound(this, badge, 3, (rgb_color){ 0, 0, 0, 200 });
+		DrawCentered(this, length.String(), badge, small, kText);
+	}
 
 	// the title, on two lines at most
 	BFont font = Font(kTitleSize);

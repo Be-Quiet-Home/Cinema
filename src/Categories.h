@@ -13,6 +13,7 @@
 
 struct Category {
 	BString	name;		// shown
+	BString	provider;	// "archive"..., empty for the default one
 	BString	query;		// searched on YouTube
 	BString	channel;	// or the id of a channel, whose latest videos are
 						// shown
@@ -23,7 +24,9 @@ struct Category {
 
 /*!	The tabs of the top bar, in a text file in the settings folder
 	(Cinema/categories), one per line: "Name = search", or
-	"Name = channel:<id>" for a channel. The file is written with a few
+	"Name = channel:<id>" for a channel. "@provider " before them takes
+	another source than the default one, as in
+	"Films = @archive channel:feature_films". The file is written with a few
 	examples the first time.
 */
 std::vector<Category>	LoadCategories();

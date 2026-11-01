@@ -37,11 +37,18 @@
 # Searches are kept for a few hours in the folder given as argument.
 
 import hashlib
+import html
 import json
 import os
+import platform
+import re
+import shutil
+import subprocess
 import sys
 import threading
 import time
+import urllib.parse
+import urllib.request
 
 
 def load_yt_dlp():
@@ -60,7 +67,11 @@ def load_yt_dlp():
 	raise ImportError("yt-dlp not found")
 
 
-yt_dlp = load_yt_dlp()
+try:
+	yt_dlp = load_yt_dlp()
+except ImportError:
+	# the Internet Archive still works without it
+	yt_dlp = None
 output = threading.Lock()
 
 CACHE_TIME = 6 * 60 * 60
@@ -149,6 +160,57 @@ def cached_details(name, fetch):
 		except OSError:
 			pass
 	return item
+
+
+USER_AGENT = "Cinema (Haiku)"
+# machines that play 320x240 or 360p at once, and need a faster processor
+# for more, such as the Toshiba AC100
+SLOW_MACHINE = platform.machine().lower().startswith("arm")
+
+
+def http_json(url, query=None):
+	if query:
+		url += "?" + urllib.parse.urlencode(query)
+	request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+	with urllib.request.urlopen(request, timeout=30) as response:
+		return json.load(response)
+
+
+def file_name(title):
+	"""A title that can be the name of a file."""
+	return re.sub(r'[/\\:*?"<>|]', " ", str(title)).strip()[:150] or "video"
+
+
+def http_download(url, path, size=0, progress=None):
+	"""Downloads url to path, through a .part file that goes away if it
+	fails. size is used when the server does not tell the length."""
+	temporary = path + ".part"
+	request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+	try:
+		with urllib.request.urlopen(request, timeout=60) as response, \
+				open(temporary, "wb") as output_file:
+			total = as_int(response.headers.get("Content-Length"), size)
+			done = 0
+			last = -1
+			while True:
+				block = response.read(256 * 1024)
+				if not block:
+					break
+				output_file.write(block)
+				done += len(block)
+				if progress is not None and total:
+					percent = int(100 * done / total)
+					if percent != last:
+						last = percent
+						progress(percent)
+	except Exception:
+		try:
+			os.remove(temporary)
+		except OSError:
+			pass
+		raise
+	os.replace(temporary, path)
+	return path
 
 
 class Provider:
@@ -360,7 +422,518 @@ def register(provider_class):
 	return provider_class
 
 
-register(YouTubeProvider)
+class ArchiveProvider(Provider):
+	"""The films of the Internet Archive: public domain features, cartoons,
+	television and newsreels, with their own metadata. A channel is one of
+	its collections, such as feature_films or animationandcartoons.
+	"""
+
+	id = "archive"
+	name = "Internet Archive"
+	kinds = ("search", "channel", "details", "find", "download")
+
+	SITE = "https://archive.org"
+	FIELDS = ("identifier", "title", "year", "runtime", "description",
+		"creator", "downloads", "avg_rating", "collection")
+	# collections that only say where an item comes from
+	GENERIC = {"moviesandfilms", "movies", "opensource_movies",
+		"feature_films_unsorted", "community_media"}
+	# the smallest file that still looks good first on slow machines: the
+	# AC100 plays 320x240 at once, 640x480 needs a faster processor
+	FORMATS = ("512Kb MPEG4", "h.264", "h.264 IA", "MPEG4", "Ogg Video") \
+		if SLOW_MACHINE else ("h.264", "h.264 IA", "512Kb MPEG4", "MPEG4",
+			"Ogg Video")
+
+	def __init__(self):
+		self.collection_names = {}
+
+	def get_json(self, path, query=None):
+		return http_json(self.SITE + path, query)
+
+	@staticmethod
+	def seconds(runtime):
+		"""The length of a "1:17:26", "20:33", "77 min" or "1 hr 5 min"."""
+		text = str(runtime or "").strip().lower()
+		if re.fullmatch(r"\d+(:\d{1,2}){1,2}", text):
+			total = 0
+			for part in text.split(":"):
+				total = total * 60 + int(part)
+			return total
+		hours = re.search(r"(\d+)\s*h", text)
+		minutes = re.search(r"(\d+)\s*m", text)
+		if hours or minutes:
+			return (int(hours.group(1)) * 3600 if hours else 0) \
+				+ (int(minutes.group(1)) * 60 if minutes else 0)
+		return as_int(text, 0) * 60 if text.isdigit() else 0
+
+	@staticmethod
+	def text(value):
+		"""A field that may be a list, as plain text without its HTML."""
+		if isinstance(value, list):
+			value = value[0] if value else ""
+		value = re.sub(r"<br\s*/?>|</p>", "\n", str(value or ""),
+			flags=re.IGNORECASE)
+		return html.unescape(re.sub(r"<[^>]+>", "", value))
+
+	def collection(self, collections):
+		"""The collection that says the most about an item."""
+		if isinstance(collections, str):
+			collections = [collections]
+		for name in collections or []:
+			if name not in self.GENERIC:
+				return name
+		return (collections or [""])[0]
+
+	def collection_name(self, identifier):
+		if not identifier:
+			return ""
+		if identifier not in self.collection_names:
+			try:
+				metadata = self.get_json("/metadata/" + identifier)
+				name = self.text(metadata.get("metadata", {}).get("title"))
+			except Exception:
+				name = ""
+			self.collection_names[identifier] = name or identifier
+		return self.collection_names[identifier]
+
+	def item(self, document, channel_id=""):
+		identifier = document.get("identifier")
+		if not identifier:
+			return None
+		channel_id = channel_id or self.collection(document.get("collection"))
+		picture = "%s/services/img/%s" % (self.SITE, identifier)
+		return {
+			"provider": self.id,
+			"kind": "movie",
+			"id": identifier,
+			"title": clean(self.text(document.get("title")) or identifier),
+			"description": clean(self.text(document.get("description"))),
+			"channel": clean(self.collection_name(channel_id)),
+			"channel_id": channel_id,
+			"duration": self.seconds(self.text(document.get("runtime"))),
+			"year": as_int(str(document.get("year") or "")[:4], 0),
+			"date": "",
+			"views": as_int(document.get("downloads"), 0),
+			# reviews give 1 to 5 stars
+			"rating": float(document.get("avg_rating") or 0) * 2,
+			"poster": picture,
+			"thumbnail": picture,
+			"season": 0,
+			"episode": 0,
+		}
+
+	def items(self, query, count, channel_id=""):
+		response = self.get_json("/advancedsearch.php", [("q", query)]
+			+ [("fl[]", field) for field in self.FIELDS]
+			+ [("sort[]", "downloads desc"), ("rows", str(count)),
+				("output", "json")])
+		items = []
+		for document in response.get("response", {}).get("docs", []):
+			item = self.item(document, channel_id)
+			if item is not None:
+				items.append(item)
+		return items
+
+	# films only, and only those that anybody can watch
+	PLAYABLE = " AND mediatype:(movies) AND NOT access-restricted-item:(true)"
+
+	def search(self, query, count):
+		words = query.replace('"', " ").strip()
+		return self.items("(%s)%s" % (words, self.PLAYABLE), count)
+
+	def channel(self, channel_id, count):
+		return self.items("collection:(%s)%s" % (channel_id, self.PLAYABLE),
+			count, channel_id)
+
+	def metadata(self, media_id):
+		metadata = self.get_json("/metadata/" + media_id)
+		return metadata if metadata.get("metadata") else None
+
+	def video_file(self, metadata):
+		"""The file to play: the first of FORMATS, the smallest of a kind."""
+		files = metadata.get("files") or []
+		for wanted in self.FORMATS:
+			found = [f for f in files if f.get("format") == wanted]
+			if found:
+				return min(found, key=lambda f: as_int(f.get("size"), 0))
+		for f in files:
+			if f.get("name", "").lower().endswith((".mp4", ".ogv", ".webm")):
+				return f
+		return None
+
+	def file_url(self, media_id, file):
+		return "%s/download/%s/%s" % (self.SITE, media_id,
+			urllib.parse.quote(file["name"]))
+
+	def details(self, media_id, kind="movie"):
+		metadata = self.metadata(media_id)
+		if metadata is None:
+			return None
+		fields = dict(metadata["metadata"], identifier=media_id)
+		item = self.item(fields)
+		item["description"] = multiline(self.text(
+			metadata["metadata"].get("description")))
+		date = self.text(metadata["metadata"].get("date"))
+		if re.match(r"\d{4}-\d{2}-\d{2}", date):
+			item["date"] = date[:10]
+		if not item["year"]:
+			item["year"] = as_int(date[:4], 0)
+		file = self.video_file(metadata)
+		if file is not None and not item["duration"]:
+			item["duration"] = int(float(file.get("length") or 0))
+		return item
+
+	def find(self, media_id, kind="movie"):
+		metadata = self.metadata(media_id)
+		file = self.video_file(metadata) if metadata else None
+		return self.file_url(media_id, file) if file else None
+
+	def download(self, media_id, folder, progress=None):
+		metadata = self.metadata(media_id)
+		file = self.video_file(metadata) if metadata else None
+		if file is None:
+			return None
+		title = file_name(self.text(metadata["metadata"].get("title"))
+			or media_id)
+		extension = os.path.splitext(file["name"])[1] or ".mp4"
+		path = os.path.join(folder, "%s [%s]%s" % (title, media_id, extension))
+		return http_download(self.file_url(media_id, file), path,
+			as_int(file.get("size"), 0), progress)
+
+
+class PeerTubeProvider(Provider):
+	"""The videos of PeerTube, the federation of video sites: searched on
+	all of them through SepiaSearch, played from the site that has them.
+	A video is "<uuid>@<site>", a channel "<name>@<site>".
+	"""
+
+	id = "peertube"
+	name = "PeerTube"
+	kinds = ("search", "channel", "details", "find", "download")
+
+	SEARCH = "https://sepiasearch.org/api/v1/search/videos"
+	# the highest resolution to play
+	RESOLUTION = 360 if SLOW_MACHINE else 720
+
+	@staticmethod
+	def split(media_id):
+		name, _, host = str(media_id).rpartition("@")
+		return name, host
+
+	def item(self, video, host=""):
+		channel = video.get("channel") or {}
+		host = channel.get("host") or host
+		if not video.get("uuid") or not host or video.get("isLive") \
+				or video.get("nsfw"):
+			return None
+
+		def address(url, path):
+			if url:
+				return url
+			return "https://%s%s" % (host, path) if path else ""
+
+		date = str(video.get("publishedAt") or "")[:10]
+		return {
+			"provider": self.id,
+			"kind": "video",
+			"id": "%s@%s" % (video["uuid"], host),
+			"title": clean(video.get("name") or ""),
+			"description": clean(video.get("truncatedDescription")
+				or video.get("description") or ""),
+			"channel": clean(channel.get("displayName")
+				or channel.get("name") or ""),
+			"channel_id": "%s@%s" % (channel.get("name"), host)
+				if channel.get("name") else "",
+			"duration": as_int(video.get("duration"), 0),
+			"year": as_int(date[:4], 0),
+			"date": date,
+			"views": as_int(video.get("views"), 0),
+			"rating": 0.0,
+			"poster": address(video.get("previewUrl"),
+				video.get("previewPath")),
+			"thumbnail": address(video.get("thumbnailUrl"),
+				video.get("thumbnailPath")),
+			"season": 0,
+			"episode": 0,
+		}
+
+	def items(self, videos, host=""):
+		return [item for item in (self.item(video, host) for video in videos)
+			if item is not None]
+
+	def search(self, query, count):
+		response = http_json(self.SEARCH, {"search": query, "count": count,
+			"nsfw": "false", "isLive": "false"})
+		return self.items(response.get("data") or [])
+
+	def channel(self, channel_id, count):
+		name, host = self.split(channel_id)
+		response = http_json("https://%s/api/v1/video-channels/%s/videos"
+			% (host, urllib.parse.quote(name)),
+			{"count": count, "sort": "-publishedAt", "nsfw": "false"})
+		return self.items(response.get("data") or [], host)
+
+	def video(self, media_id):
+		uuid, host = self.split(media_id)
+		return http_json("https://%s/api/v1/videos/%s" % (host, uuid)), host
+
+	def details(self, media_id, kind="video"):
+		video, host = self.video(media_id)
+		item = self.item(video, host)
+		if item is not None:
+			item["description"] = multiline(video.get("description") or "")
+		return item
+
+	def video_file(self, video):
+		"""The file to play: the biggest up to RESOLUTION, or the smallest
+		when they are all bigger."""
+		files = list(video.get("files") or [])
+		for playlist in video.get("streamingPlaylists") or []:
+			files += playlist.get("files") or []
+		files = [f for f in files if f.get("fileUrl")
+			and as_int((f.get("resolution") or {}).get("id"), 0) > 0]
+		if not files:
+			return None
+
+		def height(f):
+			return as_int((f.get("resolution") or {}).get("id"), 0)
+
+		fitting = [f for f in files if height(f) <= self.RESOLUTION]
+		if fitting:
+			return max(fitting, key=height)
+		return min(files, key=height)
+
+	def find(self, media_id, kind="video"):
+		video, host = self.video(media_id)
+		file = self.video_file(video)
+		return file["fileUrl"] if file else None
+
+	def download(self, media_id, folder, progress=None):
+		video, host = self.video(media_id)
+		file = self.video_file(video)
+		if file is None:
+			return None
+		uuid, host = self.split(media_id)
+		extension = os.path.splitext(
+			urllib.parse.urlparse(file["fileUrl"]).path)[1] or ".mp4"
+		path = os.path.join(folder, "%s [%s]%s"
+			% (file_name(video.get("name") or uuid), uuid[:8], extension))
+		return http_download(file["fileUrl"], path, as_int(file.get("size"), 0),
+			progress)
+
+
+VIDEO_EXTENSIONS = (".mp4", ".m4v", ".mkv", ".webm", ".avi", ".mov", ".ogv",
+	".mpg", ".mpeg", ".wmv", ".flv", ".ts")
+
+
+class TorrentProvider(Provider):
+	"""Downloads what a magnet link or a .torrent file (a path or an
+	address) shares, with aria2c, and keeps its biggest video. The id is
+	the link, the path or the address itself.
+	"""
+
+	id = "torrent"
+	name = "BitTorrent"
+	kinds = ("download",)
+
+	PERCENT = re.compile(r"\((\d+)%\)")
+
+	def download(self, media_id, folder, progress=None):
+		key = hashlib.sha1(media_id.encode()).hexdigest()[:12]
+		work = os.path.join(folder, ".torrent-" + key)
+		os.makedirs(work, exist_ok=True)
+		try:
+			command = ["aria2c", "--dir=" + work, "--seed-time=0",
+				"--summary-interval=1", "--console-log-level=error",
+				"--follow-torrent=mem", "--file-allocation=none",
+				"--bt-save-metadata=false", "--enable-dht=true",
+				"--auto-file-renaming=false", "--allow-overwrite=true",
+				# give up after ten minutes with nothing coming
+				"--bt-stop-timeout=600", "--connect-timeout=30",
+				media_id]
+			process = subprocess.Popen(command, stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+				text=True, errors="replace")
+			last = -1
+			for line in process.stdout:
+				found = self.PERCENT.search(line)
+				if found and progress is not None:
+					percent = int(found.group(1))
+					if percent != last:
+						last = percent
+						progress(percent)
+			if process.wait() != 0:
+				return None
+
+			videos = []
+			for directory, _, names in os.walk(work):
+				for name in names:
+					if name.lower().endswith(VIDEO_EXTENSIONS):
+						path = os.path.join(directory, name)
+						videos.append((os.path.getsize(path), path))
+			if not videos:
+				return None
+			source = max(videos)[1]
+			stem, extension = os.path.splitext(os.path.basename(source))
+			path = os.path.join(folder, "%s [%s]%s"
+				% (file_name(stem), key[:8], extension))
+			shutil.move(source, path)
+			return path
+		finally:
+			shutil.rmtree(work, ignore_errors=True)
+
+
+class LocalProvider(Provider):
+	"""The videos in a folder of this computer: a channel is the folder,
+	a video its path. Their length and a picture come from ffprobe and
+	ffmpeg when they are there, and are kept in the cache.
+	"""
+
+	id = "local"
+	name = "Files"
+	kinds = ("channel", "details", "find")
+
+	DEPTH = 3
+	LIMIT = 500
+	# what is not known yet is found this long, the rest the next time
+	BUDGET = 6
+
+	def __init__(self):
+		self.lock = threading.Lock()
+		self.known = {}
+		self.path = os.path.join(cache, "local.json") if cache else None
+		try:
+			with open(self.path, encoding="utf-8") as file:
+				self.known = json.load(file)
+		except (OSError, ValueError, TypeError):
+			pass
+
+	def save(self):
+		if not self.path:
+			return
+		with self.lock:
+			try:
+				with open(self.path + ".part", "w", encoding="utf-8") as file:
+					json.dump(self.known, file)
+				os.replace(self.path + ".part", self.path)
+			except OSError:
+				pass
+
+	def probe(self, path, key):
+		"""The length of a video and the path of a picture of it."""
+		duration = 0
+		picture = ""
+		try:
+			result = subprocess.run(["ffprobe", "-v", "error",
+				"-show_entries", "format=duration", "-of",
+				"default=noprint_wrappers=1:nokey=1", path],
+				capture_output=True, text=True, timeout=30)
+			duration = int(float(result.stdout.strip() or 0))
+		except (OSError, ValueError, subprocess.SubprocessError):
+			pass
+		if cache:
+			picture = os.path.join(cache, "local-%s.jpg"
+				% hashlib.sha1(key.encode()).hexdigest()[:16])
+			try:
+				subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss",
+					str(min(60, max(1, duration // 10))), "-i", path,
+					"-frames:v", "1", "-vf", "scale=320:-2", picture],
+					capture_output=True, timeout=60)
+			except (OSError, subprocess.SubprocessError):
+				pass
+			if not os.path.exists(picture):
+				picture = ""
+		return {"duration": duration, "picture": picture}
+
+	def videos(self, folder):
+		found = []
+		folder = os.path.abspath(folder)
+		base = folder.count(os.sep)
+		for directory, directories, names in os.walk(folder):
+			if directory.count(os.sep) - base >= self.DEPTH:
+				directories[:] = []
+			directories[:] = [d for d in directories if not d.startswith(".")]
+			for name in names:
+				if name.lower().endswith(VIDEO_EXTENSIONS) \
+						and not name.startswith("."):
+					path = os.path.join(directory, name)
+					try:
+						found.append((os.path.getmtime(path), path))
+					except OSError:
+						pass
+		found.sort(reverse=True)
+		return [path for _, path in found[:self.LIMIT]]
+
+	def item(self, path, wait):
+		try:
+			info = os.stat(path)
+		except OSError:
+			return None
+		key = "%s %d %d" % (path, info.st_size, int(info.st_mtime))
+		known = self.known.get(key)
+		if known is None and wait:
+			known = self.probe(path, key)
+			with self.lock:
+				self.known[key] = known
+		known = known or {}
+		picture = known.get("picture") or ""
+		return {
+			"provider": self.id,
+			"kind": "video",
+			"id": path,
+			"title": clean(os.path.splitext(os.path.basename(path))[0]),
+			"description": path,
+			"channel": clean(os.path.basename(os.path.dirname(path))),
+			"channel_id": os.path.dirname(path),
+			"duration": as_int(known.get("duration"), 0),
+			"year": time.localtime(info.st_mtime).tm_year,
+			"date": time.strftime("%Y-%m-%d", time.localtime(info.st_mtime)),
+			"views": 0,
+			"rating": 0.0,
+			"poster": "file://" + picture if picture else "",
+			"thumbnail": "file://" + picture if picture else "",
+			"season": 0,
+			"episode": 0,
+		}
+
+	def channel(self, channel_id, count):
+		start = time.time()
+		items = []
+		late = []
+		for path in self.videos(channel_id):
+			wait = time.time() - start < self.BUDGET
+			item = self.item(path, wait)
+			if item is not None:
+				items.append(item)
+				if not wait:
+					late.append(path)
+		if late:
+			# what was not looked at yet, for the next time
+			def finish():
+				for path in late:
+					self.item(path, True)
+				self.save()
+			threading.Thread(target=finish, daemon=True).start()
+		self.save()
+		return items
+
+	def details(self, media_id, kind="video"):
+		return self.item(media_id, True)
+
+	def find(self, media_id, kind="video"):
+		return media_id if os.path.isfile(media_id) else None
+
+
+if yt_dlp is not None:
+	register(YouTubeProvider)
+	DEFAULT_PROVIDER = "youtube"
+else:
+	DEFAULT_PROVIDER = "archive"
+register(ArchiveProvider)
+register(PeerTubeProvider)
+if shutil.which("aria2c"):
+	register(TorrentProvider)
+register(LocalProvider)
 
 
 def job_search(provider, tag, count, query):

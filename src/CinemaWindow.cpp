@@ -15,8 +15,14 @@
 #include <Catalog.h>
 #include <GroupView.h>
 #include <LayoutBuilder.h>
+#include <MenuField.h>
+#include <MenuItem.h>
 #include <MessageRunner.h>
 #include <Notification.h>
+#include <PopUpMenu.h>
+#include <Url.h>
+
+#include <string.h>
 #include <Path.h>
 #include <Roster.h>
 #include <Screen.h>
@@ -73,6 +79,12 @@ CinemaWindow::CinemaWindow()
 		new BMessage(kMsgSearchField));
 	BButton* searchButton = new BButton("find", B_TRANSLATE("Search"),
 		new BMessage(kMsgSearchField));
+	// where the search goes: filled when the helper tells its providers
+	BPopUpMenu* sources = new BPopUpMenu("sources");
+	fSourceField = new BMenuField("source", NULL, sources);
+	fSourceField->SetExplicitAlignment(BAlignment(B_ALIGN_HORIZONTAL_UNSET,
+		B_ALIGN_VERTICAL_CENTER));
+	fSourceField->Hide();
 
 	fGrid = new VideoGrid;
 	BScrollView* scroll = new BScrollView("scroll", fGrid, 0, false, true,
@@ -108,6 +120,7 @@ CinemaWindow::CinemaWindow()
 	BLayoutBuilder::Group<>(top)
 		.SetInsets(12, 6, 12, 6)
 		.Add(fCategoryBar, 10)
+		.Add(fSourceField, 0)
 		.Add(textItem)
 		.Add(searchButton);
 
@@ -204,14 +217,23 @@ CinemaWindow::QuitRequested()
 
 
 void
-CinemaWindow::_Search(const char* query)
+CinemaWindow::_Search(const char* query, const char* provider)
 {
 	_CloseDetails();
 	fCards->SetVisibleItem(0);
 	fCard = 0;
 	fGeneration++;
 	fGrid->SetMessage(B_TRANSLATE("Looking for the videos" B_UTF8_ELLIPSIS));
-	fHelper->Search(fGeneration, kResultCount, query);
+	fHelper->Search(fGeneration, kResultCount, query, provider);
+}
+
+
+/*!	The provider a video shown came from, or the default one. */
+BString
+CinemaWindow::_ProviderOf(const BString& id) const
+{
+	auto found = fItemProviders.find(id);
+	return found != fItemProviders.end() ? found->second : fProvider;
 }
 
 
@@ -233,10 +255,42 @@ CinemaWindow::_SetProviders(BMessage* message)
 				chosen = provider.id;
 				break;
 			}
-	if (chosen.IsEmpty() || chosen == fProvider)
-		return;
-	fProvider = chosen;
-	fHelper->SetProvider(fProvider.String());
+	if (!chosen.IsEmpty() && chosen != fProvider) {
+		fProvider = chosen;
+		fHelper->SetProvider(fProvider.String());
+	}
+	_UpdateSources();
+}
+
+
+/*!	The menu of where to search, with every provider that searches; it only
+	shows when there is a choice.
+*/
+void
+CinemaWindow::_UpdateSources()
+{
+	BMenu* menu = fSourceField->Menu();
+	while (BMenuItem* item = menu->RemoveItem((int32)0))
+		delete item;
+	if (fSearchProvider.IsEmpty())
+		fSearchProvider = fProvider;
+
+	int32 count = 0;
+	for (const Provider& provider : fProviders) {
+		if (!provider.Supports("search"))
+			continue;
+		BMessage* message = new BMessage(kMsgSearchSource);
+		message->AddString("provider", provider.id);
+		BMenuItem* item = new BMenuItem(provider.name.String(), message);
+		item->SetTarget(this);
+		item->SetMarked(provider.id == fSearchProvider);
+		menu->AddItem(item);
+		count++;
+	}
+	if (count > 1 && fSourceField->IsHidden())
+		fSourceField->Show();
+	else if (count <= 1 && !fSourceField->IsHidden())
+		fSourceField->Hide();
 }
 
 
@@ -255,9 +309,10 @@ CinemaWindow::_ShowCategory(int32 index)
 		fGeneration++;
 		fGrid->SetMessage(B_TRANSLATE("Looking for the videos"
 			B_UTF8_ELLIPSIS));
-		fHelper->Channel(fGeneration, kResultCount, category.channel);
+		fHelper->Channel(fGeneration, kResultCount, category.channel,
+			category.provider.String());
 	} else
-		_Search(category.query.String());
+		_Search(category.query.String(), category.provider.String());
 	fGrid->MakeFocus(true);
 }
 
@@ -280,9 +335,13 @@ CinemaWindow::_ShowChannel(const char* name, const char* id)
 	fCategoryBar->SetChannel(name);
 	fChannelName = name;
 	fChannelId = id;
+	auto provider = fChannelProviders.find(id);
+	fChannelProvider = provider != fChannelProviders.end()
+		? provider->second : BString();
 	fGeneration++;
 	fGrid->SetMessage(B_TRANSLATE("Looking for the videos" B_UTF8_ELLIPSIS));
-	fHelper->Channel(fGeneration, kResultCount, id);
+	fHelper->Channel(fGeneration, kResultCount, id,
+		fChannelProvider.String());
 	fGrid->MakeFocus(true);
 }
 
@@ -299,6 +358,9 @@ CinemaWindow::_AddChannel(const char* name, const char* id)
 	Category category;
 	category.name = name;
 	category.channel = id;
+	auto provider = fChannelProviders.find(id);
+	if (provider != fChannelProviders.end() && provider->second != fProvider)
+		category.provider = provider->second;
 	fCategories.push_back(category);
 	SaveCategories(fCategories);
 
@@ -364,6 +426,9 @@ CinemaWindow::_Videos(BMessage* message)
 		video.rating = message->GetDouble("rating", i, 0);
 		video.poster = message->GetString("poster", i, "");
 		video.thumbnail = message->GetString("thumbnail", i, "");
+		fItemProviders[video.id] = video.provider;
+		if (!video.channelId.IsEmpty())
+			fChannelProviders[video.channelId] = video.provider;
 		video.downloaded = fDownloaded.count(video.id) > 0;
 		auto downloading = fDownloading.find(video.id);
 		if (downloading != fDownloading.end())
@@ -381,8 +446,10 @@ CinemaWindow::_Thumbnails(const std::vector<MediaItem>& videos,
 {
 	BMessage thumbnails(kMsgThumbnails);
 	thumbnails.AddInt32("generation", generation);
-	for (const MediaItem& video : videos)
+	for (const MediaItem& video : videos) {
 		thumbnails.AddString("id", video.id);
+		thumbnails.AddString("url", video.thumbnail);
+	}
 	fWorker->PostMessage(&thumbnails);
 }
 
@@ -518,10 +585,10 @@ CinemaWindow::_StartHomeRequests()
 		const Category& category = fCategories[request.category];
 		if (category.IsChannel())
 			fHelper->Channel(request.generation, kResultCount,
-				category.channel);
+				category.channel, category.provider.String());
 		else
 			fHelper->Search(request.generation, kResultCount,
-				category.query);
+				category.query, category.provider.String());
 		fHomeActive++;
 	}
 }
@@ -565,6 +632,7 @@ CinemaWindow::_ShowDetails(BMessage* message)
 	item.provider = message->GetString("provider", fProvider);
 	item.kind = message->GetString("kind", "video");
 	item.id = message->GetString("id", "");
+	fItemProviders[item.id] = item.provider;
 	item.title = message->GetString("title", "");
 	item.description = message->GetString("description", "");
 	item.channel = message->GetString("channel", "");
@@ -688,7 +756,7 @@ CinemaWindow::_Find(const BString& id)
 	if (fFinding.count(id) != 0)
 		return;
 	fFinding.insert(id);
-	fHelper->Find(id.String());
+	fHelper->Find(id.String(), _ProviderOf(id).String());
 }
 
 
@@ -762,12 +830,37 @@ CinemaWindow::MessageReceived(BMessage* message)
 			query.Trim();
 			if (query.IsEmpty())
 				break;
+			// a torrent to download rather than something to look for
+			if (query.StartsWith("magnet:")
+				|| (query.IStartsWith("http") && query.IEndsWith(".torrent"))) {
+				_AddTorrent(query.String());
+				fSearchField->SetText("");
+				break;
+			}
+			// "@peertube words" searches another source than the menu's
+			BString provider = fSearchProvider;
+			if (query.ByteAt(0) == '@') {
+				int32 space = query.FindFirst(' ');
+				if (space > 1) {
+					query.CopyInto(provider, 1, space - 1);
+					query.Remove(0, space);
+					query.Trim();
+				}
+			}
 			fCategoryBar->SetSelected(-1);
 			fChannelId = "";
-			_Search(query.String());
+			_Search(query.String(), provider.String());
 			fGrid->MakeFocus(true);
 			break;
 		}
+		case kMsgSearchSource:
+			fSearchProvider = message->GetString("provider", fProvider);
+			fSearchField->MakeFocus(true);
+			break;
+		case B_SIMPLE_DATA:
+		case B_REFS_RECEIVED:
+			_Dropped(message);
+			break;
 		case kMsgProviders:
 			_SetProviders(message);
 			break;
@@ -851,6 +944,9 @@ CinemaWindow::MessageReceived(BMessage* message)
 			fGrid->SetProgress(id, percent);
 			fHome->SetProgress(id, percent);
 			fDetail->SetProgress(id.String(), percent);
+			if (strcmp(downloading->second.GetString("provider", ""),
+					"torrent") == 0)
+				_TorrentProgress(downloading->second);
 			break;
 		}
 		case kMsgDownloaded:
@@ -867,6 +963,9 @@ CinemaWindow::MessageReceived(BMessage* message)
 		{
 			BString id = message->GetString("id", "");
 			BString title = message->GetString("title", "");
+			const char* provider = message->GetString("provider", NULL);
+			if (provider != NULL && provider[0] != '\0')
+				fItemProviders[id] = provider;
 			const char* path = message->GetString("path", NULL);
 			auto downloaded = fDownloaded.find(id);
 			if (path == NULL && downloaded != fDownloaded.end()
@@ -1030,7 +1129,8 @@ CinemaWindow::_Download(BMessage* message)
 	fGrid->SetProgress(id, 0);
 	fHome->SetProgress(id, 0);
 	fDetail->SetProgress(id.String(), 0);
-	fHelper->Download(id.String(), folder.String());
+	fHelper->Download(id.String(), folder.String(),
+		message->GetString("provider", _ProviderOf(id).String()));
 }
 
 
@@ -1056,6 +1156,8 @@ CinemaWindow::_Downloaded(BMessage* message)
 	BNotification notification(B_INFORMATION_NOTIFICATION);
 	notification.SetGroup(B_TRANSLATE_SYSTEM_NAME("Cinema"));
 	notification.SetTitle(B_TRANSLATE("Video downloaded"));
+	// in place of the progress of a torrent
+	notification.SetMessageID(id);
 	notification.SetContent(video.GetString("title", ""));
 	notification.Send();
 }
@@ -1077,6 +1179,7 @@ CinemaWindow::_DownloadFailed(BMessage* message)
 	BNotification notification(B_ERROR_NOTIFICATION);
 	notification.SetGroup(B_TRANSLATE_SYSTEM_NAME("Cinema"));
 	notification.SetTitle(B_TRANSLATE("The video could not be downloaded"));
+	notification.SetMessageID(id);
 	notification.SetContent(title);
 	notification.Send();
 }
@@ -1100,5 +1203,116 @@ CinemaWindow::_Trash(BMessage* message)
 		fDownloaded.erase(message->GetString("id", ""));
 		if (fCard == 2 && !fDetailsShown)
 			_ShowHome();
+	}
+}
+
+
+/*!	A magnet link, or a .torrent file (a path or an address): downloaded
+	with BitTorrent like a video of the other providers, with its progress
+	in a notification since it is in no list yet.
+*/
+void
+CinemaWindow::_AddTorrent(const char* source)
+{
+	bool supported = false;
+	for (const Provider& provider : fProviders)
+		if (provider.id == "torrent")
+			supported = true;
+	if (!supported) {
+		(new BAlert("Cinema", B_TRANSLATE("BitTorrent downloads need aria2c, "
+			"which is not installed."), B_TRANSLATE("OK")))->Go(NULL);
+		return;
+	}
+
+	// the name the link gives, or the one of the file
+	BString title;
+	BString text(source);
+	if (text.StartsWith("magnet:")) {
+		int32 start = text.FindFirst("dn=");
+		if (start >= 0) {
+			int32 end = text.FindFirst('&', start);
+			if (end < 0)
+				end = text.Length();
+			text.CopyInto(title, start + 3, end - start - 3);
+			title.ReplaceAll('+', ' ');
+			title = BUrl::UrlDecode(title);
+		}
+	} else {
+		int32 slash = text.FindLast('/');
+		text.CopyInto(title, slash + 1, text.Length() - slash - 1);
+		title.RemoveLast(".torrent");
+	}
+	if (title.IsEmpty())
+		title = "BitTorrent";
+
+	BMessage download(kMsgDownload);
+	download.AddString("id", source);
+	download.AddString("provider", "torrent");
+	download.AddString("kind", "video");
+	download.AddString("title", title);
+	download.AddString("channel", "BitTorrent");
+	download.AddString("channel id", "");
+	download.AddInt32("duration", 0);
+	_Download(&download);
+	auto started = fDownloading.find(source);
+	if (started != fDownloading.end())
+		_TorrentProgress(started->second);
+}
+
+
+void
+CinemaWindow::_TorrentProgress(const BMessage& download)
+{
+	BNotification notification(B_PROGRESS_NOTIFICATION);
+	notification.SetGroup(B_TRANSLATE_SYSTEM_NAME("Cinema"));
+	notification.SetTitle(B_TRANSLATE("Downloading the torrent"));
+	notification.SetContent(download.GetString("title", ""));
+	notification.SetMessageID(download.GetString("id", ""));
+	notification.SetProgress(download.GetInt32("percent", 0) / 100.0f);
+	notification.Send();
+}
+
+
+/*!	A folder becomes a tab of the videos in it, a .torrent file is
+	downloaded, a video is played.
+*/
+void
+CinemaWindow::_AddFolder(const char* path)
+{
+	for (size_t i = 0; i < fCategories.size(); i++) {
+		if (fCategories[i].provider == "local"
+			&& fCategories[i].channel == path) {
+			_ShowCategory(i);
+			return;
+		}
+	}
+	Category category;
+	category.name = BPath(path).Leaf();
+	category.provider = "local";
+	category.channel = path;
+	fCategories.push_back(category);
+	SaveCategories(fCategories);
+	fCategoryBar->SetCategories(fCategories);
+	fHomeLoaded = false;
+	_ShowCategory(fCategories.size() - 1);
+}
+
+
+void
+CinemaWindow::_Dropped(BMessage* message)
+{
+	entry_ref ref;
+	for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
+		BEntry entry(&ref, true);
+		BPath path;
+		if (entry.GetPath(&path) != B_OK)
+			continue;
+		BString name(path.Leaf());
+		if (entry.IsDirectory())
+			_AddFolder(path.Path());
+		else if (name.IEndsWith(".torrent"))
+			_AddTorrent(path.Path());
+		else
+			_Play(path.Path(), path.Leaf());
 	}
 }

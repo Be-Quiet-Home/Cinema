@@ -1,8 +1,11 @@
 # Cinema
 
-YouTube videos on [Haiku](https://www.haiku-os.org) and
-[RenkuOS](https://github.com/RenkuOS): found with
-[yt-dlp](https://github.com/yt-dlp/yt-dlp) and played by MediaPlayer.
+Videos on [Haiku](https://www.haiku-os.org) and
+[RenkuOS](https://github.com/RenkuOS), played by MediaPlayer: YouTube (with
+[yt-dlp](https://github.com/yt-dlp/yt-dlp)), the public domain films and
+cartoons of the [Internet Archive](https://archive.org), the free video sites
+of [PeerTube](https://joinpeertube.org), BitTorrent, and the videos of your own
+folders.
 
 It runs on x86_64, and on 32-bit ARM with RenkuOS, for example on the Toshiba
 AC100.
@@ -11,9 +14,24 @@ AC100.
 
 ## What it does
 
+- **Sources**: the menu next to the search field chooses where to search
+  (YouTube, Internet Archive, PeerTube); `@peertube words` in the field does it
+  for one search.
 - **Tabs** at the top: searches, or channels whose latest videos are shown.
   They are kept in `~/config/settings/Cinema/categories`, one per line:
-  `Name = what to search on YouTube`, or `Name = channel:<id>`.
+  `Name = what to search on YouTube`, or `Name = channel:<id>`. `@source`
+  before them takes another source, as in
+  `Classic films = @archive channel:feature_films` (a collection of the
+  Internet Archive), `Blender = @peertube channel:blender_open_movies@video.blender.org`
+  or `Home videos = @local channel:/boot/home/Videos`.
+- **Your videos**: drop a folder on the window and it becomes a tab of the
+  videos in it, newest first, with their length and a picture (from `ffprobe`
+  and `ffmpeg`, when they are installed). Drop a video to play it.
+- **BitTorrent**: paste a magnet link in the search field, or drop a
+  `.torrent` file on the window: the biggest video it shares is downloaded with
+  `aria2c` to the **Downloaded** tab, with its progress in a notification.
+  Use it for what you may share, such as the films of the Blender Foundation
+  or the torrents of the Internet Archive.
 - **Channels**: the name of the channel is under each video; a click shows its
   latest videos, and the **+** button next to its tab keeps it among the tabs
   (a right click on the name does it too). A right click on a tab removes it.
@@ -30,8 +48,8 @@ AC100.
   Japanese and Simplified Chinese (the last three need a CJK font, such as
   `noto_sans_cjk_jp`).
 
-Videos are played in a single MP4 file (H.264 and AAC, 360p), which MediaPlayer
-plays well also on slow machines such as the Toshiba AC100.
+Videos are played in a single file small enough for slow machines: 360p on
+32-bit ARM such as the Toshiba AC100, up to 720p elsewhere.
 
 ![The latest videos of a channel](screenshots/channel.png)
 
