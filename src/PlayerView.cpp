@@ -53,6 +53,8 @@ PlayerView::PlayerView(Player* player)
 	BView("player", B_WILL_DRAW | B_NAVIGABLE | B_FULL_UPDATE_ON_RESIZE),
 	fPlayer(player),
 	fOpened(false),
+	fOverlay(NULL),
+	fOverlayShown(false),
 	fControls(true),
 	fControlsUntil(0),
 	fLastMouse(-1, -1),
@@ -106,6 +108,52 @@ PlayerView::SetOpened(bool opened)
 }
 
 
+void
+PlayerView::SetOverlay(BBitmap* overlay)
+{
+	ClearOverlay();
+	if (overlay == NULL)
+		return;
+	fOverlay = overlay;
+	fOverlayShown = false;
+	_PlaceOverlay();
+}
+
+
+void
+PlayerView::ClearOverlay()
+{
+	if (fOverlay != NULL)
+		ClearViewOverlay();
+	fOverlay = NULL;
+	fOverlayShown = false;
+	Invalidate();
+}
+
+
+/*!	Where the screen puts the pictures: the color key marks it, and the
+	controls drawn over it stay.
+*/
+void
+PlayerView::_PlaceOverlay()
+{
+	if (fOverlay == NULL)
+		return;
+	SetViewOverlay(fOverlay, fOverlay->Bounds(), _PictureFrame(fOverlay),
+		&fKey, B_FOLLOW_TOP | B_FOLLOW_LEFT,
+		B_OVERLAY_FILTER_HORIZONTAL | B_OVERLAY_FILTER_VERTICAL);
+	Invalidate();
+}
+
+
+void
+PlayerView::FrameResized(float width, float height)
+{
+	BView::FrameResized(width, height);
+	_PlaceOverlay();
+}
+
+
 BRect
 PlayerView::_PictureFrame(const BBitmap* picture) const
 {
@@ -146,7 +194,24 @@ PlayerView::Draw(BRect updateRect)
 	SetDrawingMode(B_OP_COPY);
 	SetHighColor(0, 0, 0);
 
-	BBitmap* picture = fPlayer->LockFrame();
+	if (fOverlay != NULL && fOverlayShown) {
+		// the screen draws the picture where the key color is
+		BRect frame = _PictureFrame(fOverlay);
+		BRect bounds = Bounds();
+		FillRect(BRect(bounds.left, bounds.top, bounds.right, frame.top - 1));
+		FillRect(BRect(bounds.left, frame.bottom + 1, bounds.right,
+			bounds.bottom));
+		FillRect(BRect(bounds.left, frame.top, frame.left - 1, frame.bottom));
+		FillRect(BRect(frame.right + 1, frame.top, bounds.right,
+			frame.bottom));
+		SetHighColor(fKey);
+		FillRect(frame);
+		if (fControls || fPlayer->IsPaused())
+			_DrawControls();
+		return;
+	}
+
+	BBitmap* picture = fOverlay != NULL ? NULL : fPlayer->LockFrame();
 	if (picture != NULL) {
 		BRect frame = _PictureFrame(picture);
 		// the black around the picture only
@@ -157,11 +222,12 @@ PlayerView::Draw(BRect updateRect)
 		FillRect(BRect(bounds.left, frame.top, frame.left - 1, frame.bottom));
 		FillRect(BRect(frame.right + 1, frame.top, bounds.right,
 			frame.bottom));
-		DrawBitmap(picture, picture->Bounds(), frame,
-			B_FILTER_BITMAP_BILINEAR);
+		// no filtering: on a slow machine it costs more than the decoding
+		DrawBitmap(picture, picture->Bounds(), frame);
 	} else
 		FillRect(Bounds());
-	fPlayer->UnlockFrame();
+	if (fOverlay == NULL)
+		fPlayer->UnlockFrame();
 
 	if (picture == NULL) {
 		DrawCentered(this, B_TRANSLATE("Getting the video ready"), Bounds(),
@@ -342,7 +408,17 @@ PlayerView::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
 		case kMsgPlayerFrame:
-			Invalidate();
+			if (fOverlay == NULL)
+				Invalidate();
+			else if (!fOverlayShown) {
+				// the first picture: the key color, once
+				fOverlayShown = true;
+				Invalidate();
+			} else {
+				// nothing to draw: only taken, so that the next one comes
+				fPlayer->LockFrame();
+				fPlayer->UnlockFrame();
+			}
 			break;
 		case kMsgPlayerTick:
 			// the time goes on, and the controls hide while it plays

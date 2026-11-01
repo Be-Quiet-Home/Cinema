@@ -56,6 +56,10 @@ public:
 									// the picture to show, NULL if none yet;
 									// UnlockFrame() afterwards in any case
 			void				UnlockFrame();
+			BBitmap*			Overlay() const { return fOverlay; }
+									// the picture the screen shows by
+									// itself, when the overlay was free:
+									// LockFrame() is not needed then
 
 private:
 	static	status_t			_OpenEntry(void* data);
@@ -72,6 +76,8 @@ private:
 			void				_SeekTracks(bigtime_t time);
 			void				_CheckEnded();
 			void				_Failed();
+			bool				_SetUpVideo();
+			void				_ShowFrame();
 
 			BMessenger			fTarget;
 			BString				fAddress;
@@ -86,6 +92,7 @@ private:
 
 			BBitmap*			fFront;			// shown
 			BBitmap*			fBack;			// decoded into
+			BBitmap*			fOverlay;		// what the screen shows, or NULL
 			BLocker				fFrameLock;
 			bool				fHasFrame;
 
@@ -93,6 +100,8 @@ private:
 			media_raw_audio_format fSound;
 			size_t				fFrameSize;		// of a sound frame, in bytes
 			bigtime_t			fLatency;
+			std::atomic<bigtime_t> fLastFill;	// when the sound was last taken
+			bigtime_t			fFillTime;		// what a sound buffer lasts
 			std::vector<uint8>	fRing;
 			size_t				fRingRead;
 			size_t				fRingFill;

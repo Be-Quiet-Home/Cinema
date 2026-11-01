@@ -40,11 +40,14 @@ Player::Player(const BMessenger& target)
 	fDuration(0),
 	fFront(NULL),
 	fBack(NULL),
+	fOverlay(NULL),
 	fFrameLock("player frame"),
 	fHasFrame(false),
 	fSoundPlayer(NULL),
 	fFrameSize(0),
 	fLatency(0),
+	fLastFill(0),
+	fFillTime(0),
 	fRingRead(0),
 	fRingFill(0),
 	fRingLock("player ring"),
@@ -127,8 +130,10 @@ Player::Close()
 	BAutolock locker(fFrameLock);
 	delete fFront;
 	delete fBack;
+	delete fOverlay;
 	fFront = NULL;
 	fBack = NULL;
+	fOverlay = NULL;
 	fHasFrame = false;
 	fOpened = false;
 	fDuration = 0;
@@ -175,26 +180,9 @@ Player::_Open()
 			fFile->ReleaseTrack(track);
 	}
 
-	// the pictures, as 32 bits ones the view draws as they are
-	if (fVideoTrack != NULL) {
-		media_format format;
-		format.type = B_MEDIA_RAW_VIDEO;
-		format.u.raw_video = media_raw_video_format::wildcard;
-		format.u.raw_video.display.format = B_RGB32;
-		if (fVideoTrack->DecodedFormat(&format) != B_OK
-			|| (format.u.raw_video.display.format != B_RGB32
-				&& format.u.raw_video.display.format != B_RGBA32)) {
-			fFile->ReleaseTrack(fVideoTrack);
-			fVideoTrack = NULL;
-		} else {
-			const media_video_display_info& display
-				= format.u.raw_video.display;
-			BRect bounds(0, 0, display.line_width - 1, display.line_count - 1);
-			BAutolock locker(fFrameLock);
-			fFront = new BBitmap(bounds, 0, B_RGB32, display.bytes_per_row);
-			fBack = new BBitmap(bounds, 0, B_RGB32, display.bytes_per_row);
-			fDuration = std::max(fDuration, fVideoTrack->Duration());
-		}
+	if (fVideoTrack != NULL && !_SetUpVideo()) {
+		fFile->ReleaseTrack(fVideoTrack);
+		fVideoTrack = NULL;
 	}
 
 	// the sound, as 16 bit samples of the machine's order
@@ -246,6 +234,7 @@ Player::_Open()
 
 	BMessage opened(kMsgPlayerOpened);
 	opened.AddInt64("duration", fDuration);
+	opened.AddBool("overlay", fOverlay != NULL);
 	if (fFront != NULL) {
 		opened.AddInt32("width", fFront->Bounds().IntegerWidth() + 1);
 		opened.AddInt32("height", fFront->Bounds().IntegerHeight() + 1);
@@ -282,6 +271,9 @@ Player::_Clock() const
 	if (fSoundPlayer != NULL) {
 		bigtime_t played = fPlayed * 1000000LL
 			/ (int64)std::max(1.0f, fSound.frame_rate);
+		// between two buffers too, so that the pictures go on evenly
+		if (!fPaused && fLastFill > 0)
+			played += std::min(system_time() - fLastFill, fFillTime);
 		return fClockBase + std::max((bigtime_t)0, played - fLatency);
 	}
 	if (fPaused)
@@ -352,6 +344,7 @@ Player::_SeekTracks(bigtime_t time)
 	}
 	fClockBase = time;
 	fPlayed = 0;
+	fLastFill = 0;
 	fClockStart = system_time();
 	fPausedClock = time;
 	fVideoEnded = fVideoTrack == NULL;
@@ -455,6 +448,9 @@ Player::_FillSound(void* buffer, size_t size)
 	if (bytes < size)
 		memset(out + bytes, 0, size - bytes);
 	fPlayed += bytes / std::max((size_t)1, fFrameSize);
+	fFillTime = (bigtime_t)(size / std::max((size_t)1, fFrameSize)) * 1000000LL
+		/ (int64)std::max(1.0f, fSound.frame_rate);
+	fLastFill = system_time();
 	if (fRingFill == 0 && fAudioEnded)
 		_CheckEnded();
 }
@@ -515,11 +511,7 @@ Player::_VideoLoop()
 		if (!show)
 			continue;
 
-		{
-			BAutolock locker(fFrameLock);
-			std::swap(fFront, fBack);
-			fHasFrame = true;
-		}
+		_ShowFrame();
 		fShowNext = false;
 		if (!fFramePending.exchange(true))
 			fTarget.SendMessage(kMsgPlayerFrame);
@@ -555,4 +547,74 @@ void
 Player::UnlockFrame()
 {
 	fFrameLock.Unlock();
+}
+
+
+/*!	The pictures in YCbCr422 for the overlay, when it is free: the screen
+	scales them and turns them into colors by itself, which the AC100
+	could not do on time. Otherwise in 32 bits RGB, which the view draws.
+*/
+bool
+Player::_SetUpVideo()
+{
+	media_format format;
+	format.type = B_MEDIA_RAW_VIDEO;
+	format.u.raw_video = media_raw_video_format::wildcard;
+	format.u.raw_video.display.format = B_YCbCr422;
+	if (fVideoTrack->DecodedFormat(&format) == B_OK
+		&& format.u.raw_video.display.format == B_YCbCr422) {
+		const media_video_display_info& display = format.u.raw_video.display;
+		BRect bounds(0, 0, display.line_width - 1, display.line_count - 1);
+		BBitmap* overlay = new BBitmap(bounds, B_BITMAP_WILL_OVERLAY
+			| B_BITMAP_RESERVE_OVERLAY_CHANNEL, B_YCbCr422);
+		if (overlay->InitCheck() == B_OK) {
+			BAutolock locker(fFrameLock);
+			fOverlay = overlay;
+			fFront = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, B_YCbCr422,
+				display.bytes_per_row);
+			fBack = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, B_YCbCr422,
+				display.bytes_per_row);
+			fDuration = std::max(fDuration, fVideoTrack->Duration());
+			return true;
+		}
+		delete overlay;
+	}
+
+	format.type = B_MEDIA_RAW_VIDEO;
+	format.u.raw_video = media_raw_video_format::wildcard;
+	format.u.raw_video.display.format = B_RGB32;
+	if (fVideoTrack->DecodedFormat(&format) != B_OK
+		|| (format.u.raw_video.display.format != B_RGB32
+			&& format.u.raw_video.display.format != B_RGBA32))
+		return false;
+	const media_video_display_info& display = format.u.raw_video.display;
+	BRect bounds(0, 0, display.line_width - 1, display.line_count - 1);
+	BAutolock locker(fFrameLock);
+	fFront = new BBitmap(bounds, 0, B_RGB32, display.bytes_per_row);
+	fBack = new BBitmap(bounds, 0, B_RGB32, display.bytes_per_row);
+	fDuration = std::max(fDuration, fVideoTrack->Duration());
+	return true;
+}
+
+
+/*!	The picture decoded becomes the one shown; with the overlay, it is
+	copied where the screen takes it from.
+*/
+void
+Player::_ShowFrame()
+{
+	BAutolock locker(fFrameLock);
+	std::swap(fFront, fBack);
+	fHasFrame = true;
+	if (fOverlay == NULL || fOverlay->LockBits() != B_OK)
+		return;
+	const uint8* from = (const uint8*)fFront->Bits();
+	uint8* to = (uint8*)fOverlay->Bits();
+	int32 fromRow = fFront->BytesPerRow();
+	int32 toRow = fOverlay->BytesPerRow();
+	int32 row = std::min(fromRow, toRow);
+	int32 rows = fFront->Bounds().IntegerHeight() + 1;
+	for (int32 y = 0; y < rows; y++)
+		memcpy(to + y * toRow, from + y * fromRow, row);
+	fOverlay->UnlockBits();
 }

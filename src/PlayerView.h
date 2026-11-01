@@ -10,6 +10,7 @@
 #include <View.h>
 
 
+class BBitmap;
 class BMessageRunner;
 class Player;
 
@@ -31,6 +32,7 @@ public:
 	virtual	void				AttachedToWindow();
 	virtual	void				DetachedFromWindow();
 	virtual	void				Draw(BRect updateRect);
+	virtual	void				FrameResized(float width, float height);
 	virtual	void				KeyDown(const char* bytes, int32 count);
 	virtual	void				MouseDown(BPoint where);
 	virtual	void				MouseMoved(BPoint where, uint32 transit,
@@ -39,9 +41,13 @@ public:
 
 			void				Start(const char* title);
 			void				SetOpened(bool opened);
+			void				SetOverlay(BBitmap* overlay);
+									// the screen shows the pictures by itself
+			void				ClearOverlay();
 
 private:
 			BRect				_PictureFrame(const BBitmap* picture) const;
+			void				_PlaceOverlay();
 			BRect				_BarFrame() const;
 			BRect				_TrackFrame() const;
 			void				_ShowControls();
@@ -52,6 +58,9 @@ private:
 			Player*				fPlayer;
 			BString				fTitle;
 			bool				fOpened;
+			BBitmap*			fOverlay;
+			rgb_color			fKey;			// where the overlay shows
+			bool				fOverlayShown;	// a first picture came
 			bool				fControls;
 			bigtime_t			fControlsUntil;
 			BPoint				fLastMouse;

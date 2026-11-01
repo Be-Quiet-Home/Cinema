@@ -1059,6 +1059,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 
 		case kMsgPlayerOpened:
 			fPlayerView->SetOpened(true);
+			fPlayerView->SetOverlay(fPlayer->Overlay());
 			break;
 		case kMsgPlayerFrame:
 			PostMessage(kMsgPlayerFrame, fPlayerView);
@@ -1610,6 +1611,8 @@ CinemaWindow::_OpenPlayer(const char* address, const char* title,
 	fPlayerShown = true;
 	fPlayerView->Start(title);
 	fPlayerView->MakeFocus(true);
+	// the overlay of the video before goes before its bitmap
+	fPlayerView->ClearOverlay();
 	fPlayer->Open(address, fSettings.resume ? Positions::ResumeAt(id) : 0);
 
 	delete fPlayerSaver;
@@ -1635,6 +1638,7 @@ CinemaWindow::_ClosePlayer(bool save)
 		_SavePosition();
 	delete fPlayerSaver;
 	fPlayerSaver = NULL;
+	fPlayerView->ClearOverlay();
 	fPlayer->Close();
 	fPlayerShown = false;
 	fCards->SetVisibleItem(fPlayerReturn);
