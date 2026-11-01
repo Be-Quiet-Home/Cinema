@@ -1,0 +1,50 @@
+1	korean	application/x-vnd.atomozero-Cinema	237470864
+YouTube could not be reached: is the network on?	Window		YouTube에 연결할 수 없습니다. 네트워크가 켜져 있나요?
+Cinema	System name		Cinema
+Downloaded	Detail		다운로드됨
+No videos found	Window		동영상을 찾을 수 없습니다
+full documentary	Categories		다큐멘터리 전편
+OK	Window		확인
+Technology	Categories		기술
+Add this channel to the tabs	Categories		이 채널을 탭에 추가
+Show the latest videos	Grid		최신 동영상 보기
+See all	Home		모두 보기
+Music	Categories		음악
+Play	Grid		재생
+Video downloaded	Window		동영상 다운로드 완료
+Getting the details…	Detail		세부 정보를 가져오는 중…
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema를 사용하려면 yt-dlp와 python3, 그리고 같은 위치의 cinema-helper.py가 필요합니다
+Download	Detail		다운로드
+Getting the video ready	Grid		동영상 준비 중
+Downloaded	Window		다운로드한 동영상
+Downloading…	Grid		다운로드 중…
+Downloading…	Detail		다운로드 중…
+Remove from the tabs	Categories		탭에서 제거
+Add to the tabs	Grid		탭에 추가
+science explained	Categories		과학 설명
+Search	Window		검색
+news today	Categories		오늘의 뉴스
+Download	Grid		다운로드
+official music video	Categories		공식 뮤직비디오
+The video could not be downloaded	Window		동영상을 다운로드할 수 없습니다
+Looking for the videos…	Window		동영상을 찾는 중…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# 한 줄에 상단 막대의 탭 하나: 이름 = YouTube에서 검색할 내용
+%views% views	Detail		조회수 %views%회
+Back	Detail		뒤로
+Science	Categories		과학
+Play	Detail		재생
+Documentaries	Categories		다큐멘터리
+No videos downloaded yet: right click a video, or press D	Window		다운로드한 동영상이 없습니다. 동영상을 오른쪽 클릭하거나 D를 누르세요
+Details	Grid		세부 정보
+technology review	Categories		기술 리뷰
+# or name = channel:<id> for the latest videos of a channel	Categories		# 또는 이름 = channel:<id> 로 채널의 최신 동영상
+MediaPlayer could not be started: %error%	Window		MediaPlayer를 시작할 수 없습니다: %error%
+Move to Trash	Grid		휴지통으로 이동
+Continue watching	Window		이어서 보기
+Home	Categories		홈
+Downloaded	Categories		다운로드
+Already downloaded	Grid		이미 다운로드됨
+The video could not be moved to the Trash: %error%	Window		동영상을 휴지통으로 옮길 수 없습니다: %error%
+This video can't be played here, try another one.	Window		이 동영상은 여기서 재생할 수 없습니다. 다른 동영상을 시도해 보세요.
+News	Categories		뉴스
+Type what to look for at the top right	Window		오른쪽 위에 찾을 내용을 입력하세요

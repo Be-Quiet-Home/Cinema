@@ -1,0 +1,50 @@
+1	chinese	application/x-vnd.atomozero-Cinema	237470864
+YouTube could not be reached: is the network on?	Window		无法连接到 YouTube：网络是否已开启？
+Cinema	System name		Cinema
+Downloaded	Detail		已下载
+No videos found	Window		未找到视频
+full documentary	Categories		完整纪录片
+OK	Window		确定
+Technology	Categories		科技
+Add this channel to the tabs	Categories		将此频道添加到标签页
+Show the latest videos	Grid		显示最新视频
+See all	Home		查看全部
+Music	Categories		音乐
+Play	Grid		播放
+Video downloaded	Window		视频已下载
+Getting the details…	Detail		正在获取详细信息…
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema 需要 yt-dlp 和 python3，并且 cinema-helper.py 需在同一位置
+Download	Detail		下载
+Getting the video ready	Grid		正在准备视频
+Downloaded	Window		已下载的视频
+Downloading…	Grid		正在下载…
+Downloading…	Detail		正在下载…
+Remove from the tabs	Categories		从标签页中移除
+Add to the tabs	Grid		添加到标签页
+science explained	Categories		科学解说
+Search	Window		搜索
+news today	Categories		今日新闻
+Download	Grid		下载
+official music video	Categories		官方音乐视频
+The video could not be downloaded	Window		无法下载该视频
+Looking for the videos…	Window		正在查找视频…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# 每行一个顶部栏标签：名称 = 要在 YouTube 上搜索的内容
+%views% views	Detail		%views% 次观看
+Back	Detail		返回
+Science	Categories		科学
+Play	Detail		播放
+Documentaries	Categories		纪录片
+No videos downloaded yet: right click a video, or press D	Window		还没有下载的视频：右键点击视频，或按 D
+Details	Grid		详细信息
+technology review	Categories		科技评测
+# or name = channel:<id> for the latest videos of a channel	Categories		# 或 名称 = channel:<id> 显示某个频道的最新视频
+MediaPlayer could not be started: %error%	Window		无法启动 MediaPlayer：%error%
+Move to Trash	Grid		移到废纸篓
+Continue watching	Window		继续观看
+Home	Categories		主页
+Downloaded	Categories		已下载
+Already downloaded	Grid		已经下载
+The video could not be moved to the Trash: %error%	Window		无法将视频移到废纸篓：%error%
+This video can't be played here, try another one.	Window		此视频无法在这里播放，请换一个试试。
+News	Categories		新闻
+Type what to look for at the top right	Window		在右上角输入要搜索的内容

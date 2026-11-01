@@ -25,8 +25,10 @@ AC100.
   **F** for full screen and **Esc** to go back. **Tab** or **F6** goes to the
   top tabs, the arrows choose one and **Enter** opens it. A gamepad works too:
   its D-pad or left stick chooses, **A** plays, **B** goes back, **X** downloads
-  and **Y** toggles full screen; **L1** or **Start** goes to the top tabs.
-- English, Italian, German, French, Spanish and Portuguese.
+  and **Y** toggles full screen; **L1**, **Select** or **Start** goes to the top tabs.
+- English, Italian, German, French, Spanish, Portuguese, Ukrainian, Korean,
+  Japanese and Simplified Chinese (the last three need a CJK font, such as
+  `noto_sans_cjk_jp`).
 
 Videos are played in a single MP4 file (H.264 and AAC, 360p), which MediaPlayer
 plays well also on slow machines such as the Toshiba AC100.
@@ -39,7 +41,7 @@ The [releases](https://github.com/atomozero/Cinema/releases) have packages for
 x86_64 and 32-bit ARM:
 
 ```sh
-pkgman install cinema-1.0.0-2-x86_64.hpkg
+pkgman install cinema-1.1.0-1-x86_64.hpkg
 ```
 
 On x86_64 this brings Python and the yt-dlp module from HaikuPorts too.
