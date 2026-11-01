@@ -5,6 +5,7 @@
 
 
 #include "Downloads.h"
+#include "PictureName.h"
 
 #include <algorithm>
 
@@ -49,7 +50,7 @@ static BString
 picture_path(const char* id)
 {
 	BString path(Folder());
-	path << "/.pictures/" << id << ".jpg";
+	path << "/.pictures/" << PictureName(id) << ".jpg";
 	return path;
 }
 
@@ -124,7 +125,7 @@ KeepPicture(const char* cache, const char* id)
 	create_directory(pictures.String(), 0755);
 
 	BString from(cache);
-	from << "/" << id << ".jpg";
+	from << "/" << PictureName(id) << ".jpg";
 	BFile source(from.String(), B_READ_ONLY);
 	off_t size;
 	if (source.InitCheck() != B_OK || source.GetSize(&size) != B_OK

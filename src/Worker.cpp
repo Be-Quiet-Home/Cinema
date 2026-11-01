@@ -14,6 +14,7 @@
 
 #include "Messages.h"
 #include "Process.h"
+#include "PictureName.h"
 
 
 Worker::Worker(BMessenger target)
@@ -78,7 +79,7 @@ Worker::_Thumbnails(BMessage* message)
 			return;
 
 		BString path(fCache);
-		path << "/" << id << ".jpg";
+		path << "/" << PictureName(id) << ".jpg";
 		if (!BEntry(path.String()).Exists()) {
 			// the address the provider gave, or YouTube's from the id
 			BString url = message->GetString("url", i, "");

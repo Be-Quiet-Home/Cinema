@@ -5,6 +5,7 @@
 
 
 #include "History.h"
+#include "PictureName.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,7 +54,7 @@ picture(const BString& id, const char* cache)
 	BString path;
 	if (cache != NULL && cache[0] != '\0') {
 		path = cache;
-		path << "/" << id << ".jpg";
+		path << "/" << PictureName(id) << ".jpg";
 		BBitmap* bitmap = BTranslationUtils::GetBitmap(path.String());
 		if (bitmap != NULL)
 			return bitmap;
@@ -62,7 +63,7 @@ picture(const BString& id, const char* cache)
 	if (find_directory(B_USER_DIRECTORY, &home) != B_OK)
 		return NULL;
 	path = home.Path();
-	path << "/Cinema/.pictures/" << id << ".jpg";
+	path << "/Cinema/.pictures/" << PictureName(id) << ".jpg";
 	return BTranslationUtils::GetBitmap(path.String());
 }
 

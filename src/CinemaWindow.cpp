@@ -47,6 +47,7 @@
 #include "Style.h"
 #include "VideoGrid.h"
 #include "Worker.h"
+#include "PictureName.h"
 
 
 #undef B_TRANSLATION_CONTEXT
@@ -1291,7 +1292,7 @@ CinemaWindow::_ShowDownloads()
 		item.progress = download.GetInt32("percent", 0);
 		item.status = _DownloadStatus(download);
 		BString picture(fWorker->Cache());
-		picture << "/" << entry.first << ".jpg";
+		picture << "/" << PictureName(entry.first) << ".jpg";
 		item.picture = BTranslationUtils::GetBitmap(picture.String());
 		videos.push_back(item);
 	}

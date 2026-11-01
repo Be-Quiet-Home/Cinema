@@ -45,7 +45,14 @@ public:
 			}
 			BEntry entry(argv[i], true);
 			BPath path;
-			if (entry.IsFile() && entry.GetPath(&path) == B_OK)
+			if (entry.GetPath(&path) != B_OK)
+				continue;
+			if (entry.IsDirectory()) {
+				// a folder: to the library
+				BMessage add(kMsgAddFolder);
+				add.AddString("path", path.Path());
+				_Window()->PostMessage(&add);
+			} else if (entry.IsFile())
 				_PlayAddress(path.Path(), path.Leaf());
 		}
 	}
