@@ -1,4 +1,4 @@
-1	french	application/x-vnd.atomozero-Cinema	2360571081
+1	french	application/x-vnd.atomozero-Cinema	4274214656
 YouTube could not be reached: is the network on?	Window		Impossible de joindre YouTube : le réseau est-il actif ?
 Downloaded	Detail		Downloaded
 full documentary	Categories		documentaire complet
@@ -28,6 +28,7 @@ technology review	Categories		test technologie
 Details	Grid		Details
 Continue watching	Window		Reprendre
 %done% of %total%	Window		%done% sur %total%
+Getting the video ready	Player		Préparation de la vidéo
 %eta% left	Window		%eta% restant
 Already downloaded	Grid		Déjà téléchargée
 The video could not be moved to the Trash: %error%	Window		Impossible de mettre la vidéo à la corbeille : %error%

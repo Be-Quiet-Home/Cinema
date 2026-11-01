@@ -1,4 +1,4 @@
-1	korean	application/x-vnd.atomozero-Cinema	2360571081
+1	korean	application/x-vnd.atomozero-Cinema	4274214656
 YouTube could not be reached: is the network on?	Window		YouTube에 연결할 수 없습니다. 네트워크가 켜져 있나요?
 Downloaded	Detail		다운로드됨
 full documentary	Categories		다큐멘터리 전편
@@ -28,6 +28,7 @@ technology review	Categories		기술 리뷰
 Details	Grid		세부 정보
 Continue watching	Window		이어서 보기
 %done% of %total%	Window		%total% 중 %done%
+Getting the video ready	Player		동영상 준비 중
 %eta% left	Window		%eta% 남음
 Already downloaded	Grid		이미 다운로드됨
 The video could not be moved to the Trash: %error%	Window		동영상을 휴지통으로 옮길 수 없습니다: %error%

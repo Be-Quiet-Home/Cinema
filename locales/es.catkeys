@@ -1,4 +1,4 @@
-1	spanish	application/x-vnd.atomozero-Cinema	2360571081
+1	spanish	application/x-vnd.atomozero-Cinema	4274214656
 YouTube could not be reached: is the network on?	Window		No se puede acceder a YouTube: ¿está activa la red?
 Downloaded	Detail		Downloaded
 full documentary	Categories		documental completo
@@ -28,6 +28,7 @@ technology review	Categories		análisis tecnología
 Details	Grid		Details
 Continue watching	Window		Seguir viendo
 %done% of %total%	Window		%done% de %total%
+Getting the video ready	Player		Preparando el vídeo
 %eta% left	Window		quedan %eta%
 Already downloaded	Grid		Ya descargado
 The video could not be moved to the Trash: %error%	Window		No se pudo mover el vídeo a la papelera: %error%

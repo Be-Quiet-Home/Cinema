@@ -61,6 +61,16 @@ enum {
 	kMsgRemoveCategory	= 'rmct',	// "index"
 	kMsgSearchField		= 'sfld',	// the search field was confirmed
 	kMsgSearchSource	= 'ssrc',	// "provider": where to search
+
+	// the player
+	kMsgPlayerOpened	= 'plop',	// "duration", "width", "height"
+	kMsgPlayerFrame		= 'plfr',	// a new picture to show
+	kMsgPlayerEnded		= 'plen',
+	kMsgPlayerError		= 'pler',	// it cannot play it
+	kMsgPlayerTick		= 'pltk',	// the time shown, the controls hidden
+	kMsgPlayerSave		= 'plsv',	// where it is, to go on later
+	kMsgPlayerClose		= 'plcl',
+	kMsgPlayInMediaPlayer = 'plmp',	// the same address, in MediaPlayer
 	kMsgAnimate			= 'anim',
 	kMsgFullScreen		= 'fuls',	// F: full screen, or back
 	kMsgFocusContent	= 'fcnt',	// leave the tabs, back to the videos

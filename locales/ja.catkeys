@@ -1,4 +1,4 @@
-1	japanese	application/x-vnd.atomozero-Cinema	2360571081
+1	japanese	application/x-vnd.atomozero-Cinema	4274214656
 YouTube could not be reached: is the network on?	Window		YouTube に接続できません。ネットワークはオンになっていますか?
 Downloaded	Detail		ダウンロード済み
 full documentary	Categories		ドキュメンタリー 全編
@@ -28,6 +28,7 @@ technology review	Categories		テクノロジー レビュー
 Details	Grid		詳細
 Continue watching	Window		続きを見る
 %done% of %total%	Window		%done% / %total%
+Getting the video ready	Player		動画を準備中
 %eta% left	Window		残り %eta%
 Already downloaded	Grid		すでにダウンロード済み
 The video could not be moved to the Trash: %error%	Window		動画をゴミ箱に移動できませんでした: %error%

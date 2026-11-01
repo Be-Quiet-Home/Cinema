@@ -5,6 +5,8 @@
 
 
 #include <Application.h>
+#include <Entry.h>
+#include <Path.h>
 #include <String.h>
 
 #include "CinemaWindow.h"
@@ -25,15 +27,38 @@ public:
 
 	virtual void ArgvReceived(int32 argc, char** argv)
 	{
-		// a YouTube address: play it right away
+		// a YouTube address, another address or a file: played right away
 		for (int32 i = 1; i < argc; i++) {
 			BString id = YouTubeVideoId(argv[i]);
-			if (id.IsEmpty())
+			if (!id.IsEmpty()) {
+				BMessage play(kMsgPlay);
+				play.AddString("id", id);
+				play.AddString("title", argv[i]);
+				_Window()->PostMessage(&play);
 				continue;
-			BMessage play(kMsgPlay);
-			play.AddString("id", id);
-			play.AddString("title", argv[i]);
-			_Window()->PostMessage(&play);
+			}
+			BString address(argv[i]);
+			if (address.IStartsWith("http://")
+				|| address.IStartsWith("https://")) {
+				_PlayAddress(argv[i], argv[i]);
+				continue;
+			}
+			BEntry entry(argv[i], true);
+			BPath path;
+			if (entry.IsFile() && entry.GetPath(&path) == B_OK)
+				_PlayAddress(path.Path(), path.Leaf());
+		}
+	}
+
+	virtual void RefsReceived(BMessage* message)
+	{
+		// opened with Cinema from Tracker
+		entry_ref ref;
+		for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
+			BEntry entry(&ref, true);
+			BPath path;
+			if (entry.IsFile() && entry.GetPath(&path) == B_OK)
+				_PlayAddress(path.Path(), path.Leaf());
 		}
 	}
 
@@ -43,6 +68,16 @@ public:
 	}
 
 private:
+	void _PlayAddress(const char* address, const char* title)
+	{
+		BMessage play(kMsgPlay);
+		play.AddString("id", address);
+		play.AddString("title", title);
+		play.AddString("provider", "local");
+		play.AddString("path", address);
+		_Window()->PostMessage(&play);
+	}
+
 	CinemaWindow* _Window()
 	{
 		if (fWindow == NULL)

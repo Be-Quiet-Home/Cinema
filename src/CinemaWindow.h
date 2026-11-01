@@ -23,6 +23,8 @@
 class BCardLayout;
 class BMenuField;
 class BMessageRunner;
+class Player;
+class PlayerView;
 class BTextControl;
 class CategoryBar;
 class DetailView;
@@ -59,6 +61,12 @@ private:
 			BString				_DownloadStatus(const BMessage& download) const;
 			void				_DownloadCancelled(BMessage* message);
 			void				_SavePending();
+			void				_OpenPlayer(const char* address,
+									const char* title, const char* id);
+			void				_ClosePlayer(bool save = true);
+			void				_SavePosition();
+			void				_PlayInMediaPlayer(const char* address,
+									const char* title);
 			void				_SetProviders(BMessage* message);
 			void				_ShowCategory(int32 index);
 			void				_ShowChannel(const char* name,
@@ -91,7 +99,8 @@ private:
 			bool				_Ready(const BString& id) const;
 			void				_Find(const BString& id);
 			void				_PrefetchWanted();
-			void				_Play(const char* url, const char* title);
+			void				_Play(const char* url, const char* title,
+									const char* id = NULL);
 			void				_SetFullScreen(bool fullScreen);
 
 			std::vector<Category> fCategories;
@@ -105,6 +114,14 @@ private:
 			DetailView*			fDetail;
 			HomeView*			fHome;
 			BCardLayout*		fCards;
+			Player*				fPlayer;
+			PlayerView*			fPlayerView;
+			bool				fPlayerShown;
+			int32				fPlayerReturn;	// the card before it
+			BString				fPlayingId;
+			BString				fPlayingAddress;
+			BString				fPlayingTitle;
+			BMessageRunner*		fPlayerSaver;
 			BString				fDetailsId;		// what the detail view shows
 			bool				fDetailsShown;
 			Helper*				fHelper;

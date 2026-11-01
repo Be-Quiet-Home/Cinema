@@ -38,6 +38,9 @@
 #include "Helper.h"
 #include "History.h"
 #include "HomeView.h"
+#include "Player.h"
+#include "PlayerView.h"
+#include "Positions.h"
 #include "Messages.h"
 #include "Style.h"
 #include "VideoGrid.h"
@@ -102,6 +105,13 @@ CinemaWindow::CinemaWindow()
 	pages->AddChild(scroll);
 	pages->AddChild(fDetail);
 	pages->AddChild(homeScroll);
+	// the player, the fourth card
+	fPlayer = new Player(BMessenger(this));
+	fPlayerView = new PlayerView(fPlayer);
+	fPlayerShown = false;
+	fPlayerReturn = 2;
+	fPlayerSaver = NULL;
+	pages->AddChild(fPlayerView);
 	fCards->SetVisibleItem(2);
 	fCard = 2;
 
@@ -165,6 +175,8 @@ CinemaWindow::~CinemaWindow()
 {
 	delete fGamepad;
 	delete fPrefetchRunner;
+	delete fPlayerSaver;
+	delete fPlayer;
 	delete fHelper;
 }
 
@@ -188,6 +200,10 @@ CinemaWindow::DispatchMessage(BMessage* message, BHandler* handler)
 				return;
 			}
 			if (bytes[0] == B_ESCAPE) {
+				if (fPlayerShown) {
+					_ClosePlayer();
+					return;
+				}
 				if (fCategoryBar->IsFocus()) {
 					_FocusContent();
 					return;
@@ -215,6 +231,8 @@ bool
 CinemaWindow::QuitRequested()
 {
 	fGamepad->Stop();
+	// where it was left, and no more sound
+	_ClosePlayer();
 	// it may be waiting for curl: no need to wait for it
 	fWorker->PostMessage(B_QUIT_REQUESTED);
 	return true;
@@ -500,6 +518,10 @@ CinemaWindow::_FocusCategoryBar()
 void
 CinemaWindow::_FocusContent()
 {
+	if (fPlayerShown) {
+		fPlayerView->MakeFocus(true);
+		return;
+	}
 	if (fDetailsShown) {
 		fDetail->MakeFocus(true);
 		return;
@@ -779,7 +801,15 @@ CinemaWindow::_PrefetchWanted()
 
 
 void
-CinemaWindow::_Play(const char* url, const char* title)
+CinemaWindow::_Play(const char* url, const char* title, const char* id)
+{
+	// in the window, from where it was left
+	_OpenPlayer(url, title, id != NULL && id[0] != '\0' ? id : url);
+}
+
+
+void
+CinemaWindow::_PlayInMediaPlayer(const char* url, const char* title)
 {
 	const char* argv[] = { url };
 	status_t status = be_roster->Launch(kMediaPlayer, 1, argv);
@@ -957,6 +987,39 @@ CinemaWindow::MessageReceived(BMessage* message)
 			fDetail->SetProgress(id.String(), percent);
 			break;
 		}
+		case kMsgPlayerOpened:
+			fPlayerView->SetOpened(true);
+			break;
+		case kMsgPlayerFrame:
+			PostMessage(kMsgPlayerFrame, fPlayerView);
+			break;
+		case kMsgPlayerSave:
+			_SavePosition();
+			break;
+		case kMsgPlayerEnded:
+			// watched to the end
+			if (fPlayer->Duration() > 0)
+				Positions::Set(fPlayingId, fPlayer->Duration(),
+					fPlayer->Duration());
+			_ClosePlayer(false);
+			break;
+		case kMsgPlayerError:
+		{
+			// what the Media Kit cannot open here, MediaPlayer may
+			BString address = fPlayingAddress;
+			BString title = fPlayingTitle;
+			_ClosePlayer(false);
+			_PlayInMediaPlayer(address.String(), title.String());
+			break;
+		}
+		case kMsgPlayInMediaPlayer:
+		{
+			BString address = fPlayingAddress;
+			BString title = fPlayingTitle;
+			_ClosePlayer();
+			_PlayInMediaPlayer(address.String(), title.String());
+			break;
+		}
 		case kMsgCancelDownload:
 			fHelper->Cancel(message->GetString("id", ""));
 			break;
@@ -1001,11 +1064,11 @@ CinemaWindow::MessageReceived(BMessage* message)
 
 			if (path != NULL) {
 				// downloaded: no need for the network
-				_Play(path, title.String());
+				_Play(path, title.String(), id.String());
 				break;
 			}
 			if (_Ready(id)) {
-				_Play(fStreams[id].url.String(), title.String());
+				_Play(fStreams[id].url.String(), title.String(), id.String());
 				break;
 			}
 			fWaiting = id;
@@ -1032,7 +1095,8 @@ CinemaWindow::MessageReceived(BMessage* message)
 				fWaiting = "";
 				fGrid->SetBusy(NULL);
 				fHome->ClearBusy();
-				_Play(stream.url.String(), fWaitingTitle.String());
+				_Play(stream.url.String(), fWaitingTitle.String(),
+					id.String());
 			}
 			_PrefetchWanted();
 			break;
@@ -1416,4 +1480,52 @@ CinemaWindow::_Dropped(BMessage* message)
 		else
 			_Play(path.Path(), path.Leaf());
 	}
+}
+
+
+void
+CinemaWindow::_OpenPlayer(const char* address, const char* title,
+	const char* id)
+{
+	if (fPlayerShown)
+		_ClosePlayer();
+	fPlayingId = id;
+	fPlayingAddress = address;
+	fPlayingTitle = title;
+	fPlayerReturn = fCard;
+	fCards->SetVisibleItem(3);
+	fCard = 3;
+	fPlayerShown = true;
+	fPlayerView->Start(title);
+	fPlayerView->MakeFocus(true);
+	fPlayer->Open(address, Positions::ResumeAt(id));
+
+	delete fPlayerSaver;
+	BMessage save(kMsgPlayerSave);
+	fPlayerSaver = new BMessageRunner(BMessenger(this), &save, 5000000);
+}
+
+
+void
+CinemaWindow::_SavePosition()
+{
+	if (fPlayerShown && fPlayer->IsOpen() && !fPlayingId.IsEmpty())
+		Positions::Set(fPlayingId, fPlayer->Position(), fPlayer->Duration());
+}
+
+
+void
+CinemaWindow::_ClosePlayer(bool save)
+{
+	if (!fPlayerShown)
+		return;
+	if (save)
+		_SavePosition();
+	delete fPlayerSaver;
+	fPlayerSaver = NULL;
+	fPlayer->Close();
+	fPlayerShown = false;
+	fCards->SetVisibleItem(fPlayerReturn);
+	fCard = fPlayerReturn;
+	_FocusContent();
 }
