@@ -789,14 +789,18 @@ class TorrentProvider(Provider):
 
 	def download(self, media_id, folder, progress=None):
 		key = hashlib.sha1(media_id.encode()).hexdigest()[:12]
+		# the same folder for the same link, so that an interrupted
+		# download goes on from where it was
 		work = os.path.join(folder, ".torrent-" + key)
 		os.makedirs(work, exist_ok=True)
+		complete = False
 		try:
 			command = ["aria2c", "--dir=" + work, "--seed-time=0",
 				"--summary-interval=1", "--console-log-level=error",
 				"--follow-torrent=mem", "--file-allocation=none",
-				"--bt-save-metadata=false", "--enable-dht=true",
-				"--auto-file-renaming=false", "--allow-overwrite=true",
+				"--continue=true", "--bt-save-metadata=true",
+				"--bt-load-saved-metadata=true", "--enable-dht=true",
+				"--auto-file-renaming=false",
 				# give up after ten minutes with nothing coming
 				"--bt-stop-timeout=600", "--connect-timeout=30",
 				media_id]
@@ -832,6 +836,7 @@ class TorrentProvider(Provider):
 				CHILDREN.discard(process)
 			if status != 0:
 				return None
+			complete = True
 
 			videos = []
 			for directory, _, names in os.walk(work):
@@ -848,7 +853,10 @@ class TorrentProvider(Provider):
 			shutil.move(source, path)
 			return path
 		finally:
-			shutil.rmtree(work, ignore_errors=True)
+			# kept when interrupted, to go on later; not when it is done or
+			# was stopped on purpose
+			if complete or media_id in CANCELLED:
+				shutil.rmtree(work, ignore_errors=True)
 
 
 class LocalProvider(Provider):

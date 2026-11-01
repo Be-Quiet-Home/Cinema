@@ -6,6 +6,7 @@
 #define DOWNLOADS_H
 
 
+#include <Message.h>
 #include <String.h>
 
 #include <map>
@@ -32,6 +33,11 @@ void				KeepPicture(const char* cache, const char* id);
 void				Describe(const char* path, const BMessage& video);
 						// "id", "title", "channel", "channel id", "duration"
 status_t			MoveToTrash(const char* path);
+
+std::vector<BMessage>	LoadPending();
+void				SavePending(const std::vector<BMessage>& downloads);
+						// the torrents on their way, kept in the settings to
+						// go on with them when Cinema starts again
 
 }	// namespace Downloads
 

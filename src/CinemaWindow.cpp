@@ -152,6 +152,11 @@ CinemaWindow::CinemaWindow()
 	for (MediaItem& video : Downloads::Load(&fDownloaded))
 		delete video.picture;
 	_ShowHome();
+	// the torrents interrupted when Cinema went away go on
+	for (BMessage& download : Downloads::LoadPending()) {
+		download.what = kMsgDownload;
+		_Download(&download);
+	}
 	fGamepad->Start();
 }
 
@@ -1159,8 +1164,28 @@ CinemaWindow::_Download(BMessage* message)
 	fDetail->SetProgress(id.String(), 0);
 	fHelper->Download(id.String(), folder.String(),
 		message->GetString("provider", _ProviderOf(id).String()));
+	_SavePending();
 	if (_ShowingDownloads())
 		_ShowDownloads();
+}
+
+
+/*!	The torrents on their way, for when Cinema starts again: the other
+	downloads start from the beginning anyway.
+*/
+void
+CinemaWindow::_SavePending()
+{
+	std::vector<BMessage> torrents;
+	for (const auto& entry : fDownloading) {
+		if (strcmp(entry.second.GetString("provider", ""), "torrent") != 0)
+			continue;
+		BMessage download(entry.second);
+		download.what = kMsgDownload;
+		download.RemoveName("percent");
+		torrents.push_back(download);
+	}
+	Downloads::SavePending(torrents);
 }
 
 
@@ -1173,6 +1198,7 @@ CinemaWindow::_Downloaded(BMessage* message)
 		return;
 	BMessage video = downloading->second;
 	fDownloading.erase(downloading);
+	_SavePending();
 
 	Downloads::Describe(message->GetString("path", ""), video);
 	fDownloaded[id] = message->GetString("path", "");
@@ -1202,6 +1228,7 @@ CinemaWindow::_DownloadFailed(BMessage* message)
 		return;
 	BString title = downloading->second.GetString("title", "");
 	fDownloading.erase(downloading);
+	_SavePending();
 	fGrid->SetProgress(id, -1);
 	fHome->SetProgress(id, -1);
 	fDetail->SetProgress(id.String(), -1);
@@ -1337,6 +1364,7 @@ CinemaWindow::_DownloadCancelled(BMessage* message)
 	if (downloading == fDownloading.end())
 		return;
 	fDownloading.erase(downloading);
+	_SavePending();
 	fGrid->SetProgress(id, -1);
 	fGrid->SetStatus(id, "");
 	fHome->SetProgress(id, -1);

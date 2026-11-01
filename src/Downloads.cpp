@@ -181,4 +181,56 @@ MoveToTrash(const char* path)
 	return entry.MoveTo(&directory, NULL, false);
 }
 
+static bool
+pending_path(BPath& path)
+{
+	return find_directory(B_USER_SETTINGS_DIRECTORY, &path) == B_OK
+		&& path.Append("Cinema") == B_OK
+		&& create_directory(path.Path(), 0755) == B_OK
+		&& path.Append("torrents") == B_OK;
+}
+
+
+std::vector<BMessage>
+LoadPending()
+{
+	std::vector<BMessage> downloads;
+	BPath path;
+	if (!pending_path(path))
+		return downloads;
+	BFile file(path.Path(), B_READ_ONLY);
+	BMessage archive;
+	if (file.InitCheck() != B_OK || archive.Unflatten(&file) != B_OK)
+		return downloads;
+	BMessage download;
+	for (int32 i = 0; archive.FindMessage("download", i, &download) == B_OK;
+			i++)
+		downloads.push_back(download);
+	return downloads;
+}
+
+
+void
+SavePending(const std::vector<BMessage>& downloads)
+{
+	BPath path;
+	if (!pending_path(path))
+		return;
+	if (downloads.empty()) {
+		BEntry(path.Path()).Remove();
+		return;
+	}
+	BMessage archive;
+	for (const BMessage& download : downloads)
+		archive.AddMessage("download", &download);
+	BString temporary(path.Path());
+	temporary << ".part";
+	BFile file(temporary.String(), B_WRITE_ONLY | B_CREATE_FILE
+		| B_ERASE_FILE);
+	if (file.InitCheck() != B_OK || archive.Flatten(&file) != B_OK)
+		return;
+	file.Sync();
+	BEntry(temporary.String()).Rename(path.Path(), true);
+}
+
 }	// namespace Downloads
