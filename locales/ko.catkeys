@@ -1,13 +1,14 @@
-1	korean	application/x-vnd.atomozero-Cinema	4274214656
+1	korean	application/x-vnd.atomozero-Cinema	1485132134
 YouTube could not be reached: is the network on?	Window		YouTube에 연결할 수 없습니다. 네트워크가 켜져 있나요?
+TV series	Window		TV 시리즈
 Downloaded	Detail		다운로드됨
 full documentary	Categories		다큐멘터리 전편
 Add this channel to the tabs	Categories		이 채널을 탭에 추가
 OK	Window		확인
 Show the latest videos	Grid		최신 동영상 보기
 Music	Categories		음악
-Video downloaded	Window		동영상 다운로드 완료
 Play	Grid		재생
+Video downloaded	Window		동영상 다운로드 완료
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema를 사용하려면 yt-dlp와 python3, 그리고 같은 위치의 cinema-helper.py가 필요합니다
 Download	Detail		다운로드
 Downloaded	Window		다운로드한 동영상
@@ -24,8 +25,8 @@ Back	Detail		뒤로
 Classic cartoons	Categories		고전 만화
 Documentaries	Categories		다큐멘터리
 Play	Detail		재생
-technology review	Categories		기술 리뷰
 Details	Grid		세부 정보
+technology review	Categories		기술 리뷰
 Continue watching	Window		이어서 보기
 %done% of %total%	Window		%total% 중 %done%
 Getting the video ready	Player		동영상 준비 중
@@ -45,6 +46,7 @@ Search	Window		검색
 science explained	Categories		과학 설명
 Download	Grid		다운로드
 official music video	Categories		공식 뮤직비디오
+Movies	Window		영화
 The video could not be downloaded	Window		동영상을 다운로드할 수 없습니다
 Looking for the videos…	Window		동영상을 찾는 중…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# 한 줄에 상단 막대의 탭 하나: 이름 = YouTube에서 검색할 내용

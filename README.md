@@ -27,6 +27,18 @@ AC100.
 - **Your videos**: drop a folder on the window and it becomes a tab of the
   videos in it, newest first, with their length and a picture (from `ffprobe`
   and `ffmpeg`, when they are installed). Drop a video to play it.
+- **Library**: the films and series in the folders you dropped get the
+  **Movies** and **TV series** tabs. Their names are read from the files
+  (`Title (1968)`, `Title.1968.720p`, `Show.S01E03`, `Show - 1x03`, or a
+  `Season 1` folder), and, with a key of [TMDB](https://www.themoviedb.org)
+  in `~/config/settings/Cinema/tmdb_key` (an API key or a read access token,
+  both free), they get posters, plots, casts and the names of the episodes,
+  kept for a month so that the library opens without the network too.
+  A series opens its episodes, with the next one to watch chosen.
+- **Player**: the videos play in Cinema, from where they were left. A check
+  marks what was watched, a red bar what was started. Space pauses, the
+  arrows go back and on by 10 seconds and change the volume, Esc closes,
+  M plays the video in MediaPlayer instead.
 - **BitTorrent**: paste a magnet link in the search field, or drop a
   `.torrent` file on the window: the biggest video it shares is downloaded with
   `aria2c` to the **Downloaded** tab, with its progress in a notification.
@@ -99,6 +111,10 @@ for example `~/config/non-packaged/apps/Cinema/`, and the catalogs of
 
 To translate: `make catkeys` writes `locales/en.catkeys`, and
 `tools/update-catkeys.py <language>` brings a translation up to date with it.
+
+## Credits
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## License
 

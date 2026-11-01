@@ -1,13 +1,14 @@
-1	french	application/x-vnd.atomozero-Cinema	4274214656
+1	french	application/x-vnd.atomozero-Cinema	1485132134
 YouTube could not be reached: is the network on?	Window		Impossible de joindre YouTube : le réseau est-il actif ?
+TV series	Window		Séries
 Downloaded	Detail		Downloaded
 full documentary	Categories		documentaire complet
 Add this channel to the tabs	Categories		Ajouter cette chaîne aux onglets
 OK	Window		OK
 Show the latest videos	Grid		Afficher les dernières vidéos
 Music	Categories		Musique
-Video downloaded	Window		Vidéo téléchargée
 Play	Grid		Lire
+Video downloaded	Window		Vidéo téléchargée
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema a besoin de yt-dlp et python3, et de cinema-helper.py à côté
 Download	Detail		Download
 Downloaded	Window		Téléchargés
@@ -24,8 +25,8 @@ Back	Detail		Back
 Classic cartoons	Categories		Dessins animés classiques
 Documentaries	Categories		Documentaires
 Play	Detail		Play
-technology review	Categories		test technologie
 Details	Grid		Details
+technology review	Categories		test technologie
 Continue watching	Window		Reprendre
 %done% of %total%	Window		%done% sur %total%
 Getting the video ready	Player		Préparation de la vidéo
@@ -45,6 +46,7 @@ Search	Window		Rechercher
 science explained	Categories		science expliquée
 Download	Grid		Télécharger
 official music video	Categories		clip officiel
+Movies	Window		Films
 The video could not be downloaded	Window		Impossible de télécharger la vidéo
 Looking for the videos…	Window		Recherche des vidéos…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Un onglet de la barre du haut par ligne : nom = ce qu'il faut chercher sur YouTube

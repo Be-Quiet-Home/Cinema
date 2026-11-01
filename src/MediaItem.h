@@ -39,10 +39,13 @@ struct MediaItem {
 	BBitmap*	picture;		// may be NULL
 	int32		progress;		// of its download, or -1
 	BString		status;			// of its download: done, speed, time left
+	bool		watched;		// played to the end
+	int32		resume;			// how far it was played, in thousandths
 	bool		downloaded;
 
 				MediaItem() : duration(0), year(0), views(0), rating(0),
-					picture(NULL), progress(-1), downloaded(false) {}
+					picture(NULL), progress(-1), watched(false), resume(0),
+					downloaded(false) {}
 };
 
 

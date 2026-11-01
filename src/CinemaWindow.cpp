@@ -433,6 +433,7 @@ CinemaWindow::_RemoveCategory(int32 index)
 std::vector<MediaItem>
 CinemaWindow::_Videos(BMessage* message)
 {
+	std::map<BString, Positions::Position> positions = Positions::All();
 	std::vector<MediaItem> videos;
 	const char* id;
 	for (int32 i = 0; message->FindString("id", i, &id) == B_OK; i++) {
@@ -450,6 +451,13 @@ CinemaWindow::_Videos(BMessage* message)
 		video.poster = message->GetString("poster", i, "");
 		video.thumbnail = message->GetString("thumbnail", i, "");
 		fItemProviders[video.id] = video.provider;
+		auto position = positions.find(video.id);
+		if (position != positions.end()) {
+			video.watched = position->second.watched;
+			if (position->second.duration > 0)
+				video.resume = (int32)(position->second.position * 1000
+					/ position->second.duration);
+		}
 		if (!video.channelId.IsEmpty())
 			fChannelProviders[video.channelId] = video.provider;
 		video.downloaded = fDownloaded.count(video.id) > 0;
@@ -488,8 +496,18 @@ CinemaWindow::_ShowResults(BMessage* message)
 	fGrid->SetVideos(videos);
 	_Thumbnails(videos, fGeneration);
 
-	// the first one is chosen already
+	// the first one is chosen already, or, in the episodes of a series,
+	// the next one to watch
 	fWanted = videos[0].id;
+	if (fChannelId.StartsWith("series:")) {
+		for (const MediaItem& video : videos) {
+			if (!video.watched) {
+				fWanted = video.id;
+				fGrid->Select(video.id);
+				break;
+			}
+		}
+	}
 	_PrefetchWanted();
 }
 
@@ -1043,6 +1061,12 @@ CinemaWindow::MessageReceived(BMessage* message)
 			const char* provider = message->GetString("provider", NULL);
 			if (provider != NULL && provider[0] != '\0')
 				fItemProviders[id] = provider;
+			if (strcmp(message->GetString("kind", ""), "series") == 0) {
+				// not something to play: its episodes
+				fChannelProviders[id] = provider != NULL ? provider : "library";
+				_ShowChannel(title.String(), id.String());
+				break;
+			}
 			const char* path = message->GetString("path", NULL);
 			auto downloaded = fDownloaded.find(id);
 			if (path == NULL && downloaded != fDownloaded.end()
@@ -1456,6 +1480,24 @@ CinemaWindow::_AddFolder(const char* path)
 	category.provider = "local";
 	category.channel = path;
 	fCategories.push_back(category);
+
+	// the library of what the folders hold, once
+	bool library = false;
+	for (const Category& existing : fCategories)
+		if (existing.provider == "library")
+			library = true;
+	if (!library) {
+		Category movies;
+		movies.name = B_TRANSLATE("Movies");
+		movies.provider = "library";
+		movies.channel = "movies";
+		fCategories.push_back(movies);
+		Category series;
+		series.name = B_TRANSLATE("TV series");
+		series.provider = "library";
+		series.channel = "series";
+		fCategories.push_back(series);
+	}
 	SaveCategories(fCategories);
 	fCategoryBar->SetCategories(fCategories);
 	fHomeLoaded = false;
@@ -1527,5 +1569,8 @@ CinemaWindow::_ClosePlayer(bool save)
 	fPlayerShown = false;
 	fCards->SetVisibleItem(fPlayerReturn);
 	fCard = fPlayerReturn;
+	Positions::Position position = Positions::Get(fPlayingId);
+	fGrid->SetWatched(fPlayingId, position.watched, position.duration > 0
+		? (int32)(position.position * 1000 / position.duration) : 0);
 	_FocusContent();
 }

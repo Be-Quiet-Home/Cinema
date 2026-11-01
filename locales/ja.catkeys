@@ -1,13 +1,14 @@
-1	japanese	application/x-vnd.atomozero-Cinema	4274214656
+1	japanese	application/x-vnd.atomozero-Cinema	1485132134
 YouTube could not be reached: is the network on?	Window		YouTube に接続できません。ネットワークはオンになっていますか?
+TV series	Window		テレビシリーズ
 Downloaded	Detail		ダウンロード済み
 full documentary	Categories		ドキュメンタリー 全編
 Add this channel to the tabs	Categories		このチャンネルをタブに追加
 OK	Window		OK
 Show the latest videos	Grid		最新の動画を表示
 Music	Categories		音楽
-Video downloaded	Window		動画をダウンロードしました
 Play	Grid		再生
+Video downloaded	Window		動画をダウンロードしました
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema には yt-dlp と python3、そして同じ場所に cinema-helper.py が必要です
 Download	Detail		ダウンロード
 Downloaded	Window		ダウンロード済み
@@ -24,8 +25,8 @@ Back	Detail		戻る
 Classic cartoons	Categories		名作アニメ
 Documentaries	Categories		ドキュメンタリー
 Play	Detail		再生
-technology review	Categories		テクノロジー レビュー
 Details	Grid		詳細
+technology review	Categories		テクノロジー レビュー
 Continue watching	Window		続きを見る
 %done% of %total%	Window		%done% / %total%
 Getting the video ready	Player		動画を準備中
@@ -45,6 +46,7 @@ Search	Window		検索
 science explained	Categories		科学 解説
 Download	Grid		ダウンロード
 official music video	Categories		公式ミュージックビデオ
+Movies	Window		映画
 The video could not be downloaded	Window		動画をダウンロードできませんでした
 Looking for the videos…	Window		動画を検索中…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# 上部バーのタブを1行に1つ: 名前 = YouTube で検索する内容

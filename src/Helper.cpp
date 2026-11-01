@@ -12,6 +12,8 @@
 #include <unistd.h>
 
 #include <Autolock.h>
+#include <LocaleRoster.h>
+#include <Message.h>
 
 #include "Json.h"
 #include "Messages.h"
@@ -60,6 +62,17 @@ Helper::Start(const char* script, const char* cache)
 		return B_ERROR;
 	}
 
+	// the language of the system, for what the sources write: "it",
+	// "pt-BR"
+	BString language("en");
+	BMessage languages;
+	const char* preferred;
+	if (BLocaleRoster::Default()->GetPreferredLanguages(&languages) == B_OK
+		&& languages.FindString("language", &preferred) == B_OK) {
+		language = preferred;
+		language.ReplaceAll('_', '-');
+	}
+
 	fProcess = fork();
 	if (fProcess < 0)
 		return B_ERROR;
@@ -73,7 +86,8 @@ Helper::Start(const char* script, const char* cache)
 		close(toHelper[1]);
 		close(fromHelper[0]);
 		close(fromHelper[1]);
-		execlp("python3", "python3", script, cache, (char*)NULL);
+		execlp("python3", "python3", script, cache, language.String(),
+			(char*)NULL);
 		_exit(127);
 	}
 

@@ -175,6 +175,32 @@ VideoGrid::SetStatus(const char* id, const char* status)
 
 
 void
+VideoGrid::SetWatched(const char* id, bool watched, int32 resume)
+{
+	for (size_t i = 0; i < fVideos.size(); i++) {
+		if (fVideos[i].id == id) {
+			fVideos[i].watched = watched;
+			fVideos[i].resume = resume;
+			Invalidate(_TileFrame(i));
+			return;
+		}
+	}
+}
+
+
+void
+VideoGrid::Select(const char* id)
+{
+	for (size_t i = 0; i < fVideos.size(); i++) {
+		if (fVideos[i].id == id) {
+			_Select(i);
+			return;
+		}
+	}
+}
+
+
+void
 VideoGrid::SetDownloaded(const char* id, bool downloaded)
 {
 	for (size_t i = 0; i < fVideos.size(); i++) {
@@ -392,8 +418,16 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 	FillRound(this, picture, kRadius, kCard);
 	if (video.picture != NULL) {
 		SetDrawingMode(B_OP_COPY);
-		DrawBitmap(video.picture, video.picture->Bounds(), picture,
-			B_FILTER_BITMAP_BILINEAR);
+		BRect source = video.picture->Bounds();
+		BRect target = picture;
+		float aspect = (source.Width() + 1) / (source.Height() + 1);
+		if (aspect < 1.4f) {
+			// a poster, upright: whole, in the middle, not stretched
+			float width = (picture.Height() + 1) * aspect;
+			target.left = picture.left + roundf((picture.Width() - width) / 2);
+			target.right = target.left + width - 1;
+		}
+		DrawBitmap(video.picture, source, target, B_FILTER_BITMAP_BILINEAR);
 	} else {
 		BRect play(0, 0, 36, 36);
 		play.OffsetTo(picture.left + (picture.Width() - 36) / 2,
@@ -411,6 +445,34 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 	}
 	if (selected)
 		StrokeRound(this, picture.InsetByCopy(-3, -3), kRadius + 2, 2, kAccent);
+
+	if (video.resume > 0 && !video.watched && video.progress < 0) {
+		// how far it was watched, red as on the video sites
+		BRect bar(picture.left, picture.bottom - 3, picture.right,
+			picture.bottom);
+		SetDrawingMode(B_OP_ALPHA);
+		SetHighColor(0, 0, 0, 160);
+		FillRect(bar);
+		bar.right = bar.left + bar.Width() * std::min<int32>(video.resume,
+			1000) / 1000;
+		SetDrawingMode(B_OP_COPY);
+		SetHighColor(229, 57, 53);
+		FillRect(bar);
+	}
+	if (video.watched) {
+		// a check in the corner: seen already
+		BRect mark(picture.right - 26, picture.top + 6, picture.right - 6,
+			picture.top + 26);
+		FillRound(this, mark, 10, (rgb_color){ 0, 0, 0, 190 });
+		SetDrawingMode(B_OP_COPY);
+		SetHighColor(kText);
+		SetPenSize(2);
+		StrokeLine(BPoint(mark.left + 5, mark.top + 10),
+			BPoint(mark.left + 9, mark.top + 14));
+		StrokeLine(BPoint(mark.left + 9, mark.top + 14),
+			BPoint(mark.left + 15, mark.top + 6));
+		SetPenSize(1);
+	}
 
 	if (video.progress >= 0) {
 		// the download, as a bar along the bottom of the picture

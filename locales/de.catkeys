@@ -1,13 +1,14 @@
-1	german	application/x-vnd.atomozero-Cinema	4274214656
+1	german	application/x-vnd.atomozero-Cinema	1485132134
 YouTube could not be reached: is the network on?	Window		YouTube ist nicht erreichbar: Ist das Netzwerk an?
+TV series	Window		Serien
 Downloaded	Detail		Downloaded
 full documentary	Categories		ganze Dokumentation
 Add this channel to the tabs	Categories		Diesen Kanal zu den Reitern hinzufügen
 OK	Window		OK
 Show the latest videos	Grid		Neueste Videos anzeigen
 Music	Categories		Musik
-Video downloaded	Window		Video heruntergeladen
 Play	Grid		Abspielen
+Video downloaded	Window		Video heruntergeladen
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema braucht yt-dlp und python3, und cinema-helper.py daneben
 Download	Detail		Download
 Downloaded	Window		Heruntergeladen
@@ -24,8 +25,8 @@ Back	Detail		Back
 Classic cartoons	Categories		Zeichentrickklassiker
 Documentaries	Categories		Dokumentationen
 Play	Detail		Play
-technology review	Categories		Technik Test
 Details	Grid		Details
+technology review	Categories		Technik Test
 Continue watching	Window		Weiterschauen
 %done% of %total%	Window		%done% von %total%
 Getting the video ready	Player		Das Video wird vorbereitet
@@ -45,6 +46,7 @@ Search	Window		Suchen
 science explained	Categories		Wissenschaft erklärt
 Download	Grid		Herunterladen
 official music video	Categories		offizielles Musikvideo
+Movies	Window		Filme
 The video could not be downloaded	Window		Das Video konnte nicht heruntergeladen werden
 Looking for the videos…	Window		Suche nach Videos…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Ein Reiter der oberen Leiste pro Zeile: Name = was auf YouTube gesucht wird

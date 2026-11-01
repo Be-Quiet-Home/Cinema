@@ -1,13 +1,14 @@
-1	English	application/x-vnd.atomozero-Cinema	4274214656
+1	English	application/x-vnd.atomozero-Cinema	1485132134
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
+TV series	Window		TV series
 Downloaded	Detail		Downloaded
 full documentary	Categories		full documentary
 Add this channel to the tabs	Categories		Add this channel to the tabs
 OK	Window		OK
 Show the latest videos	Grid		Show the latest videos
 Music	Categories		Music
-Video downloaded	Window		Video downloaded
 Play	Grid		Play
+Video downloaded	Window		Video downloaded
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema needs yt-dlp and python3, and cinema-helper.py next to it
 Download	Detail		Download
 Downloaded	Window		Downloaded
@@ -24,8 +25,8 @@ Back	Detail		Back
 Classic cartoons	Categories		Classic cartoons
 Documentaries	Categories		Documentaries
 Play	Detail		Play
-technology review	Categories		technology review
 Details	Grid		Details
+technology review	Categories		technology review
 Continue watching	Window		Continue watching
 %done% of %total%	Window		%done% of %total%
 Getting the video ready	Player		Getting the video ready
@@ -45,6 +46,7 @@ Search	Window		Search
 science explained	Categories		science explained
 Download	Grid		Download
 official music video	Categories		official music video
+Movies	Window		Movies
 The video could not be downloaded	Window		The video could not be downloaded
 Looking for the videos…	Window		Looking for the videos…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# One tab of the top bar per line: name = what to search on YouTube

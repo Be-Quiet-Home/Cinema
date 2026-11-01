@@ -77,6 +77,8 @@ output = threading.Lock()
 CACHE_TIME = 6 * 60 * 60
 DETAILS_CACHE_TIME = 24 * 60 * 60
 cache = sys.argv[1] if len(sys.argv) > 1 else None
+# the language of the system, as "it" or "pt-BR", for what TMDB writes
+LANGUAGE = sys.argv[2] if len(sys.argv) > 2 else "en"
 
 DEFAULT_PROVIDER = "youtube"
 PROVIDERS = {}
@@ -869,8 +871,8 @@ class LocalProvider(Provider):
 	name = "Files"
 	kinds = ("channel", "details", "find")
 
-	DEPTH = 3
-	LIMIT = 500
+	DEPTH = 4
+	LIMIT = 2000
 	# what is not known yet is found this long, the rest the next time
 	BUDGET = 6
 
@@ -1010,6 +1012,360 @@ register(PeerTubeProvider)
 if shutil.which("aria2c"):
 	register(TorrentProvider)
 register(LocalProvider)
+
+
+class LibraryProvider(Provider):
+	"""The films and the series in the folders of the local tabs, known by
+	the names of their files and, with a key, by TMDB: posters, plots,
+	casts, the names of the episodes.
+
+	Its channels are "movies", "series", and "series:<key>" for the
+	episodes of one; a film or an episode is its path, a series
+	"series:<key>". The key of TMDB is in the settings, Cinema/tmdb_key.
+	"""
+
+	id = "library"
+	name = "Library"
+	kinds = ("channel", "details", "find")
+
+	API = "https://api.themoviedb.org/3"
+	IMAGES = "https://image.tmdb.org/t/p/"
+	TMDB_CACHE_TIME = 30 * 24 * 60 * 60
+
+	# what the names of releases add after the title
+	EXTRA = re.compile(r"\b(2160p|1080p|720p|576p|480p|4k|uhd|hdr|"
+		r"web[ -]?dl|webrip|web|bluray|blu[ -]?ray|brrip|bdrip|dvdrip|"
+		r"dvd|hdtv|hdrip|x264|x265|h ?264|h ?265|hevc|avc|aac\d?|ac3|"
+		r"ddp?\d?|dts|truehd|atmos|ita|eng|multi|subs?|proper|repack|"
+		r"extended|remastered|unrated|10bit|8bit)\b.*$", re.IGNORECASE)
+	EPISODES = (
+		re.compile(r"^(?P<title>.*?)[\s._-]*s(?P<season>\d{1,2})"
+			r"[\s._-]*e(?P<episode>\d{1,3})", re.IGNORECASE),
+		re.compile(r"^(?P<title>.*?)[\s._-]*(?P<season>\d{1,2})x"
+			r"(?P<episode>\d{2,3})\b", re.IGNORECASE),
+	)
+	SEASON_FOLDER = re.compile(r"^(season|stagione|staffel|saison|"
+		r"temporada|s)[\s._-]*(?P<season>\d{1,2})$", re.IGNORECASE)
+	EPISODE_ONLY = re.compile(r"^(e|ep|episode|episodio|folge)?[\s._-]*"
+		r"(?P<episode>\d{1,3})\b", re.IGNORECASE)
+	YEAR = re.compile(r"^(?P<title>.*?)[\s._(\[-]+(?P<year>(19|20)\d{2})"
+		r"([\s._)\]-]|$)")
+
+	def __init__(self):
+		self.local = None
+		self.lock = threading.Lock()
+
+	# the files
+
+	@staticmethod
+	def tidy(text):
+		text = re.sub(r"\[[^\]]*\]|\{[^}]*\}", " ", text)
+		text = re.sub(r"[._]+", " ", text)
+		text = LibraryProvider.EXTRA.sub("", text)
+		return re.sub(r"\s+", " ", text).strip(" -")
+
+	def parse(self, path):
+		"""What a file is, by its name and its folders: a film with its
+		title and year, or an episode with its series, season and
+		number."""
+		name = os.path.splitext(os.path.basename(path))[0]
+		folder = os.path.basename(os.path.dirname(path))
+		parent = os.path.basename(os.path.dirname(os.path.dirname(path)))
+		for pattern in self.EPISODES:
+			found = pattern.match(name)
+			if found:
+				title = self.tidy(found.group("title"))
+				if not title:
+					season_folder = self.SEASON_FOLDER.match(folder)
+					title = self.tidy(parent if season_folder else folder)
+				return {"kind": "episode", "series": title,
+					"season": int(found.group("season")),
+					"episode": int(found.group("episode"))}
+		season_folder = self.SEASON_FOLDER.match(folder)
+		episode_only = self.EPISODE_ONLY.match(name)
+		if season_folder and episode_only:
+			return {"kind": "episode", "series": self.tidy(parent),
+				"season": int(season_folder.group("season")),
+				"episode": int(episode_only.group("episode"))}
+		found = self.YEAR.match(name)
+		if found and self.tidy(found.group("title")):
+			return {"kind": "movie", "title": self.tidy(found.group("title")),
+				"year": int(found.group("year"))}
+		return {"kind": "movie", "title": self.tidy(name) or name, "year": 0}
+
+	@staticmethod
+	def folders():
+		"""The folders of the local tabs, from the categories file."""
+		home = os.path.expanduser("~")
+		path = os.path.join(home, "config", "settings", "Cinema",
+			"categories")
+		folders = []
+		try:
+			with open(path, encoding="utf-8") as file:
+				for line in file:
+					found = re.search(r"=\s*@local\s+channel:(.+)$",
+						line.strip())
+					if found and os.path.isdir(found.group(1).strip()):
+						folders.append(found.group(1).strip())
+		except OSError:
+			pass
+		return folders
+
+	def files(self):
+		if self.local is None:
+			self.local = PROVIDERS.get("local") or LocalProvider()
+		found = []
+		for folder in self.folders():
+			for path in self.local.videos(folder):
+				if path not in found:
+					found.append(path)
+		return found
+
+	# TMDB
+
+	@staticmethod
+	def key():
+		path = os.path.join(os.path.expanduser("~"), "config", "settings",
+			"Cinema", "tmdb_key")
+		try:
+			with open(path, encoding="utf-8") as file:
+				return file.read().strip()
+		except OSError:
+			return ""
+
+	def tmdb(self, path, query=None):
+		"""An answer of TMDB, from the cache when it is there."""
+		key = self.key()
+		if not key:
+			return None
+		query = dict(query or {}, language=LANGUAGE)
+		name = path + "?" + urllib.parse.urlencode(sorted(query.items()))
+		cached_path = None
+		if cache:
+			cached_path = os.path.join(cache, "tmdb-%s.json"
+				% hashlib.sha1(name.encode()).hexdigest()[:16])
+			try:
+				if time.time() - os.path.getmtime(cached_path) \
+						< self.TMDB_CACHE_TIME:
+					with open(cached_path, encoding="utf-8") as file:
+						return json.load(file)
+			except (OSError, ValueError):
+				pass
+		headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+		# a read access token is long, an API key short
+		if len(key) > 40:
+			headers["Authorization"] = "Bearer " + key
+		else:
+			query["api_key"] = key
+		request = urllib.request.Request("%s%s?%s" % (self.API, path,
+			urllib.parse.urlencode(query)), headers=headers)
+		try:
+			with urllib.request.urlopen(request, timeout=30) as response:
+				response = json.load(response)
+		except Exception:
+			return None
+		if cached_path:
+			try:
+				with open(cached_path + ".part", "w", encoding="utf-8") as file:
+					json.dump(response, file)
+				os.replace(cached_path + ".part", cached_path)
+			except OSError:
+				pass
+		return response
+
+	def image(self, path, size="w342"):
+		return self.IMAGES + size + path if path else ""
+
+	def movie_info(self, title, year):
+		query = {"query": title}
+		if year:
+			query["year"] = year
+		found = self.tmdb("/search/movie", query)
+		results = (found or {}).get("results") or []
+		if not results and year:
+			found = self.tmdb("/search/movie", {"query": title})
+			results = (found or {}).get("results") or []
+		if not results:
+			return None
+		return self.tmdb("/movie/%d" % results[0]["id"],
+			{"append_to_response": "credits"})
+
+	def series_info(self, name):
+		found = self.tmdb("/search/tv", {"query": name})
+		results = (found or {}).get("results") or []
+		if not results:
+			return None
+		return self.tmdb("/tv/%d" % results[0]["id"],
+			{"append_to_response": "credits"})
+
+	def season_info(self, series_id, season):
+		return self.tmdb("/tv/%d/season/%d" % (series_id, season)) or {}
+
+	@staticmethod
+	def people(info):
+		cast = ((info or {}).get("credits") or {}).get("cast") or []
+		return ", ".join(person.get("name", "") for person in cast[:5])
+
+	@staticmethod
+	def genres(info):
+		return ", ".join(genre.get("name", "")
+			for genre in (info or {}).get("genres") or [])
+
+	# the items
+
+	def picture(self, path):
+		"""A frame of a file, when TMDB has no picture for it."""
+		item = self.local.item(path, True) if self.local else None
+		return item or {}
+
+	def movie(self, path, details=False):
+		parsed = self.parse(path)
+		info = self.movie_info(parsed["title"], parsed.get("year"))
+		frame = {} if info and info.get("poster_path") else self.picture(path)
+		year = as_int(str((info or {}).get("release_date") or "")[:4],
+			parsed.get("year") or 0)
+		description = (info or {}).get("overview") or ""
+		if details and info:
+			lines = [description, "", self.genres(info), self.people(info)]
+			description = "\n".join(line for line in lines if line is not None)
+		picture = self.image((info or {}).get("poster_path")) \
+			or frame.get("thumbnail", "")
+		return {
+			"provider": self.id, "kind": "movie", "id": path,
+			"title": clean((info or {}).get("title") or parsed["title"]),
+			"description": multiline(description) if details
+				else clean(description),
+			"channel": clean(self.genres(info)) if info else "",
+			"channel_id": "",
+			"duration": as_int((info or {}).get("runtime"), 0) * 60
+				or as_int(frame.get("duration"), 0),
+			"year": year, "date": "", "views": 0,
+			"rating": float((info or {}).get("vote_average") or 0),
+			"poster": picture, "thumbnail": picture,
+			"season": 0, "episode": 0,
+		}
+
+	def episodes(self):
+		"""The episodes, by series: {key: (name, [(season, episode, path)])}."""
+		series = {}
+		for path in self.files():
+			parsed = self.parse(path)
+			if parsed["kind"] != "episode" or not parsed["series"]:
+				continue
+			key = re.sub(r"[^a-z0-9]+", "-", parsed["series"].lower()).strip("-")
+			entry = series.setdefault(key, (parsed["series"], []))
+			entry[1].append((parsed["season"], parsed["episode"], path))
+		for name, files in series.values():
+			files.sort()
+		return series
+
+	def series_item(self, key, name, files, details=False):
+		info = self.series_info(name)
+		picture = self.image((info or {}).get("poster_path"))
+		if not picture and files:
+			picture = self.picture(files[0][2]).get("thumbnail", "")
+		description = (info or {}).get("overview") or ""
+		if details and info:
+			description = "\n".join([description, "", self.genres(info),
+				self.people(info)])
+		seasons = len(set(season for season, _, _ in files))
+		return {
+			"provider": self.id, "kind": "series", "id": "series:" + key,
+			"title": clean((info or {}).get("name") or name),
+			"description": multiline(description) if details
+				else clean(description),
+			"channel": "%d × %d" % (seasons, len(files)),
+			"channel_id": "",
+			"duration": 0,
+			"year": as_int(str((info or {}).get("first_air_date") or "")[:4],
+				0),
+			"date": "", "views": 0,
+			"rating": float((info or {}).get("vote_average") or 0),
+			"poster": picture, "thumbnail": picture,
+			"season": seasons, "episode": len(files),
+		}
+
+	def episode_items(self, key, name, files):
+		info = self.series_info(name)
+		seasons = {}
+		items = []
+		for season, episode, path in files:
+			found = {}
+			if info:
+				if season not in seasons:
+					seasons[season] = {e.get("episode_number"): e for e in
+						self.season_info(info["id"], season).get("episodes")
+						or []}
+				found = seasons[season].get(episode) or {}
+			frame = {} if found.get("still_path") else self.picture(path)
+			picture = self.image(found.get("still_path"), "w300") \
+				or frame.get("thumbnail", "")
+			title = "%dx%02d" % (season, episode)
+			if found.get("name"):
+				title += " · " + found["name"]
+			items.append({
+				"provider": self.id, "kind": "episode", "id": path,
+				"title": clean(title),
+				"description": multiline(found.get("overview") or ""),
+				"channel": clean((info or {}).get("name") or name),
+				"channel_id": "series:" + key,
+				"duration": as_int(found.get("runtime"), 0) * 60
+					or as_int(frame.get("duration"), 0),
+				"year": as_int(str(found.get("air_date") or "")[:4], 0),
+				"date": str(found.get("air_date") or ""), "views": 0,
+				"rating": float(found.get("vote_average") or 0),
+				"poster": picture, "thumbnail": picture,
+				"season": season, "episode": episode,
+			})
+		return items
+
+	def channel(self, channel_id, count):
+		if channel_id == "movies":
+			paths = [path for path in self.files()
+				if self.parse(path)["kind"] == "movie"]
+			# a few at a time: TMDB answers slowly, the AC100 waits
+			from concurrent.futures import ThreadPoolExecutor
+			with ThreadPoolExecutor(4) as pool:
+				items = list(pool.map(self.movie, paths))
+			return sorted(items, key=lambda item: item["title"].lower())
+		series = self.episodes()
+		if channel_id == "series":
+			from concurrent.futures import ThreadPoolExecutor
+			with ThreadPoolExecutor(4) as pool:
+				items = list(pool.map(lambda entry: self.series_item(
+					entry[0], entry[1][0], entry[1][1]), series.items()))
+			return sorted(items, key=lambda item: item["title"].lower())
+		if channel_id.startswith("series:"):
+			key = channel_id[len("series:"):]
+			if key in series:
+				return self.episode_items(key, *series[key])
+		return []
+
+	def details(self, media_id, kind="movie"):
+		if media_id.startswith("series:"):
+			key = media_id[len("series:"):]
+			series = self.episodes()
+			if key not in series:
+				return None
+			return self.series_item(key, *series[key], details=True)
+		if not os.path.isfile(media_id):
+			return None
+		if self.parse(media_id)["kind"] == "episode":
+			parsed = self.parse(media_id)
+			key = re.sub(r"[^a-z0-9]+", "-",
+				parsed["series"].lower()).strip("-")
+			series = self.episodes()
+			for item in self.episode_items(key, *series.get(key,
+					(parsed["series"], []))):
+				if item["id"] == media_id:
+					return item
+		return self.movie(media_id, details=True)
+
+	def find(self, media_id, kind="movie"):
+		return media_id if os.path.isfile(media_id) else None
+
+
+register(LibraryProvider)
 
 
 def job_search(provider, tag, count, query):

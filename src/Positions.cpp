@@ -123,6 +123,17 @@ Get(const char* id)
 }
 
 
+std::map<BString, Position>
+All()
+{
+	BAutolock locker(sLock);
+	std::map<BString, Position> all;
+	for (const Entry& entry : load())
+		all[entry.id] = entry.position;
+	return all;
+}
+
+
 void
 Set(const char* id, bigtime_t position, bigtime_t duration)
 {

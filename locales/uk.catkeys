@@ -1,13 +1,14 @@
-1	ukrainian	application/x-vnd.atomozero-Cinema	4274214656
+1	ukrainian	application/x-vnd.atomozero-Cinema	1485132134
 YouTube could not be reached: is the network on?	Window		Не вдається з'єднатися з YouTube: чи увімкнена мережа?
+TV series	Window		Серіали
 Downloaded	Detail		Завантажено
 full documentary	Categories		повний документальний фільм
 Add this channel to the tabs	Categories		Додати цей канал до вкладок
 OK	Window		Гаразд
 Show the latest videos	Grid		Показати останні відео
 Music	Categories		Музика
-Video downloaded	Window		Відео завантажено
 Play	Grid		Відтворити
+Video downloaded	Window		Відео завантажено
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Для Cinema потрібні yt-dlp і python3, а також cinema-helper.py поруч
 Download	Detail		Завантажити
 Downloaded	Window		Завантажені
@@ -24,8 +25,8 @@ Back	Detail		Назад
 Classic cartoons	Categories		Класичні мультфільми
 Documentaries	Categories		Документальні фільми
 Play	Detail		Відтворити
-technology review	Categories		огляд технологій
 Details	Grid		Подробиці
+technology review	Categories		огляд технологій
 Continue watching	Window		Продовжити перегляд
 %done% of %total%	Window		%done% з %total%
 Getting the video ready	Player		Підготовка відео
@@ -45,6 +46,7 @@ Search	Window		Пошук
 science explained	Categories		наука простими словами
 Download	Grid		Завантажити
 official music video	Categories		офіційний кліп
+Movies	Window		Фільми
 The video could not be downloaded	Window		Не вдалося завантажити відео
 Looking for the videos…	Window		Пошук відео…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Одна вкладка верхньої панелі на рядок: назва = що шукати на YouTube

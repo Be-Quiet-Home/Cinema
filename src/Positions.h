@@ -9,6 +9,8 @@
 #include <OS.h>
 #include <String.h>
 
+#include <map>
+
 
 /*!	Where each video was left, to go on from there, and whether it was
 	watched: kept in the settings (Cinema/positions), one line per video,
@@ -28,6 +30,8 @@ struct Position {
 };
 
 Position	Get(const char* id);
+std::map<BString, Position>	All();
+				// every video, to look up many at once
 void		Set(const char* id, bigtime_t position, bigtime_t duration);
 				// marks it watched when it is near the end
 bigtime_t	ResumeAt(const char* id);
