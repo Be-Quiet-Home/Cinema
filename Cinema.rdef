@@ -14,7 +14,7 @@ resource app_version {
 	variety = B_APPV_DEVELOPMENT,
 	internal = 0,
 	short_info = "Cinema",
-	long_info = "Cinema: videos for children, played by MediaPlayer. ©2026 Andrea Bernardi"
+	long_info = "Cinema: YouTube videos, found with yt-dlp and played by MediaPlayer. ©2026 Andrea Bernardi"
 };
 
 resource vector_icon {

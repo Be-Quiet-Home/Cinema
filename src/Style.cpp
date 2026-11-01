@@ -11,13 +11,12 @@
 
 namespace Style {
 
-const rgb_color kNight = { 22, 24, 38, 255 };
-const rgb_color kNightLight = { 40, 43, 64, 255 };
-const rgb_color kNightDark = { 14, 15, 26, 255 };
-const rgb_color kSun = { 255, 201, 60, 255 };
-const rgb_color kRed = { 232, 64, 64, 255 };
-const rgb_color kWhite = { 255, 255, 255, 255 };
-const rgb_color kMist = { 178, 182, 206, 255 };
+const rgb_color kBackground = { 24, 24, 27, 255 };
+const rgb_color kCard = { 42, 42, 46, 255 };
+const rgb_color kBar = { 17, 17, 19, 255 };
+const rgb_color kAccent = { 82, 148, 232, 255 };
+const rgb_color kText = { 236, 236, 240, 255 };
+const rgb_color kTextDim = { 150, 150, 160, 255 };
 
 
 static void
@@ -43,6 +42,18 @@ FillRound(BView* view, BRect frame, float radius, rgb_color color)
 	_UseAlpha(view);
 	view->SetHighColor(color);
 	view->FillRoundRect(frame, radius, radius);
+}
+
+
+void
+StrokeRound(BView* view, BRect frame, float radius, float width,
+	rgb_color color)
+{
+	_UseAlpha(view);
+	view->SetHighColor(color);
+	view->SetPenSize(width);
+	view->StrokeRoundRect(frame, radius, radius);
+	view->SetPenSize(1);
 }
 
 

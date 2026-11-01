@@ -9,8 +9,11 @@
 #include <algorithm>
 
 #include <Bitmap.h>
+#include <Cursor.h>
 #include <Catalog.h>
+#include <MenuItem.h>
 #include <MessageRunner.h>
+#include <PopUpMenu.h>
 #include <ScrollBar.h>
 #include <Window.h>
 
@@ -25,9 +28,13 @@
 using namespace Style;
 
 
-static const float kMinTileWidth = 280;
-static const float kGap = 24;
-static const float kTitleHeight = 58;
+static const float kMinTileWidth = 260;
+static const float kGap = 20;
+static const float kTitleHeight = 74;
+	// two lines of title, one with the channel
+static const float kTitleSize = 15;
+static const float kChannelSize = 13;
+static const float kRadius = 6;
 
 
 VideoGrid::VideoGrid()
@@ -36,6 +43,7 @@ VideoGrid::VideoGrid()
 		| B_FULL_UPDATE_ON_RESIZE),
 	fSelected(0),
 	fHover(-1),
+	fHoverChannel(-1),
 	fDots(0),
 	fAnimation(NULL)
 {
@@ -75,6 +83,7 @@ VideoGrid::SetVideos(const std::vector<Video>& videos)
 	fVideos = videos;
 	fSelected = 0;
 	fHover = -1;
+	fHoverChannel = -1;
 	fMessage = "";
 	ScrollTo(0, 0);
 	_UpdateScrollBar();
@@ -94,6 +103,35 @@ VideoGrid::SetPicture(const char* id, BBitmap* picture)
 		}
 	}
 	delete picture;
+}
+
+
+void
+VideoGrid::SetProgress(const char* id, int32 progress)
+{
+	for (size_t i = 0; i < fVideos.size(); i++) {
+		if (fVideos[i].id == id) {
+			if (fVideos[i].progress != progress) {
+				fVideos[i].progress = progress;
+				Invalidate(_TileFrame(i));
+			}
+			return;
+		}
+	}
+}
+
+
+void
+VideoGrid::SetDownloaded(const char* id, bool downloaded)
+{
+	for (size_t i = 0; i < fVideos.size(); i++) {
+		if (fVideos[i].id == id) {
+			fVideos[i].downloaded = downloaded;
+			fVideos[i].progress = -1;
+			Invalidate(_TileFrame(i));
+			return;
+		}
+	}
 }
 
 
@@ -154,6 +192,42 @@ VideoGrid::_TileAt(BPoint where) const
 }
 
 
+static float
+line_height(const BFont& font)
+{
+	font_height height;
+	font.GetHeight(&height);
+	return ceilf(height.ascent + height.descent + height.leading);
+}
+
+
+BRect
+VideoGrid::_ChannelFrame(int32 index) const
+{
+	const Video& video = fVideos[index];
+	if (video.channel.IsEmpty() || video.channelId.IsEmpty())
+		return BRect();
+	BRect frame = _TileFrame(index);
+	BFont font = Font(kChannelSize);
+	float top = frame.bottom - kTitleHeight + 8
+		+ 2 * line_height(Font(kTitleSize)) + 4;
+	float width = std::min(frame.Width(),
+		font.StringWidth(video.channel.String()));
+	return BRect(frame.left, top, frame.left + width,
+		top + line_height(font));
+}
+
+
+int32
+VideoGrid::_ChannelAt(BPoint where) const
+{
+	int32 index = _TileAt(where);
+	if (index >= 0 && _ChannelFrame(index).Contains(where))
+		return index;
+	return -1;
+}
+
+
 void
 VideoGrid::_UpdateScrollBar()
 {
@@ -181,14 +255,14 @@ void
 VideoGrid::Draw(BRect updateRect)
 {
 	SetDrawingMode(B_OP_COPY);
-	SetHighColor(kNight);
+	SetHighColor(kBackground);
 	FillRect(updateRect);
 
 	BRect bounds = Bounds();
 	if (fVideos.empty()) {
 		DrawCentered(this, fMessage.String(), BRect(bounds.left,
 			bounds.top + bounds.Height() / 2 - 40, bounds.right,
-			bounds.top + bounds.Height() / 2), Font(26), kMist);
+			bounds.top + bounds.Height() / 2), Font(18), kTextDim);
 	} else {
 		for (size_t i = 0; i < fVideos.size(); i++) {
 			BRect frame = _TileFrame(i);
@@ -226,10 +300,7 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 
 	BRect picture(frame.left, frame.top, frame.right,
 		frame.bottom - kTitleHeight);
-	if (selected) {
-		FillRound(this, picture.InsetByCopy(-5, -5), 16, kSun);
-	}
-	FillRound(this, picture, 12, kNightLight);
+	FillRound(this, picture, kRadius, kCard);
 	if (video.picture != NULL) {
 		SetDrawingMode(B_OP_COPY);
 		DrawBitmap(video.picture, video.picture->Bounds(), picture,
@@ -238,32 +309,64 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 		BRect play(0, 0, 36, 36);
 		play.OffsetTo(picture.left + (picture.Width() - 36) / 2,
 			picture.top + (picture.Height() - 36) / 2);
-		DrawPlay(this, play, kMist);
+		DrawPlay(this, play, kTextDim);
 	}
-	if (hover || selected) {
-		// a big play button in the middle
-		float size = std::min(picture.Width(), picture.Height()) * 0.32f;
+	if (hover) {
+		// a play button in the middle, under the mouse only
+		float size = std::min(picture.Width(), picture.Height()) * 0.22f;
 		BRect circle(0, 0, size, size);
 		circle.OffsetTo(picture.left + (picture.Width() - size) / 2,
 			picture.top + (picture.Height() - size) / 2);
-		FillRound(this, circle, size / 2, (rgb_color){ 232, 64, 64, 230 });
-		DrawPlay(this, circle.InsetByCopy(size * 0.3f, size * 0.28f), kWhite);
+		FillRound(this, circle, size / 2, (rgb_color){ 0, 0, 0, 150 });
+		DrawPlay(this, circle.InsetByCopy(size * 0.32f, size * 0.3f), kText);
+	}
+	if (selected)
+		StrokeRound(this, picture.InsetByCopy(-3, -3), kRadius + 2, 2, kAccent);
+
+	if (video.progress >= 0) {
+		// the download, as a bar along the bottom of the picture
+		BRect bar(picture.left, picture.bottom - 3, picture.right,
+			picture.bottom);
+		SetDrawingMode(B_OP_ALPHA);
+		SetHighColor(0, 0, 0, 160);
+		FillRect(bar);
+		bar.right = bar.left + bar.Width() * std::min<int32>(video.progress,
+			100) / 100;
+		SetDrawingMode(B_OP_COPY);
+		SetHighColor(kAccent);
+		FillRect(bar);
+	}
+	if (video.downloaded && video.path.IsEmpty()) {
+		// a mark in the other corner: it can be watched offline
+		BRect mark(picture.left + 6, picture.bottom - 24, picture.left + 24,
+			picture.bottom - 6);
+		FillRound(this, mark, 3, (rgb_color){ 0, 0, 0, 200 });
+		SetDrawingMode(B_OP_COPY);
+		SetHighColor(kText);
+		SetPenSize(2);
+		BPoint center(mark.left + mark.Width() / 2, mark.top + 4);
+		StrokeLine(center, center + BPoint(0, 8));
+		StrokeLine(center + BPoint(-4, 4), center + BPoint(0, 8));
+		StrokeLine(center + BPoint(4, 4), center + BPoint(0, 8));
+		StrokeLine(BPoint(mark.left + 4, mark.bottom - 3),
+			BPoint(mark.right - 4, mark.bottom - 3));
+		SetPenSize(1);
 	}
 
 	// the length, in a corner of the picture
-	BFont small = Font(14);
+	BFont small = Font(12, true);
 	BString length = duration_text(video.duration);
-	float width = small.StringWidth(length.String()) + 14;
-	BRect badge(picture.right - 8 - width, picture.bottom - 30,
-		picture.right - 8, picture.bottom - 8);
-	FillRound(this, badge, 6, (rgb_color){ 0, 0, 0, 190 });
-	DrawCentered(this, length.String(), badge, small, kWhite);
+	float width = small.StringWidth(length.String()) + 10;
+	BRect badge(picture.right - 6 - width, picture.bottom - 24,
+		picture.right - 6, picture.bottom - 6);
+	FillRound(this, badge, 3, (rgb_color){ 0, 0, 0, 200 });
+	DrawCentered(this, length.String(), badge, small, kText);
 
 	// the title, on two lines at most
-	BFont font = Font(17, selected);
+	BFont font = Font(kTitleSize);
 	font_height height;
 	font.GetHeight(&height);
-	float lineHeight = ceilf(height.ascent + height.descent + height.leading);
+	float lineHeight = line_height(font);
 	BString rest(video.title);
 	float y = picture.bottom + 8 + height.ascent;
 	for (int line = 0; line < 2 && !rest.IsEmpty(); line++) {
@@ -281,9 +384,26 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 			rest.Remove(0, cut);
 			rest.Trim();
 		}
-		DrawText(this, text.String(), BPoint(frame.left, y), font,
-			selected ? kWhite : kMist);
+		DrawText(this, text.String(), BPoint(frame.left, y), font, kText);
 		y += lineHeight;
+	}
+
+	// the channel, below: a link to its latest videos
+	BRect channel = _ChannelFrame(index);
+	if (channel.IsValid()) {
+		BFont small = Font(kChannelSize);
+		font_height smallHeight;
+		small.GetHeight(&smallHeight);
+		BString name(video.channel);
+		small.TruncateString(&name, B_TRUNCATE_END, frame.Width());
+		bool link = index == fHoverChannel;
+		float baseline = channel.top + smallHeight.ascent;
+		DrawText(this, name.String(), BPoint(channel.left, baseline), small,
+			link ? kText : kTextDim);
+		if (link) {
+			StrokeLine(BPoint(channel.left, baseline + 2),
+				BPoint(channel.right, baseline + 2));
+		}
 	}
 }
 
@@ -294,7 +414,7 @@ VideoGrid::_DrawBusy()
 	BRect bounds = Bounds();
 	SetDrawingMode(B_OP_ALPHA);
 	SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
-	SetHighColor(10, 11, 20, 200);
+	SetHighColor(0, 0, 0, 200);
 	FillRect(bounds);
 
 	float centerY = bounds.top + bounds.Height() / 2;
@@ -304,12 +424,12 @@ VideoGrid::_DrawBusy()
 	BString text(B_TRANSLATE("Getting the video ready"));
 	text << dots;
 	DrawCentered(this, text.String(), BRect(bounds.left, centerY - 60,
-		bounds.right, centerY - 20), Font(30), kWhite);
+		bounds.right, centerY - 20), Font(22, true), kText);
 	BString title(fBusy);
-	BFont font = Font(20, false);
+	BFont font = Font(16);
 	font.TruncateString(&title, B_TRUNCATE_END, bounds.Width() - 80);
 	DrawCentered(this, title.String(), BRect(bounds.left, centerY,
-		bounds.right, centerY + 30), font, kSun);
+		bounds.right, centerY + 30), font, kTextDim);
 }
 
 
@@ -347,7 +467,69 @@ VideoGrid::_Play(int32 index)
 	BMessage play(kMsgPlay);
 	play.AddString("id", fVideos[index].id);
 	play.AddString("title", fVideos[index].title);
+	if (!fVideos[index].path.IsEmpty())
+		play.AddString("path", fVideos[index].path);
 	Window()->PostMessage(&play);
+}
+
+
+void
+VideoGrid::_Download(int32 index)
+{
+	if (index < 0 || index >= (int32)fVideos.size())
+		return;
+	const Video& video = fVideos[index];
+	if (video.downloaded || video.progress >= 0 || !video.path.IsEmpty())
+		return;
+	BMessage download = _DownloadMessage(index);
+	Window()->PostMessage(&download);
+}
+
+
+BMessage
+VideoGrid::_DownloadMessage(int32 index) const
+{
+	const Video& video = fVideos[index];
+	BMessage download(kMsgDownload);
+	download.AddString("id", video.id);
+	download.AddString("title", video.title);
+	download.AddString("channel", video.channel);
+	download.AddString("channel id", video.channelId);
+	download.AddInt32("duration", video.duration);
+	return download;
+}
+
+
+void
+VideoGrid::_ShowMenu(int32 index, BPoint where)
+{
+	const Video& video = fVideos[index];
+	BPopUpMenu* menu = new BPopUpMenu("video", false, false);
+	BMessage* play = new BMessage(kMsgPlay);
+	play->AddString("id", video.id);
+	play->AddString("title", video.title);
+	if (!video.path.IsEmpty())
+		play->AddString("path", video.path);
+	menu->AddItem(new BMenuItem(B_TRANSLATE("Play"), play));
+
+	if (video.path.IsEmpty()) {
+		BMessage* download = new BMessage(_DownloadMessage(index));
+		const char* label = B_TRANSLATE("Download");
+		if (video.downloaded)
+			label = B_TRANSLATE("Already downloaded");
+		else if (video.progress >= 0)
+			label = B_TRANSLATE("Downloading" B_UTF8_ELLIPSIS);
+		BMenuItem* item = new BMenuItem(label, download);
+		item->SetEnabled(!video.downloaded && video.progress < 0);
+		menu->AddItem(item);
+	} else {
+		BMessage* trash = new BMessage(kMsgTrash);
+		trash->AddString("id", video.id);
+		trash->AddString("path", video.path);
+		menu->AddItem(new BMenuItem(B_TRANSLATE("Move to Trash"), trash));
+	}
+	menu->SetTargetForItems(Window());
+	menu->Go(ConvertToScreen(where), true, false, true);
 }
 
 
@@ -372,6 +554,14 @@ VideoGrid::KeyDown(const char* bytes, int32 count)
 		case B_SPACE:
 			_Play(fSelected);
 			break;
+		case 'd':
+		case 'D':
+			_Download(fSelected);
+			break;
+		case 'f':
+		case 'F':
+			Window()->PostMessage(kMsgFullScreen);
+			break;
 		default:
 			BView::KeyDown(bytes, count);
 	}
@@ -382,11 +572,38 @@ void
 VideoGrid::MouseDown(BPoint where)
 {
 	MakeFocus(true);
+	int32 channel = _ChannelAt(where);
+	if (channel >= 0) {
+		BMessage show(kMsgChannel);
+		show.AddString("channel", fVideos[channel].channel);
+		show.AddString("channel id", fVideos[channel].channelId);
+
+		int32 buttons = B_PRIMARY_MOUSE_BUTTON;
+		Window()->CurrentMessage()->FindInt32("buttons", &buttons);
+		if ((buttons & B_SECONDARY_MOUSE_BUTTON) == 0) {
+			Window()->PostMessage(&show);
+			return;
+		}
+		BMessage* add = new BMessage(show);
+		add->what = kMsgAddChannel;
+		BPopUpMenu* menu = new BPopUpMenu("channel", false, false);
+		menu->AddItem(new BMenuItem(B_TRANSLATE("Show the latest videos"),
+			new BMessage(show)));
+		menu->AddItem(new BMenuItem(B_TRANSLATE("Add to the tabs"), add));
+		menu->SetTargetForItems(Window());
+		menu->Go(ConvertToScreen(where), true, false, true);
+		return;
+	}
 	int32 index = _TileAt(where);
 	if (index < 0)
 		return;
 	_Select(index);
-	_Play(index);
+	int32 buttons = B_PRIMARY_MOUSE_BUTTON;
+	Window()->CurrentMessage()->FindInt32("buttons", &buttons);
+	if ((buttons & B_SECONDARY_MOUSE_BUTTON) != 0)
+		_ShowMenu(index, where);
+	else
+		_Play(index);
 }
 
 
@@ -394,6 +611,18 @@ void
 VideoGrid::MouseMoved(BPoint where, uint32 transit,
 	const BMessage* dragMessage)
 {
+	int32 channel = transit == B_EXITED_VIEW ? -1 : _ChannelAt(where);
+	if (channel != fHoverChannel) {
+		if (fHoverChannel >= 0)
+			Invalidate(_ChannelFrame(fHoverChannel).InsetByCopy(-1, -4));
+		fHoverChannel = channel;
+		if (fHoverChannel >= 0)
+			Invalidate(_ChannelFrame(fHoverChannel).InsetByCopy(-1, -4));
+		BCursor cursor(channel >= 0
+			? B_CURSOR_ID_FOLLOW_LINK : B_CURSOR_ID_SYSTEM_DEFAULT);
+		SetViewCursor(&cursor);
+	}
+
 	int32 index = transit == B_EXITED_VIEW ? -1 : _TileAt(where);
 	if (index == fHover)
 		return;

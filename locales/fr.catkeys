@@ -1,0 +1,38 @@
+1	french	application/x-vnd.atomozero-Cinema	3388029105
+YouTube could not be reached: is the network on?	Window		Impossible de joindre YouTube : le réseau est-il actif ?
+Cinema	System name		Cinema
+No videos found	Window		Aucune vidéo trouvée
+full documentary	Categories		documentaire complet
+Technology	Categories		Technologie
+Add this channel to the tabs	Categories		Ajouter cette chaîne aux onglets
+OK	Window		OK
+Show the latest videos	Grid		Afficher les dernières vidéos
+Music	Categories		Musique
+Play	Grid		Lire
+Video downloaded	Window		Vidéo téléchargée
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema a besoin de yt-dlp et python3, et de cinema-helper.py à côté
+Getting the video ready	Grid		Préparation de la vidéo
+Downloading…	Grid		Téléchargement…
+Remove from the tabs	Categories		Retirer des onglets
+Add to the tabs	Grid		Ajouter aux onglets
+science explained	Categories		science expliquée
+Search	Window		Rechercher
+news today	Categories		actualités du jour
+Download	Grid		Télécharger
+official music video	Categories		clip officiel
+The video could not be downloaded	Window		Impossible de télécharger la vidéo
+Looking for the videos…	Window		Recherche des vidéos…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# Un onglet de la barre du haut par ligne : nom = ce qu'il faut chercher sur YouTube
+Science	Categories		Science
+Documentaries	Categories		Documentaires
+No videos downloaded yet: right click a video, or press D	Window		Aucune vidéo téléchargée : clic droit sur une vidéo, ou appuyez sur D
+technology review	Categories		test technologie
+# or name = channel:<id> for the latest videos of a channel	Categories		# ou nom = channel:<id> pour les dernières vidéos d'une chaîne
+MediaPlayer could not be started: %error%	Window		Impossible de lancer MediaPlayer : %error%
+Move to Trash	Grid		Mettre à la corbeille
+Downloaded	Categories		Téléchargées
+Already downloaded	Grid		Déjà téléchargée
+The video could not be moved to the Trash: %error%	Window		Impossible de mettre la vidéo à la corbeille : %error%
+This video can't be played here, try another one.	Window		Cette vidéo ne peut pas être lue ici, essayez-en une autre.
+News	Categories		Actualités
+Type what to look for at the top right	Window		Tapez en haut à droite ce que vous cherchez

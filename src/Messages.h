@@ -8,11 +8,15 @@
 
 enum {
 	// from the helper
-	kMsgResults			= 'rslt',	// "generation", "id", "title", "duration"
+	kMsgResults			= 'rslt',	// "generation", "id", "title", "duration",
+									// "channel", "channel id"
 	kMsgSearchFailed	= 'srfl',	// "generation"
 	kMsgFound			= 'fnd ',	// "id", "url"
 	kMsgLost			= 'lost',	// "id"
 	kMsgHelperGone		= 'gone',
+	kMsgDownloadProgress = 'dwpr',	// "id", "percent"
+	kMsgDownloaded		= 'dwok',	// "id", "path"
+	kMsgDownloadFailed	= 'dwno',	// "id"
 
 	// to and from the worker
 	kMsgThumbnails		= 'thms',	// "generation", "id"...
@@ -21,12 +25,20 @@ enum {
 	kMsgStreamReady		= 'strm',	// "id", "url"
 
 	// in the window
-	kMsgPlay			= 'play',	// "id", "title"
+	kMsgPlay			= 'play',	// "id", "title", "path" if downloaded
+	kMsgDownload		= 'dwnl',	// "id", "title", "channel", "channel id",
+									// "duration"
+	kMsgShowDownloads	= 'dwsh',
+	kMsgTrash			= 'trsh',	// "id", "path": a download to the Trash
 	kMsgSelected		= 'slct',	// "id": chosen, not played yet
 	kMsgPrefetch		= 'pref',	// "id"
 	kMsgCategory		= 'catg',	// "index"
+	kMsgChannel			= 'chan',	// "channel", "channel id"
+	kMsgAddChannel		= 'addc',	// the channel shown, to the tabs
+	kMsgRemoveCategory	= 'rmct',	// "index"
 	kMsgSearchField		= 'sfld',	// the search field was confirmed
 	kMsgAnimate			= 'anim',
+	kMsgFullScreen		= 'fuls',	// F: full screen, or back
 };
 
 

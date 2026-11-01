@@ -6,9 +6,14 @@
 # its standard input and output, one request or answer per line, with the
 # fields separated by tabs:
 #
-#   search <tag> <count> <query>  ->  video <tag> <id> <title> <seconds> ...
+#   search <tag> <count> <query>  ->  video <tag> <id> <title> <seconds>
+#                                           <channel> <channel id> ...
 #                                     done <tag>   (or nothing <tag>)
+#   channel <tag> <count> <id>    ->  the same, for the latest videos of a
+#                                     channel
 #   find <id>                     ->  found <id> <url>   (or lost <id>)
+#   download <id> <folder>        ->  progress <id> <percent> ...
+#                                     saved <id> <path>   (or failed <id>)
 #
 # Loading yt-dlp takes about 9 s on the AC100; this way it happens once.
 # Each request runs on its own thread, so a search does not wait for a video.
@@ -58,13 +63,12 @@ def answer(*fields):
 		sys.stdout.flush()
 
 
-def cached_search(count, query):
-	"""The videos of a search: (id, title, seconds), from the cache when it
-	is recent enough."""
+def cached(name, fetch):
+	"""The videos fetch() gives, from the cache when it is recent enough."""
 	path = None
 	if cache:
-		key = hashlib.sha1(("%d %s" % (count, query)).encode()).hexdigest()
-		path = os.path.join(cache, "search-%s.txt" % key[:16])
+		key = hashlib.sha1(name.encode()).hexdigest()
+		path = os.path.join(cache, "videos-%s.txt" % key[:16])
 		try:
 			if time.time() - os.path.getmtime(path) < CACHE_TIME:
 				with open(path, encoding="utf-8") as file:
@@ -72,16 +76,7 @@ def cached_search(count, query):
 		except (OSError, ValueError):
 			pass
 
-	with yt_dlp.YoutubeDL(dict(OPTIONS, extract_flat="in_playlist")) as ydl:
-		info = ydl.extract_info("ytsearch%d:%s" % (count, query),
-			download=False)
-	videos = []
-	for entry in info.get("entries") or []:
-		duration = entry.get("duration")
-		# a live stream has no duration, and no file to play
-		if entry.get("id") and duration:
-			videos.append([entry["id"], clean(entry.get("title") or ""),
-				str(int(duration))])
+	videos = fetch()
 	if path and videos:
 		with open(path + ".part", "w", encoding="utf-8") as file:
 			for video in videos:
@@ -90,13 +85,45 @@ def cached_search(count, query):
 	return videos
 
 
-def search(tag, count, query):
+def videos_of(url, count, channel=None):
+	"""The videos of a list: (id, title, seconds, channel, channel id)."""
+	options = dict(OPTIONS, extract_flat="in_playlist", playlistend=count)
+	with yt_dlp.YoutubeDL(options) as ydl:
+		info = ydl.extract_info(url, download=False)
+	videos = []
+	for entry in info.get("entries") or []:
+		duration = entry.get("duration")
+		# a live stream has no duration, and no file to play
+		if entry.get("id") and duration:
+			# the videos of a channel only name it once, in the list
+			videos.append([entry["id"], clean(entry.get("title") or ""),
+				str(int(duration)),
+				clean(entry.get("channel") or info.get("channel") or ""),
+				entry.get("channel_id") or info.get("channel_id")
+					or channel or ""])
+	return videos
+
+
+def answer_videos(tag, name, fetch):
 	try:
-		for video in cached_search(count, query):
+		for video in cached(name, fetch):
 			answer("video", tag, *video)
 		answer("done", tag)
 	except Exception:
 		answer("nothing", tag)
+
+
+def search(tag, count, query):
+	answer_videos(tag, "search %d %s" % (count, query),
+		lambda: videos_of("ytsearch%d:%s" % (count, query), count))
+
+
+def channel(tag, count, channel_id):
+	# they change more often than a search: the cache is still worth it
+	# when coming back to the channel a moment later
+	answer_videos(tag, "channel %d %s" % (count, channel_id),
+		lambda: videos_of("https://www.youtube.com/channel/%s/videos"
+			% channel_id, count, channel_id))
 
 
 def find(video):
@@ -120,12 +147,52 @@ def find(video):
 	answer("lost", video)
 
 
+def download(video, folder):
+	url = "https://www.youtube.com/watch?v=" + video
+	last = [-1]
+
+	def progress(status):
+		if status.get("status") != "downloading":
+			return
+		total = status.get("total_bytes") or status.get("total_bytes_estimate")
+		if not total:
+			return
+		percent = int(100 * status.get("downloaded_bytes", 0) / total)
+		if percent != last[0]:
+			last[0] = percent
+			answer("progress", video, str(percent))
+
+	# a single file with sound and picture, as played: nothing to merge
+	options = dict(OPTIONS, format=FORMAT, progress_hooks=[progress],
+		outtmpl=os.path.join(folder, "%(title).150B [%(id)s].%(ext)s"),
+		extractor_args={"youtube": {"player_client": ["android"]}})
+	for attempt in range(2):
+		try:
+			with yt_dlp.YoutubeDL(options) as ydl:
+				info = ydl.extract_info(url, download=True)
+				done = info.get("requested_downloads") or [{}]
+				path = done[0].get("filepath") or ydl.prepare_filename(info)
+			if os.path.exists(path):
+				answer("saved", video, path)
+				return
+		except Exception:
+			pass
+		# the web client, as find() does
+		options["extractor_args"] = {"youtube": {}}
+		options["js_runtimes"] = {"quickjs": {}}
+	answer("failed", video)
+
+
 def serve():
 	answer("ready")
 	for line in sys.stdin:
 		fields = line.rstrip("\n").split("\t")
 		if fields[0] == "search" and len(fields) >= 4:
 			work = (search, (fields[1], int(fields[2]), fields[3]))
+		elif fields[0] == "channel" and len(fields) >= 4:
+			work = (channel, (fields[1], int(fields[2]), fields[3]))
+		elif fields[0] == "download" and len(fields) >= 3:
+			work = (download, (fields[1], fields[2]))
 		elif fields[0] == "find" and len(fields) >= 2:
 			work = (find, (fields[1],))
 		else:

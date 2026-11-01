@@ -102,10 +102,29 @@ Helper::Search(int32 generation, int32 count, const char* query)
 
 
 void
+Helper::Channel(int32 generation, int32 count, const char* id)
+{
+	BString line;
+	line.SetToFormat("channel\t%" B_PRId32 "\t%" B_PRId32 "\t%s", generation,
+		count, id);
+	_Send(line);
+}
+
+
+void
 Helper::Find(const char* id)
 {
 	BString line("find\t");
 	line << id;
+	_Send(line);
+}
+
+
+void
+Helper::Download(const char* id, const char* folder)
+{
+	BString line("download\t");
+	line << id << "\t" << folder;
 	_Send(line);
 }
 
@@ -163,6 +182,8 @@ Helper::_Handle(const BString& line)
 		results.AddString("id", fields.StringAt(2));
 		results.AddString("title", fields.StringAt(3));
 		results.AddInt32("duration", atoi(fields.StringAt(4).String()));
+		results.AddString("channel", fields.StringAt(5));
+		results.AddString("channel id", fields.StringAt(6));
 	} else if ((kind == "done" || kind == "nothing")
 		&& fields.CountStrings() >= 2) {
 		int32 generation = atoi(fields.StringAt(1).String());
@@ -176,6 +197,20 @@ Helper::_Handle(const BString& line)
 		found.AddString("id", fields.StringAt(1));
 		found.AddString("url", fields.StringAt(2));
 		fTarget.SendMessage(&found);
+	} else if (kind == "progress" && fields.CountStrings() >= 3) {
+		BMessage progress(kMsgDownloadProgress);
+		progress.AddString("id", fields.StringAt(1));
+		progress.AddInt32("percent", atoi(fields.StringAt(2).String()));
+		fTarget.SendMessage(&progress);
+	} else if (kind == "saved" && fields.CountStrings() >= 3) {
+		BMessage saved(kMsgDownloaded);
+		saved.AddString("id", fields.StringAt(1));
+		saved.AddString("path", fields.StringAt(2));
+		fTarget.SendMessage(&saved);
+	} else if (kind == "failed" && fields.CountStrings() >= 2) {
+		BMessage failed(kMsgDownloadFailed);
+		failed.AddString("id", fields.StringAt(1));
+		fTarget.SendMessage(&failed);
 	} else if (kind == "lost" && fields.CountStrings() >= 2) {
 		BMessage lost(kMsgLost);
 		lost.AddString("id", fields.StringAt(1));

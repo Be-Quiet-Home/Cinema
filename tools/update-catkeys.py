@@ -11,7 +11,7 @@
 import sys
 
 LANGUAGE_NAMES = {"it": "italian", "de": "german", "fr": "french",
-	"es": "spanish"}
+	"es": "spanish", "pt": "portuguese"}
 
 
 def read(path):

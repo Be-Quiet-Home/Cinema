@@ -15,7 +15,8 @@
 
 /*!	cinema-helper, the Python program next to Cinema that keeps yt-dlp loaded:
 	it searches and finds the files of the videos. Its answers are sent to the
-	target as kMsgResults or kMsgSearchFailed, and kMsgFound or kMsgLost.
+	target as kMsgResults or kMsgSearchFailed, kMsgFound or kMsgLost, and
+	kMsgDownloadProgress then kMsgDownloaded or kMsgDownloadFailed.
 */
 class Helper {
 public:
@@ -25,7 +26,10 @@ public:
 			status_t			Start(const char* script, const char* cache);
 			void				Search(int32 generation, int32 count,
 									const char* query);
+			void				Channel(int32 generation, int32 count,
+									const char* id);
 			void				Find(const char* id);
+			void				Download(const char* id, const char* folder);
 
 private:
 	static	status_t			_ReaderEntry(void* data);

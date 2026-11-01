@@ -1,0 +1,38 @@
+1	spanish	application/x-vnd.atomozero-Cinema	3388029105
+YouTube could not be reached: is the network on?	Window		No se puede acceder a YouTube: ¿está activa la red?
+Cinema	System name		Cinema
+No videos found	Window		No se encontraron vídeos
+full documentary	Categories		documental completo
+Technology	Categories		Tecnología
+Add this channel to the tabs	Categories		Añadir este canal a las pestañas
+OK	Window		Aceptar
+Show the latest videos	Grid		Mostrar los últimos vídeos
+Music	Categories		Música
+Play	Grid		Reproducir
+Video downloaded	Window		Vídeo descargado
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema necesita yt-dlp y python3, y cinema-helper.py a su lado
+Getting the video ready	Grid		Preparando el vídeo
+Downloading…	Grid		Descargando…
+Remove from the tabs	Categories		Quitar de las pestañas
+Add to the tabs	Grid		Añadir a las pestañas
+science explained	Categories		ciencia explicada
+Search	Window		Buscar
+news today	Categories		noticias de hoy
+Download	Grid		Descargar
+official music video	Categories		videoclip oficial
+The video could not be downloaded	Window		No se pudo descargar el vídeo
+Looking for the videos…	Window		Buscando los vídeos…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# Una pestaña de la barra superior por línea: nombre = qué buscar en YouTube
+Science	Categories		Ciencia
+Documentaries	Categories		Documentales
+No videos downloaded yet: right click a video, or press D	Window		Aún no hay vídeos descargados: clic derecho en un vídeo, o pulsa D
+technology review	Categories		análisis tecnología
+# or name = channel:<id> for the latest videos of a channel	Categories		# o nombre = channel:<id> para los últimos vídeos de un canal
+MediaPlayer could not be started: %error%	Window		No se pudo abrir MediaPlayer: %error%
+Move to Trash	Grid		Mover a la papelera
+Downloaded	Categories		Descargados
+Already downloaded	Grid		Ya descargado
+The video could not be moved to the Trash: %error%	Window		No se pudo mover el vídeo a la papelera: %error%
+This video can't be played here, try another one.	Window		Este vídeo no se puede ver aquí, prueba con otro.
+News	Categories		Noticias
+Type what to look for at the top right	Window		Escribe arriba a la derecha qué buscar

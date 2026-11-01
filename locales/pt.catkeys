@@ -1,0 +1,38 @@
+1	portuguese	application/x-vnd.atomozero-Cinema	3388029105
+YouTube could not be reached: is the network on?	Window		Não foi possível acessar o YouTube: a rede está ligada?
+Cinema	System name		Cinema
+No videos found	Window		Nenhum vídeo encontrado
+full documentary	Categories		documentário completo
+Technology	Categories		Tecnologia
+Add this channel to the tabs	Categories		Adicionar este canal às abas
+OK	Window		OK
+Show the latest videos	Grid		Mostrar os vídeos mais recentes
+Music	Categories		Música
+Play	Grid		Reproduzir
+Video downloaded	Window		Vídeo baixado
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		O Cinema precisa do yt-dlp e do python3, e do cinema-helper.py ao lado
+Getting the video ready	Grid		Preparando o vídeo
+Downloading…	Grid		Baixando…
+Remove from the tabs	Categories		Remover das abas
+Add to the tabs	Grid		Adicionar às abas
+science explained	Categories		ciência explicada
+Search	Window		Pesquisar
+news today	Categories		notícias de hoje
+Download	Grid		Baixar
+official music video	Categories		videoclipe oficial
+The video could not be downloaded	Window		Não foi possível baixar o vídeo
+Looking for the videos…	Window		Procurando os vídeos…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# Uma aba da barra superior por linha: nome = o que pesquisar no YouTube
+Science	Categories		Ciência
+Documentaries	Categories		Documentários
+No videos downloaded yet: right click a video, or press D	Window		Nenhum vídeo baixado ainda: clique com o botão direito num vídeo, ou pressione D
+technology review	Categories		análise tecnologia
+# or name = channel:<id> for the latest videos of a channel	Categories		# ou nome = channel:<id> para os vídeos mais recentes de um canal
+MediaPlayer could not be started: %error%	Window		Não foi possível abrir o MediaPlayer: %error%
+Move to Trash	Grid		Mover para a lixeira
+Downloaded	Categories		Baixados
+Already downloaded	Grid		Já baixado
+The video could not be moved to the Trash: %error%	Window		Não foi possível mover o vídeo para a lixeira: %error%
+This video can't be played here, try another one.	Window		Este vídeo não pode ser reproduzido aqui, tente outro.
+News	Categories		Notícias
+Type what to look for at the top right	Window		Digite no canto superior direito o que procurar
