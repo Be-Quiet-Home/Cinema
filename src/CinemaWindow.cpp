@@ -713,7 +713,7 @@ CinemaWindow::_ShowDetails(BMessage* message)
 
 	// the small picture at once, while the big one is on its way
 	BString path(fWorker->Cache());
-	path << "/" << item.id << ".jpg";
+	path << "/" << PictureName(item.id) << ".jpg";
 	if (BEntry(path.String()).Exists())
 		fDetail->SetPicture(BTranslationUtils::GetBitmap(path.String()));
 

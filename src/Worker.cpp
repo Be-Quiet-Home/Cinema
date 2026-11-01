@@ -108,23 +108,16 @@ Worker::_Picture(BMessage* message)
 	BString url = message->GetString("url", "");
 	if (id.IsEmpty() || url.IsEmpty())
 		return;
-	BString key(id);
-	for (int32 i = 0; i < key.Length(); i++) {
-		char c = key[i];
-		if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-				|| (c >= '0' && c <= '9') || c == '-' || c == '_'))
-			key.SetByteAt(i, '_');
-	}
-
+	// a path or an address gives a hash, as for the small pictures
 	BString path(fCache);
-	path << "/poster-" << key << ".jpg";
+	path << "/poster-" << PictureName(id) << ".jpg";
 	if (!BEntry(path.String()).Exists()) {
 		if (!_Get(url.String(), path.String())) {
 			// the biggest picture may not be there for an old video; the
 			// one every video has is
 			BString fallback;
 			fallback.SetToFormat("https://i.ytimg.com/vi/%s/hqdefault.jpg",
-				key.String());
+				id.String());
 			if (!_Get(fallback.String(), path.String()))
 				return;
 		}
