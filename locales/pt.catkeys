@@ -1,6 +1,7 @@
-1	portuguese	application/x-vnd.atomozero-Cinema	3388029105
+1	portuguese	application/x-vnd.atomozero-Cinema	560541691
 YouTube could not be reached: is the network on?	Window		Não foi possível acessar o YouTube: a rede está ligada?
 Cinema	System name		Cinema
+Downloaded	Detail		Downloaded
 No videos found	Window		Nenhum vídeo encontrado
 full documentary	Categories		documentário completo
 Technology	Categories		Tecnologia
@@ -10,9 +11,12 @@ Show the latest videos	Grid		Mostrar os vídeos mais recentes
 Music	Categories		Música
 Play	Grid		Reproduzir
 Video downloaded	Window		Vídeo baixado
+Getting the details…	Detail		Getting the details…
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		O Cinema precisa do yt-dlp e do python3, e do cinema-helper.py ao lado
+Download	Detail		Download
 Getting the video ready	Grid		Preparando o vídeo
 Downloading…	Grid		Baixando…
+Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Remover das abas
 Add to the tabs	Grid		Adicionar às abas
 science explained	Categories		ciência explicada
@@ -23,9 +27,13 @@ official music video	Categories		videoclipe oficial
 The video could not be downloaded	Window		Não foi possível baixar o vídeo
 Looking for the videos…	Window		Procurando os vídeos…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Uma aba da barra superior por linha: nome = o que pesquisar no YouTube
+%views% views	Detail		%views% views
+Back	Detail		Back
 Science	Categories		Ciência
+Play	Detail		Play
 Documentaries	Categories		Documentários
 No videos downloaded yet: right click a video, or press D	Window		Nenhum vídeo baixado ainda: clique com o botão direito num vídeo, ou pressione D
+Details	Grid		Details
 technology review	Categories		análise tecnologia
 # or name = channel:<id> for the latest videos of a channel	Categories		# ou nome = channel:<id> para os vídeos mais recentes de um canal
 MediaPlayer could not be started: %error%	Window		Não foi possível abrir o MediaPlayer: %error%

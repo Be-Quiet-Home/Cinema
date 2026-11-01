@@ -9,6 +9,7 @@
 #include <Alert.h>
 #include <Application.h>
 #include <Bitmap.h>
+#include <CardLayout.h>
 #include <Entry.h>
 #include <Button.h>
 #include <Catalog.h>
@@ -22,8 +23,10 @@
 #include <ScrollView.h>
 #include <TextControl.h>
 #include <TranslationUtils.h>
+#include <View.h>
 
 #include "CategoryBar.h"
+#include "DetailView.h"
 #include "Downloads.h"
 #include "Helper.h"
 #include "Messages.h"
@@ -50,6 +53,7 @@ CinemaWindow::CinemaWindow()
 		B_TITLED_WINDOW, B_AUTO_UPDATE_SIZE_LIMITS | B_QUIT_ON_WINDOW_CLOSE),
 	fCategories(LoadCategories()),
 	fProvider("youtube"),
+	fDetailsShown(false),
 	fGeneration(0),
 	fPrefetchRunner(NULL),
 	fFullScreen(false)
@@ -63,6 +67,16 @@ CinemaWindow::CinemaWindow()
 	fGrid = new VideoGrid;
 	BScrollView* scroll = new BScrollView("scroll", fGrid, 0, false, true,
 		B_NO_BORDER);
+	fDetail = new DetailView(BMessenger(this));
+
+	// the grid and the detail view take turns in the same place
+	BView* pages = new BView("pages", B_WILL_DRAW);
+	pages->SetViewColor(Style::kBackground);
+	fCards = new BCardLayout();
+	pages->SetLayout(fCards);
+	pages->AddChild(scroll);
+	pages->AddChild(fDetail);
+	fCards->SetVisibleItem(0);
 
 	// the field as high as the text, not as the bar
 	BLayoutItem* textItem = fSearchField->CreateTextViewLayoutItem();
@@ -84,7 +98,7 @@ CinemaWindow::CinemaWindow()
 
 	BLayoutBuilder::Group<>(this, B_VERTICAL, 0)
 		.Add(top)
-		.Add(scroll, 10);
+		.Add(pages, 10);
 
 	fWorker = new Worker(BMessenger(this));
 	fWorker->Run();
@@ -126,13 +140,25 @@ CinemaWindow::~CinemaWindow()
 void
 CinemaWindow::DispatchMessage(BMessage* message, BHandler* handler)
 {
-	// Esc leaves the full screen wherever the focus is
-	if (fFullScreen && message->what == B_KEY_DOWN) {
+	// Esc goes back from the details, then leaves the full screen, and F
+	// still toggles it on the details, wherever the focus is
+	if (message->what == B_KEY_DOWN) {
 		const char* bytes;
-		if (message->FindString("bytes", &bytes) == B_OK
-			&& bytes[0] == B_ESCAPE) {
-			_SetFullScreen(false);
-			return;
+		if (message->FindString("bytes", &bytes) == B_OK) {
+			if (bytes[0] == B_ESCAPE) {
+				if (fDetailsShown) {
+					_CloseDetails();
+					return;
+				}
+				if (fFullScreen) {
+					_SetFullScreen(false);
+					return;
+				}
+			}
+			if (fDetailsShown && (bytes[0] == 'f' || bytes[0] == 'F')) {
+				_SetFullScreen(!fFullScreen);
+				return;
+			}
 		}
 	}
 	BWindow::DispatchMessage(message, handler);
@@ -151,6 +177,7 @@ CinemaWindow::QuitRequested()
 void
 CinemaWindow::_Search(const char* query)
 {
+	_CloseDetails();
 	fGeneration++;
 	fGrid->SetMessage(B_TRANSLATE("Looking for the videos" B_UTF8_ELLIPSIS));
 	fHelper->Search(fGeneration, kResultCount, query);
@@ -187,6 +214,7 @@ CinemaWindow::_ShowCategory(int32 index)
 {
 	if (index < 0 || index >= (int32)fCategories.size())
 		return;
+	_CloseDetails();
 	fCategoryBar->SetSelected(index);
 	fChannelId = "";
 	const Category& category = fCategories[index];
@@ -206,6 +234,7 @@ CinemaWindow::_ShowChannel(const char* name, const char* id)
 {
 	if (id[0] == '\0')
 		return;
+	_CloseDetails();
 	// one of the tabs already?
 	for (size_t i = 0; i < fCategories.size(); i++) {
 		if (fCategories[i].channel == id) {
@@ -311,6 +340,116 @@ CinemaWindow::_ShowResults(BMessage* message)
 }
 
 
+/*!	The page of one video: what the grid already knows, while the helper
+	looks for the rest.
+*/
+void
+CinemaWindow::_ShowDetails(BMessage* message)
+{
+	MediaItem item;
+	item.provider = message->GetString("provider", fProvider);
+	item.kind = message->GetString("kind", "video");
+	item.id = message->GetString("id", "");
+	item.title = message->GetString("title", "");
+	item.description = message->GetString("description", "");
+	item.channel = message->GetString("channel", "");
+	item.channelId = message->GetString("channel id", "");
+	item.duration = message->GetInt32("duration", 0);
+	item.year = message->GetInt32("year", 0);
+	item.date = message->GetString("date", "");
+	item.views = message->GetInt64("views", 0);
+	item.rating = message->GetDouble("rating", 0);
+	item.poster = message->GetString("poster", "");
+	item.thumbnail = message->GetString("thumbnail", "");
+	item.path = message->GetString("path", "");
+	item.downloaded = message->GetBool("downloaded", false);
+	item.progress = message->GetInt32("progress", -1);
+	item.picture = NULL;
+	if (item.id.IsEmpty())
+		return;
+
+	fDetailsId = item.id;
+	fDetailsShown = true;
+	fDetail->SetItem(item);
+	fDetail->SetLoading(true);
+
+	// the small picture at once, while the big one is on its way
+	BString path(fWorker->Cache());
+	path << "/" << item.id << ".jpg";
+	if (BEntry(path.String()).Exists())
+		fDetail->SetPicture(BTranslationUtils::GetBitmap(path.String()));
+
+	fCards->SetVisibleItem(1);
+	fDetail->MakeFocus(true);
+	fHelper->Details(item.provider.String(), item.id.String(),
+		item.kind.String());
+}
+
+
+/*!	What the helper found about the video on the detail page: the rest of
+	its description, when it was published, its big picture.
+*/
+void
+CinemaWindow::_Details(BMessage* message)
+{
+	BString id = message->GetString("id", "");
+	if (!fDetailsShown || id != fDetailsId)
+		return;
+	if (!message->GetBool("found", false)) {
+		fDetail->SetLoading(false);
+		return;
+	}
+
+	MediaItem item = fDetail->Item();
+	item.title = message->GetString("title", item.title);
+	item.description = message->GetString("description", item.description);
+	item.channel = message->GetString("channel", item.channel);
+	item.channelId = message->GetString("channel id", item.channelId);
+	item.duration = message->GetInt32("duration", item.duration);
+	item.year = message->GetInt32("year", item.year);
+	item.date = message->GetString("date", item.date);
+	item.views = message->GetInt64("views", item.views);
+	item.rating = message->GetDouble("rating", item.rating);
+	item.poster = message->GetString("poster", item.poster);
+	item.thumbnail = message->GetString("thumbnail", item.thumbnail);
+	fDetail->SetItem(item);
+	fDetail->SetLoading(false);
+
+	if (!item.poster.IsEmpty()) {
+		BMessage fetch(kMsgFetchPicture);
+		fetch.AddString("id", item.id);
+		fetch.AddString("url", item.poster);
+		fWorker->PostMessage(&fetch);
+	}
+}
+
+
+void
+CinemaWindow::_Picture(BMessage* message)
+{
+	BString id = message->GetString("id", "");
+	if (!fDetailsShown || id != fDetailsId)
+		return;
+	BBitmap* picture = BTranslationUtils::GetBitmap(
+		message->GetString("path", ""));
+	if (picture != NULL)
+		fDetail->SetPicture(picture);
+}
+
+
+void
+CinemaWindow::_CloseDetails()
+{
+	if (!fDetailsShown)
+		return;
+	fDetailsShown = false;
+	fDetailsId = "";
+	fCards->SetVisibleItem(0);
+	fDetail->SetItem(MediaItem());
+	fGrid->MakeFocus(true);
+}
+
+
 bool
 CinemaWindow::_Ready(const BString& id) const
 {
@@ -411,6 +550,19 @@ CinemaWindow::MessageReceived(BMessage* message)
 			}
 			break;
 
+		case kMsgShowDetails:
+			_ShowDetails(message);
+			break;
+		case kMsgDetails:
+			_Details(message);
+			break;
+		case kMsgPicture:
+			_Picture(message);
+			break;
+		case kMsgCloseDetails:
+			_CloseDetails();
+			break;
+
 		case kMsgSelected:
 			if (_ShowingDownloads())
 				break;
@@ -439,6 +591,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 			int32 percent = message->GetInt32("percent", 0);
 			downloading->second.SetInt32("percent", percent);
 			fGrid->SetProgress(id, percent);
+			fDetail->SetProgress(id.String(), percent);
 			break;
 		}
 		case kMsgDownloaded:
@@ -558,6 +711,7 @@ CinemaWindow::_ShowingDownloads() const
 void
 CinemaWindow::_ShowDownloads()
 {
+	_CloseDetails();
 	fCategoryBar->SetSelected(fCategoryBar->DownloadsIndex());
 	fChannelId = "";
 	// what is still on its way for a search is not wanted any more
@@ -590,6 +744,7 @@ CinemaWindow::_Download(BMessage* message)
 	download.SetInt32("percent", 0);
 	fDownloading[id] = download;
 	fGrid->SetProgress(id, 0);
+	fDetail->SetProgress(id.String(), 0);
 	fHelper->Download(id.String(), folder.String());
 }
 
@@ -607,6 +762,7 @@ CinemaWindow::_Downloaded(BMessage* message)
 	Downloads::Describe(message->GetString("path", ""), video);
 	fDownloaded[id] = message->GetString("path", "");
 	fGrid->SetDownloaded(id, true);
+	fDetail->SetDownloaded(id.String(), true);
 	if (_ShowingDownloads())
 		_ShowDownloads();
 
@@ -628,6 +784,7 @@ CinemaWindow::_DownloadFailed(BMessage* message)
 	BString title = downloading->second.GetString("title", "");
 	fDownloading.erase(downloading);
 	fGrid->SetProgress(id, -1);
+	fDetail->SetProgress(id.String(), -1);
 
 	BNotification notification(B_ERROR_NOTIFICATION);
 	notification.SetGroup(B_TRANSLATE_SYSTEM_NAME("Cinema"));

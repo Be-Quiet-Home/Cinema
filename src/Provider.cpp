@@ -6,7 +6,9 @@
 
 #include "Provider.h"
 
+#include <ctype.h>
 #include <Message.h>
+#include <string.h>
 
 
 bool
@@ -16,6 +18,33 @@ Provider::Supports(const char* kind) const
 		if (supported == kind)
 			return true;
 	return false;
+}
+
+
+BString
+YouTubeVideoId(const char* address)
+{
+	BString url(address);
+	static const char* kMarkers[] = { "watch?v=", "&v=", "youtu.be/",
+		"/shorts/", "/embed/", "/live/" };
+	if (url.IFindFirst("youtube.com") < 0 && url.IFindFirst("youtu.be") < 0)
+		return BString();
+	for (const char* marker : kMarkers) {
+		int32 start = url.FindFirst(marker);
+		if (start < 0)
+			continue;
+		start += strlen(marker);
+		int32 end = start;
+		while (end < url.Length()
+			&& (isalnum((unsigned char)url.ByteAt(end))
+				|| url.ByteAt(end) == '-' || url.ByteAt(end) == '_'))
+			end++;
+		BString id;
+		url.CopyInto(id, start, end - start);
+		if (id.Length() == 11)
+			return id;
+	}
+	return BString();
 }
 
 

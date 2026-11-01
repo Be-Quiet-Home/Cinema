@@ -126,6 +126,20 @@ Helper::Channel(int32 generation, int32 count, const char* id)
 
 
 void
+Helper::Details(const char* provider, const char* id, const char* kind)
+{
+	Json request = Json::MakeObject();
+	request.Set("type", "details");
+	request.Set("provider",
+		provider != NULL && provider[0] != '\0' ? provider
+			: fProvider.String());
+	request.Set("id", id);
+	request.Set("kind", kind != NULL && kind[0] != '\0' ? kind : "video");
+	_Send(request);
+}
+
+
+void
 Helper::Find(const char* id)
 {
 	Json request = Json::MakeObject();
@@ -196,6 +210,30 @@ text_of(const Json& value, const char* key, const char* fallback)
 }
 
 
+/*!	The fields of one MediaItem, as the window reads them back. */
+static void
+add_item(BMessage& message, const Json& item, const char* fallbackProvider)
+{
+	message.AddString("provider",
+		text_of(item, "provider", fallbackProvider).c_str());
+	message.AddString("kind", text_of(item, "kind", "video").c_str());
+	message.AddString("id", text_of(item, "id", "").c_str());
+	message.AddString("title", text_of(item, "title", "").c_str());
+	message.AddString("description",
+		text_of(item, "description", "").c_str());
+	message.AddString("channel", text_of(item, "channel", "").c_str());
+	message.AddString("channel id",
+		text_of(item, "channel_id", "").c_str());
+	message.AddInt32("duration", item.GetInt("duration", 0));
+	message.AddInt32("year", item.GetInt("year", 0));
+	message.AddString("date", text_of(item, "date", "").c_str());
+	message.AddInt64("views", (int64)item.GetDouble("views", 0));
+	message.AddDouble("rating", item.GetDouble("rating", 0));
+	message.AddString("poster", text_of(item, "poster", "").c_str());
+	message.AddString("thumbnail", text_of(item, "thumbnail", "").c_str());
+}
+
+
 void
 Helper::_Handle(const BString& line)
 {
@@ -230,32 +268,22 @@ Helper::_Handle(const BString& line)
 		BMessage results(kMsgResults);
 		results.AddInt32("generation", answer.GetInt("tag", -1));
 		const Json* items = answer.Find("items");
-		if (items != NULL && items->IsArray()) {
-			for (const Json& item : items->Elements()) {
-				results.AddString("provider",
-					text_of(item, "provider", fProvider.String()).c_str());
-				results.AddString("kind",
-					text_of(item, "kind", "video").c_str());
-				results.AddString("id",
-					text_of(item, "id", "").c_str());
-				results.AddString("title",
-					text_of(item, "title", "").c_str());
-				results.AddString("description",
-					text_of(item, "description", "").c_str());
-				results.AddString("channel",
-					text_of(item, "channel", "").c_str());
-				results.AddString("channel id",
-					text_of(item, "channel_id", "").c_str());
-				results.AddInt32("duration", item.GetInt("duration", 0));
-				results.AddInt32("year", item.GetInt("year", 0));
-				results.AddDouble("rating", item.GetDouble("rating", 0));
-				results.AddString("poster",
-					text_of(item, "poster", "").c_str());
-				results.AddString("thumbnail",
-					text_of(item, "thumbnail", "").c_str());
-			}
-		}
+		if (items != NULL && items->IsArray())
+			for (const Json& item : items->Elements())
+				add_item(results, item, fProvider.String());
 		fTarget.SendMessage(&results);
+		return;
+	}
+
+	if (type == "details") {
+		BMessage details(kMsgDetails);
+		details.AddString("id", answer.GetString("id", "").c_str());
+		const Json* item = answer.Find("item");
+		bool found = item != NULL && item->IsObject();
+		details.AddBool("found", found);
+		if (found)
+			add_item(details, *item, fProvider.String());
+		fTarget.SendMessage(&details);
 		return;
 	}
 

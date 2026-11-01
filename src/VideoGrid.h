@@ -60,7 +60,9 @@ private:
 			void				_Select(int32 index);
 			void				_Play(int32 index);
 			void				_Download(int32 index);
+			void				_ShowDetails(int32 index);
 			BMessage			_DownloadMessage(int32 index) const;
+			BMessage			_DetailsMessage(int32 index) const;
 			void				_ShowMenu(int32 index, BPoint where);
 			void				_DrawTile(int32 index, BRect frame);
 			void				_DrawBusy();

@@ -37,12 +37,31 @@ Worker::MessageReceived(BMessage* message)
 		case kMsgThumbnails:
 			_Thumbnails(message);
 			break;
+		case kMsgFetchPicture:
+			_Picture(message);
+			break;
 		case kMsgFollow:
 			_Follow(message);
 			break;
 		default:
 			BLooper::MessageReceived(message);
 	}
+}
+
+
+/*!	One picture, to the file asked; false if it could not be got. */
+bool
+Worker::_Get(const char* url, const char* path)
+{
+	BString temporary(path);
+	temporary << ".part";
+	if (RunProgram({ "curl", "-sfL", "--max-time", "30", "-o", temporary,
+			url }) != 0 || BEntry(temporary.String()).Rename(path, true)
+				!= B_OK) {
+		BEntry(temporary.String()).Remove();
+		return false;
+	}
+	return true;
 }
 
 
@@ -61,17 +80,10 @@ Worker::_Thumbnails(BMessage* message)
 		BString path(fCache);
 		path << "/" << id << ".jpg";
 		if (!BEntry(path.String()).Exists()) {
-			BString temporary(path);
-			temporary << ".part";
 			BString url;
 			url.SetToFormat("https://i.ytimg.com/vi/%s/mqdefault.jpg", id);
-			if (RunProgram({ "curl", "-sfL", "--max-time", "20", "-o",
-					temporary, url }) != 0
-				|| BEntry(temporary.String()).Rename(path.String(), true)
-					!= B_OK) {
-				BEntry(temporary.String()).Remove();
+			if (!_Get(url.String(), path.String()))
 				continue;
-			}
 		}
 
 		BMessage thumbnail(kMsgThumbnail);
@@ -80,6 +92,45 @@ Worker::_Thumbnails(BMessage* message)
 		thumbnail.AddString("path", path);
 		fTarget.SendMessage(&thumbnail);
 	}
+}
+
+
+/*!	The big picture of a video, for the detail view. It goes to a file of its
+	own, so that the small one in the grid is not replaced.
+*/
+void
+Worker::_Picture(BMessage* message)
+{
+	BString id = message->GetString("id", "");
+	BString url = message->GetString("url", "");
+	if (id.IsEmpty() || url.IsEmpty())
+		return;
+	BString key(id);
+	for (int32 i = 0; i < key.Length(); i++) {
+		char c = key[i];
+		if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+				|| (c >= '0' && c <= '9') || c == '-' || c == '_'))
+			key.SetByteAt(i, '_');
+	}
+
+	BString path(fCache);
+	path << "/poster-" << key << ".jpg";
+	if (!BEntry(path.String()).Exists()) {
+		if (!_Get(url.String(), path.String())) {
+			// the biggest picture may not be there for an old video; the
+			// one every video has is
+			BString fallback;
+			fallback.SetToFormat("https://i.ytimg.com/vi/%s/hqdefault.jpg",
+				key.String());
+			if (!_Get(fallback.String(), path.String()))
+				return;
+		}
+	}
+
+	BMessage picture(kMsgPicture);
+	picture.AddString("id", id);
+	picture.AddString("path", path);
+	fTarget.SendMessage(&picture);
 }
 
 

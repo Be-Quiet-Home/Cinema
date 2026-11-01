@@ -33,4 +33,10 @@ struct Provider {
 std::vector<Provider>		ProvidersFromMessage(const BMessage& message);
 
 
+/*!	The id of the video in a YouTube address, or an empty string: watch?v=,
+	&v=, youtu.be/, /shorts/, /embed/ and /live/ links.
+*/
+BString					YouTubeVideoId(const char* url);
+
+
 #endif	// PROVIDER_H

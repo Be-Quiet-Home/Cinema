@@ -486,6 +486,42 @@ VideoGrid::_Download(int32 index)
 }
 
 
+void
+VideoGrid::_ShowDetails(int32 index)
+{
+	if (index < 0 || index >= (int32)fVideos.size())
+		return;
+	BMessage details = _DetailsMessage(index);
+	Window()->PostMessage(&details);
+}
+
+
+BMessage
+VideoGrid::_DetailsMessage(int32 index) const
+{
+	const MediaItem& video = fVideos[index];
+	BMessage details(kMsgShowDetails);
+	details.AddString("provider", video.provider);
+	details.AddString("kind", video.kind);
+	details.AddString("id", video.id);
+	details.AddString("title", video.title);
+	details.AddString("description", video.description);
+	details.AddString("channel", video.channel);
+	details.AddString("channel id", video.channelId);
+	details.AddInt32("duration", video.duration);
+	details.AddInt32("year", video.year);
+	details.AddString("date", video.date);
+	details.AddInt64("views", video.views);
+	details.AddDouble("rating", video.rating);
+	details.AddString("poster", video.poster);
+	details.AddString("thumbnail", video.thumbnail);
+	details.AddString("path", video.path);
+	details.AddBool("downloaded", video.downloaded);
+	details.AddInt32("progress", video.progress);
+	return details;
+}
+
+
 BMessage
 VideoGrid::_DownloadMessage(int32 index) const
 {
@@ -507,6 +543,9 @@ VideoGrid::_ShowMenu(int32 index, BPoint where)
 {
 	const MediaItem& video = fVideos[index];
 	BPopUpMenu* menu = new BPopUpMenu("video", false, false);
+	BMessage* details = new BMessage(_DetailsMessage(index));
+	menu->AddItem(new BMenuItem(B_TRANSLATE("Details"), details));
+	menu->AddSeparatorItem();
 	BMessage* play = new BMessage(kMsgPlay);
 	play->AddString("id", video.id);
 	play->AddString("title", video.title);
@@ -559,6 +598,10 @@ VideoGrid::KeyDown(const char* bytes, int32 count)
 		case 'd':
 		case 'D':
 			_Download(fSelected);
+			break;
+		case 'i':
+		case 'I':
+			_ShowDetails(fSelected);
 			break;
 		case 'f':
 		case 'F':

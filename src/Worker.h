@@ -12,9 +12,10 @@
 
 
 /*!	Does the network work that is not yt-dlp's on its own thread, with curl:
-	gets the pictures of the videos (kMsgThumbnails), and follows the
-	redirects of the address of a video file (kMsgFollow), as MediaPlayer
-	does not. The answers go to the target.
+	gets the pictures of the videos (kMsgThumbnails), the big picture of one
+	of them for the detail view (kMsgFetchPicture), and follows the redirects
+	of the address of a video file (kMsgFollow), as MediaPlayer does not. The
+	answers go to the target.
 */
 class Worker : public BLooper {
 public:
@@ -26,7 +27,9 @@ public:
 
 private:
 			void				_Thumbnails(BMessage* message);
+			void				_Picture(BMessage* message);
 			void				_Follow(BMessage* message);
+			bool				_Get(const char* url, const char* path);
 
 			BMessenger			fTarget;
 			BString				fCache;

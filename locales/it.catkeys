@@ -1,6 +1,7 @@
-1	italian	application/x-vnd.atomozero-Cinema	3388029105
+1	italian	application/x-vnd.atomozero-Cinema	560541691
 YouTube could not be reached: is the network on?	Window		Non riesco a raggiungere YouTube: la rete è accesa?
 Cinema	System name		Cinema
+Downloaded	Detail		Scaricato
 No videos found	Window		Nessun video trovato
 full documentary	Categories		documentario completo
 Technology	Categories		Tecnologia
@@ -10,9 +11,12 @@ Show the latest videos	Grid		Mostra gli ultimi video
 Music	Categories		Musica
 Play	Grid		Riproduci
 Video downloaded	Window		Video scaricato
+Getting the details…	Detail		Prendo i dettagli…
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema ha bisogno di yt-dlp e python3, e di cinema-helper.py accanto
+Download	Detail		Scarica
 Getting the video ready	Grid		Preparo il video
 Downloading…	Grid		Download in corso…
+Downloading…	Detail		Download in corso…
 Remove from the tabs	Categories		Rimuovi dalle schede
 Add to the tabs	Grid		Aggiungi alle schede
 science explained	Categories		scienza spiegata
@@ -23,9 +27,13 @@ official music video	Categories		video musicale ufficiale
 The video could not be downloaded	Window		Non è stato possibile scaricare il video
 Looking for the videos…	Window		Cerco i video…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Una scheda della barra in alto per riga: nome = cosa cercare su YouTube
+%views% views	Detail		%views% visualizzazioni
+Back	Detail		Indietro
 Science	Categories		Scienza
+Play	Detail		Riproduci
 Documentaries	Categories		Documentari
 No videos downloaded yet: right click a video, or press D	Window		Nessun video scaricato: clic destro su un video, oppure premi D
+Details	Grid		Dettagli
 technology review	Categories		recensione tecnologia
 # or name = channel:<id> for the latest videos of a channel	Categories		# oppure nome = channel:<id> per gli ultimi video di un canale
 MediaPlayer could not be started: %error%	Window		Non riesco ad aprire MediaPlayer: %error%

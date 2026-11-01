@@ -28,6 +28,8 @@ struct MediaItem {
 	BString		channelId;
 	int32		duration;		// seconds
 	int32		year;
+	BString		date;			// when it was published, YYYY-MM-DD
+	int64		views;
 	double		rating;			// 0 to 10
 	BString		poster;			// address of a big picture
 	BString		thumbnail;		// address of a small one
@@ -38,8 +40,8 @@ struct MediaItem {
 	int32		progress;		// of its download, or -1
 	bool		downloaded;
 
-				MediaItem() : duration(0), year(0), rating(0), picture(NULL),
-					progress(-1), downloaded(false) {}
+				MediaItem() : duration(0), year(0), views(0), rating(0),
+					picture(NULL), progress(-1), downloaded(false) {}
 };
 
 

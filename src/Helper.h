@@ -17,8 +17,9 @@ class Json;
 /*!	cinema-helper, the Python program next to Cinema that keeps the providers
 	loaded: today yt-dlp. It searches and finds the files of the videos, and
 	talks one JSON object per line. Its answers are sent to the target as
-	kMsgProviders, kMsgResults or kMsgSearchFailed, kMsgFound or kMsgLost, and
-	kMsgDownloadProgress then kMsgDownloaded or kMsgDownloadFailed.
+	kMsgProviders, kMsgResults or kMsgSearchFailed, kMsgDetails, kMsgFound or
+	kMsgLost, and kMsgDownloadProgress then kMsgDownloaded or
+	kMsgDownloadFailed.
 */
 class Helper {
 public:
@@ -32,6 +33,8 @@ public:
 									const char* query);
 			void				Channel(int32 generation, int32 count,
 									const char* id);
+			void				Details(const char* provider, const char* id,
+									const char* kind);
 			void				Find(const char* id);
 			void				Download(const char* id, const char* folder);
 

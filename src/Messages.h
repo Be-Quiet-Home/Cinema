@@ -13,8 +13,10 @@ enum {
 	kMsgResults			= 'rslt',	// "generation", then for each video
 									// "provider", "kind", "id", "title",
 									// "description", "channel", "channel id",
-									// "duration", "year", "rating", "poster",
-									// "thumbnail"
+									// "duration", "year", "date", "views",
+									// "rating", "poster", "thumbnail"
+	kMsgDetails			= 'dtls',	// "id", "found", then the same fields
+									// as above
 	kMsgSearchFailed	= 'srfl',	// "generation"
 	kMsgFound			= 'fnd ',	// "id", "url"
 	kMsgLost			= 'lost',	// "id"
@@ -26,6 +28,9 @@ enum {
 	// to and from the worker
 	kMsgThumbnails		= 'thms',	// "generation", "id"...
 	kMsgThumbnail		= 'thmb',	// "generation", "id", "path"
+	kMsgFetchPicture	= 'fpic',	// "id", "url": a big picture, for the
+									// detail view
+	kMsgPicture			= 'pict',	// "id", "path"
 	kMsgFollow			= 'folw',	// "id", "url"
 	kMsgStreamReady		= 'strm',	// "id", "url"
 
@@ -36,6 +41,11 @@ enum {
 	kMsgShowDownloads	= 'dwsh',
 	kMsgTrash			= 'trsh',	// "id", "path": a download to the Trash
 	kMsgSelected		= 'slct',	// "id": chosen, not played yet
+	kMsgShowDetails		= 'dtsh',	// "provider", "kind", "id", "title",
+									// "channel", "channel id", "duration",
+									// "date", "views", "path", "downloaded",
+									// "progress"
+	kMsgCloseDetails	= 'dtcl',
 	kMsgPrefetch		= 'pref',	// "id"
 	kMsgCategory		= 'catg',	// "index"
 	kMsgChannel			= 'chan',	// "channel", "channel id"

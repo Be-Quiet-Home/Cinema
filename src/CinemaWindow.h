@@ -18,9 +18,11 @@
 #include "Provider.h"
 
 
+class BCardLayout;
 class BMessageRunner;
 class BTextControl;
 class CategoryBar;
+class DetailView;
 class Helper;
 class VideoGrid;
 class Worker;
@@ -51,6 +53,10 @@ private:
 			void				_RemoveCategory(int32 index);
 			void				_ShowDownloads();
 			bool				_ShowingDownloads() const;
+			void				_ShowDetails(BMessage* message);
+			void				_Details(BMessage* message);
+			void				_Picture(BMessage* message);
+			void				_CloseDetails();
 			void				_Download(BMessage* message);
 			void				_Downloaded(BMessage* message);
 			void				_DownloadFailed(BMessage* message);
@@ -68,6 +74,10 @@ private:
 			CategoryBar*		fCategoryBar;
 			BTextControl*		fSearchField;
 			VideoGrid*			fGrid;
+			DetailView*			fDetail;
+			BCardLayout*		fCards;
+			BString				fDetailsId;		// what the detail view shows
+			bool				fDetailsShown;
 			Helper*				fHelper;
 			Worker*				fWorker;
 			int32				fGeneration;

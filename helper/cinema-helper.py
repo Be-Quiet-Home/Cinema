@@ -11,6 +11,7 @@
 #    "query": "..."}
 #   {"type": "channel",  "tag": 1, "provider": "youtube", "count": 24,
 #    "channel": "UC..."}
+#   {"type": "details",  "provider": "youtube", "id": "...", "kind": "video"}
 #   {"type": "find",     "id": "...", "provider": "youtube", "kind": "video"}
 #   {"type": "download", "id": "...", "provider": "youtube", "folder": "/..."}
 #
@@ -18,6 +19,7 @@
 #
 #   {"type": "providers", "providers": [{"id", "name", "kinds"}, ...]}
 #   {"type": "results", "tag": 1, "items": [MediaItem, ...]}
+#   {"type": "details", "id": "...", "item": MediaItem or null}
 #   {"type": "nothing", "tag": 1}
 #   {"type": "found", "id": "...", "url": "..."}
 #   {"type": "lost", "id": "..."}
@@ -26,8 +28,9 @@
 #   {"type": "failed", "id": "..."}
 #
 # A MediaItem is {"provider", "kind", "id", "title", "description",
-# "channel", "channel_id", "duration", "year", "rating", "poster",
-# "thumbnail", "season", "episode"}. Other providers add more kinds later.
+# "channel", "channel_id", "duration", "year", "date", "views", "rating",
+# "poster", "thumbnail", "season", "episode"}. Other providers add more kinds
+# later.
 #
 # Loading yt-dlp takes about 9 s on the AC100; this way it happens once.
 # Each request runs on its own thread, so a search does not wait for a video.
@@ -61,6 +64,7 @@ yt_dlp = load_yt_dlp()
 output = threading.Lock()
 
 CACHE_TIME = 6 * 60 * 60
+DETAILS_CACHE_TIME = 24 * 60 * 60
 cache = sys.argv[1] if len(sys.argv) > 1 else None
 
 DEFAULT_PROVIDER = "youtube"
@@ -84,6 +88,12 @@ def as_int(value, fallback):
 def clean(text):
 	"""The text of a title or a channel: one line, as the grid shows it."""
 	return str(text).replace("\t", " ").replace("\n", " ").replace("\r", " ")
+
+
+def multiline(text):
+	"""The description, with its own lines, as the detail view shows it."""
+	return str(text).replace("\r\n", "\n").replace("\r", "\n").replace(
+		"\t", " ").strip()
 
 
 def cached(name, fetch):
@@ -112,6 +122,35 @@ def cached(name, fetch):
 	return videos
 
 
+def cached_details(name, fetch):
+	"""The MediaItem fetch() gives, from the cache when it is recent enough.
+
+	A video does not change much, so its details are kept longer than the
+	lists, and a failure is not kept at all.
+	"""
+	path = None
+	if cache:
+		key = hashlib.sha1(name.encode()).hexdigest()
+		path = os.path.join(cache, "details-%s.json" % key[:16])
+		try:
+			if time.time() - os.path.getmtime(path) < DETAILS_CACHE_TIME:
+				with open(path, encoding="utf-8") as file:
+					return json.load(file)
+		except (OSError, ValueError):
+			pass
+
+	item = fetch()
+	if path and item:
+		temporary = path + ".part"
+		try:
+			with open(temporary, "w", encoding="utf-8") as file:
+				json.dump(item, file, ensure_ascii=False)
+			os.replace(temporary, path)
+		except OSError:
+			pass
+	return item
+
+
 class Provider:
 	"""A source of media: what Cinema can search, find and download.
 
@@ -132,6 +171,9 @@ class Provider:
 	def channel(self, channel_id, count):
 		raise NotImplementedError
 
+	def details(self, media_id, kind):
+		raise NotImplementedError
+
 	def find(self, media_id, kind):
 		raise NotImplementedError
 
@@ -142,7 +184,7 @@ class Provider:
 class YouTubeProvider(Provider):
 	id = "youtube"
 	name = "YouTube"
-	kinds = ("search", "channel", "find", "download")
+	kinds = ("search", "channel", "details", "find", "download")
 
 	# YouTube's Android client needs no JavaScript to give the file; the web
 	# client with QuickJS is much slower on the AC100 and only used if it fails
@@ -165,12 +207,70 @@ class YouTubeProvider(Provider):
 			"channel_id": entry.get("channel_id") or channel_id,
 			"duration": int(duration),
 			"year": 0,
+			"date": "",
+			"views": 0,
 			"rating": 0.0,
 			"poster": "",
 			"thumbnail": "https://i.ytimg.com/vi/%s/mqdefault.jpg" % entry["id"],
 			"season": 0,
 			"episode": 0,
 		}
+
+	def picture(self, info):
+		"""The address of the biggest picture of a video yt-dlp described.
+
+		The list of the thumbnails does not always say how big they are, so
+		the name of the file does: maxresdefault is 1280x720, hq720 the same
+		in another name, sddefault 640x480, hqdefault 480x360.
+		"""
+		urls = [thumbnail.get("url") or ""
+			for thumbnail in info.get("thumbnails") or []]
+		urls.append(info.get("thumbnail") or "")
+		for name in ("maxresdefault", "hq720", "sddefault", "hqdefault",
+				"mqdefault"):
+			for url in urls:
+				if name in url and ".jpg" in url:
+					return url.split("?")[0]
+		for url in urls:
+			if ".jpg" in url:
+				return url.split("?")[0]
+		if info.get("id"):
+			return "https://i.ytimg.com/vi/%s/hqdefault.jpg" % info["id"]
+		return ""
+
+	def full_item(self, info):
+		"""The MediaItem of a video yt-dlp described in full, not flat."""
+		video = self.item(info)
+		if video is None:
+			return None
+		date = str(info.get("upload_date") or "")
+		if len(date) == 8:
+			video["date"] = "%s-%s-%s" % (date[:4], date[4:6], date[6:])
+			video["year"] = as_int(date[:4], 0)
+		video["description"] = multiline(info.get("description") or "")
+		video["views"] = as_int(info.get("view_count"), 0)
+		video["poster"] = self.picture(info)
+		return video
+
+	def details(self, media_id, kind="video"):
+		url = "https://www.youtube.com/watch?v=" + media_id
+		clients = [
+			{"youtube": {"player_client": ["android"]}},
+			{"youtube": {}},
+		]
+		for arguments in clients:
+			options = dict(self.OPTIONS, extractor_args=arguments)
+			if not arguments["youtube"]:
+				options["js_runtimes"] = {"quickjs": {}}
+			try:
+				with yt_dlp.YoutubeDL(options) as ydl:
+					info = ydl.extract_info(url, download=False)
+			except Exception:
+				continue
+			video = self.full_item(info) if info else None
+			if video is not None:
+				return video
+		return None
 
 	def videos_of(self, url, count, channel_name="", channel_id=""):
 		options = dict(self.OPTIONS, extract_flat="in_playlist",
@@ -281,6 +381,16 @@ def job_channel(provider, tag, count, channel_id):
 		answer({"type": "nothing", "tag": tag})
 
 
+def job_details(provider, media_id, kind):
+	try:
+		name = "%s details %s %s" % (provider.id, kind, media_id)
+		item = cached_details(name,
+			lambda: provider.details(media_id, kind))
+	except Exception:
+		item = None
+	answer({"type": "details", "id": media_id, "item": item})
+
+
 def job_find(provider, media_id, kind):
 	try:
 		url = provider.find(media_id, kind)
@@ -323,6 +433,9 @@ def work(request):
 	elif kind == "channel":
 		thread = (job_channel,
 			(provider, tag, count, request.get("channel", "")))
+	elif kind == "details":
+		thread = (job_details, (provider, request.get("id", ""),
+			request.get("kind", "video")))
 	elif kind == "find":
 		thread = (job_find, (provider, request.get("id", ""),
 			request.get("kind", "video")))
