@@ -25,6 +25,7 @@ class BMessageRunner;
 class BTextControl;
 class CategoryBar;
 class DetailView;
+class Gamepad;
 class Helper;
 class HomeView;
 class VideoGrid;
@@ -56,6 +57,9 @@ private:
 			void				_RemoveCategory(int32 index);
 			void				_ShowDownloads();
 			void				_ShowHome();
+			void				_FocusCategoryBar();
+			void				_FocusContent();
+			void				_ToggleCategoryFocus();
 			void				_LoadHome();
 			void				_StartHomeRequests();
 			void				_HomeResults(BMessage* message, int32 shelf);
@@ -92,6 +96,7 @@ private:
 			BString				fDetailsId;		// what the detail view shows
 			bool				fDetailsShown;
 			Helper*				fHelper;
+			Gamepad*			fGamepad;
 			Worker*				fWorker;
 			int32				fGeneration;
 			int32				fHomeGeneration;

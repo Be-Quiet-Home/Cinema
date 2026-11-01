@@ -54,6 +54,8 @@ public:
 			void				FailPending(const char* message);
 			bool				MoveFocus(const char* id, int32 delta);
 			void				MakeFirstFocus();
+			void				MakeLastFocus();
+			void				RememberFocus();
 			void				SetMessage(const char* message);
 
 private:
@@ -67,6 +69,7 @@ private:
 			void				_UpdateScrollBar();
 
 			std::vector<Shelf>	fShelves;
+			int32				fFocusedShelf;
 			BString				fMessage;
 			float				fContentHeight;
 			bool				fLayingOut;

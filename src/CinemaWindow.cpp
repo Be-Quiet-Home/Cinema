@@ -28,6 +28,7 @@
 #include "CategoryBar.h"
 #include "DetailView.h"
 #include "Downloads.h"
+#include "Gamepad.h"
 #include "Helper.h"
 #include "History.h"
 #include "HomeView.h"
@@ -56,6 +57,8 @@ CinemaWindow::CinemaWindow()
 	fCategories(LoadCategories()),
 	fProvider("youtube"),
 	fDetailsShown(false),
+	fHelper(NULL),
+	fGamepad(NULL),
 	fGeneration(0),
 	fHomeGeneration(0),
 	fHomeLoaded(false),
@@ -114,6 +117,7 @@ CinemaWindow::CinemaWindow()
 
 	fWorker = new Worker(BMessenger(this));
 	fWorker->Run();
+	fGamepad = new Gamepad(BMessenger(this));
 
 	// the helper is next to the application
 	fHelper = new Helper(BMessenger(this));
@@ -133,11 +137,13 @@ CinemaWindow::CinemaWindow()
 	for (MediaItem& video : Downloads::Load(&fDownloaded))
 		delete video.picture;
 	_ShowHome();
+	fGamepad->Start();
 }
 
 
 CinemaWindow::~CinemaWindow()
 {
+	delete fGamepad;
 	delete fPrefetchRunner;
 	delete fHelper;
 }
@@ -147,11 +153,25 @@ void
 CinemaWindow::DispatchMessage(BMessage* message, BHandler* handler)
 {
 	// Esc goes back from the details, then leaves the full screen, and F
-	// still toggles it on the details, wherever the focus is
+	// still toggles it on the details, wherever the focus is. F6 and Tab
+	// move between the tabs and the videos, also with the gamepad.
 	if (message->what == B_KEY_DOWN) {
+		int32 key = 0;
+		if (message->FindInt32("key", &key) == B_OK && key == B_F6_KEY) {
+			_ToggleCategoryFocus();
+			return;
+		}
 		const char* bytes;
 		if (message->FindString("bytes", &bytes) == B_OK) {
+			if (bytes[0] == B_TAB) {
+				_ToggleCategoryFocus();
+				return;
+			}
 			if (bytes[0] == B_ESCAPE) {
+				if (fCategoryBar->IsFocus()) {
+					_FocusContent();
+					return;
+				}
 				if (fDetailsShown) {
 					_CloseDetails();
 					return;
@@ -174,6 +194,7 @@ CinemaWindow::DispatchMessage(BMessage* message, BHandler* handler)
 bool
 CinemaWindow::QuitRequested()
 {
+	fGamepad->Stop();
 	// it may be waiting for curl: no need to wait for it
 	fWorker->PostMessage(B_QUIT_REQUESTED);
 	return true;
@@ -392,6 +413,38 @@ CinemaWindow::_ShowHome()
 	fCards->SetVisibleItem(2);
 	fCard = 2;
 	fHome->MakeFirstFocus();
+}
+
+
+void
+CinemaWindow::_FocusCategoryBar()
+{
+	fCategoryBar->FocusSelected();
+}
+
+
+void
+CinemaWindow::_FocusContent()
+{
+	if (fDetailsShown) {
+		fDetail->MakeFocus(true);
+		return;
+	}
+	if (fCard == 2) {
+		fHome->MakeLastFocus();
+		return;
+	}
+	fGrid->MakeFocus(true);
+}
+
+
+void
+CinemaWindow::_ToggleCategoryFocus()
+{
+	if (fCategoryBar->IsFocus())
+		_FocusContent();
+	else
+		_FocusCategoryBar();
 }
 
 
@@ -671,6 +724,10 @@ CinemaWindow::MessageReceived(BMessage* message)
 			_SetFullScreen(!fFullScreen);
 			break;
 
+		case kMsgFocusContent:
+			_FocusContent();
+			break;
+
 		case kMsgHome:
 			_ShowHome();
 			break;
@@ -679,6 +736,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 				message->GetInt32("delta", 0));
 			break;
 		case kMsgShelfFocus:
+			fHome->RememberFocus();
 			fHome->Invalidate();
 			break;
 		case kMsgCategory:

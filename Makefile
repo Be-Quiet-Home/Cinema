@@ -20,7 +20,7 @@ OBJDIR := objects
 OBJECTS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
 
 CXXFLAGS += -O2 -Wall -Wno-multichar -std=gnu++17 $(ARCHFLAGS)
-LIBS := -lbe -ltranslation -llocalestub
+LIBS := -lbe -ltranslation -llocalestub -ldevice
 
 all: $(OBJDIR)/$(NAME) catalogs
 

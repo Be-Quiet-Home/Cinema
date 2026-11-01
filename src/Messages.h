@@ -58,6 +58,7 @@ enum {
 	kMsgSearchField		= 'sfld',	// the search field was confirmed
 	kMsgAnimate			= 'anim',
 	kMsgFullScreen		= 'fuls',	// F: full screen, or back
+	kMsgFocusContent	= 'fcnt',	// leave the tabs, back to the videos
 };
 
 

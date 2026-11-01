@@ -21,8 +21,11 @@ AC100.
   The files go to `~/Cinema`, with their title, channel and length in
   attributes, and are listed in the **Downloaded** tab, which works without the
   network. A video downloaded plays from its file wherever it is shown.
-- **Keys**: arrows to choose, **Enter** or **Space** to play, **F** for full
-  screen and **Esc** to go back.
+- **Keys**: arrows to choose, **Enter** or **Space** to play, **D** to download,
+  **F** for full screen and **Esc** to go back. **Tab** or **F6** goes to the
+  top tabs, the arrows choose one and **Enter** opens it. A gamepad works too:
+  its D-pad or left stick chooses, **A** plays, **B** goes back, **X** downloads
+  and **Y** toggles full screen; **L1** or **Start** goes to the top tabs.
 - English, Italian, German, French, Spanish and Portuguese.
 
 Videos are played in a single MP4 file (H.264 and AAC, 360p), which MediaPlayer

@@ -25,6 +25,8 @@ public:
 									const std::vector<Category>& categories);
 
 	virtual	void				Draw(BRect updateRect);
+	virtual	void				KeyDown(const char* bytes, int32 count);
+	virtual	void				MakeFocus(bool focus = true);
 	virtual	void				MouseDown(BPoint where);
 	virtual	void				MouseMoved(BPoint where, uint32 transit,
 									const BMessage* dragMessage);
@@ -35,6 +37,7 @@ public:
 									const std::vector<Category>& categories);
 			void				SetSelected(int32 index);
 			int32				Selected() const { return fSelected; }
+			void				FocusSelected();
 			int32				HomeIndex() const { return 0; }
 			int32				DownloadsIndex() const { return 1; }
 			int32				CategoryTab(int32 index) const
@@ -52,11 +55,16 @@ private:
 			BRect				_MoreFrame() const;
 			bool				_HasMore() const;
 			float				_FitLimit() const;
+			void				_MoveFocus(int32 delta);
+			void				_Activate();
+			bool				_IsVisible(int32 index) const;
+			void				_ClampFocus();
 			void				_ShowMenu(int32 index, BPoint where);
 			void				_ShowMore(BPoint where);
 
 			std::vector<Category> fCategories;
 			int32				fSelected;	// -1: a search of one's own
+			int32				fFocused;
 			BString				fChannel;
 			bool				fAddHover;
 			bool				fMoreHover;

@@ -7,6 +7,7 @@
 #include "CategoryBar.h"
 
 #include <Catalog.h>
+#include <InterfaceDefs.h>
 #include <MenuItem.h>
 #include <PopUpMenu.h>
 #include <Window.h>
@@ -37,10 +38,12 @@ CategoryBar::CategoryBar(const std::vector<Category>& categories)
 	BView("categories", B_WILL_DRAW | B_FULL_UPDATE_ON_RESIZE),
 	fCategories(categories),
 	fSelected(categories.empty() ? -1 : 0),
+	fFocused(0),
 	fAddHover(false),
 	fMoreHover(false)
 {
 	SetViewColor(B_TRANSPARENT_COLOR);
+	SetFlags(Flags() | B_NAVIGABLE);
 }
 
 
@@ -199,6 +202,127 @@ CategoryBar::Draw(BRect updateRect)
 		StrokeLine(center - BPoint(0, 5), center + BPoint(0, 5));
 		SetPenSize(1);
 	}
+
+	if (IsFocus() && fFocused >= 0 && fFocused < _Count()) {
+		BRect frame = _ButtonFrame(fFocused);
+		if (frame.right <= limit)
+			StrokeRound(this, frame.InsetByCopy(1, 6), 5, 1, kAccent);
+	}
+}
+
+
+void
+CategoryBar::KeyDown(const char* bytes, int32 count)
+{
+	if (count <= 0)
+		return;
+	switch (bytes[0]) {
+		case B_LEFT_ARROW:
+			_MoveFocus(-1);
+			break;
+		case B_RIGHT_ARROW:
+			_MoveFocus(1);
+			break;
+		case B_ENTER:
+		case B_SPACE:
+			_Activate();
+			break;
+		case B_ESCAPE:
+		case B_TAB:
+			Window()->PostMessage(kMsgFocusContent);
+			break;
+		default:
+			BView::KeyDown(bytes, count);
+	}
+}
+
+
+void
+CategoryBar::MakeFocus(bool focus)
+{
+	if (focus) {
+		if (fSelected >= 0)
+			fFocused = fSelected;
+		else if (!fChannel.IsEmpty())
+			fFocused = ChannelTab();
+		else
+			fFocused = HomeIndex();
+		_ClampFocus();
+	}
+	BView::MakeFocus(focus);
+	Invalidate();
+}
+
+
+void
+CategoryBar::FocusSelected()
+{
+	MakeFocus(true);
+}
+
+
+void
+CategoryBar::_MoveFocus(int32 delta)
+{
+	if (_Count() <= 0)
+		return;
+	int32 index = fFocused;
+	for (int32 i = 0; i < _Count(); i++) {
+		index += delta;
+		if (index < 0)
+			index = _Count() - 1;
+		else if (index >= _Count())
+			index = 0;
+		if (_IsVisible(index)) {
+			if (index != fFocused) {
+				fFocused = index;
+				Invalidate();
+			}
+			return;
+		}
+	}
+}
+
+
+void
+CategoryBar::_Activate()
+{
+	if (fFocused == HomeIndex())
+		Window()->PostMessage(kMsgHome);
+	else if (fFocused == DownloadsIndex())
+		Window()->PostMessage(kMsgShowDownloads);
+	else if (fFocused >= 2 && fFocused < ChannelTab()) {
+		BMessage message(kMsgCategory);
+		message.AddInt32("index", fFocused - 2);
+		Window()->PostMessage(&message);
+	} else if (fFocused == ChannelTab())
+		Window()->PostMessage(kMsgFocusContent);
+}
+
+
+bool
+CategoryBar::_IsVisible(int32 index) const
+{
+	return index >= 0 && index < _Count()
+		&& _ButtonFrame(index).right <= _FitLimit();
+}
+
+
+void
+CategoryBar::_ClampFocus()
+{
+	if (_Count() <= 0) {
+		fFocused = -1;
+		return;
+	}
+	if (_IsVisible(fFocused))
+		return;
+	for (int32 i = _Count() - 1; i >= 0; i--) {
+		if (_IsVisible(i)) {
+			fFocused = i;
+			return;
+		}
+	}
 }
 
 
@@ -328,6 +452,8 @@ void
 CategoryBar::SetCategories(const std::vector<Category>& categories)
 {
 	fCategories = categories;
+	if (IsFocus())
+		_ClampFocus();
 	InvalidateLayout();
 	Invalidate();
 }
@@ -338,6 +464,10 @@ CategoryBar::SetSelected(int32 index)
 {
 	fSelected = index;
 	SetChannel(NULL);
+	if (IsFocus()) {
+		fFocused = index >= 0 ? index : HomeIndex();
+		_ClampFocus();
+	}
 	Invalidate();
 }
 
@@ -353,6 +483,10 @@ CategoryBar::SetChannel(const char* name)
 	fMoreHover = false;
 	if (!fChannel.IsEmpty())
 		fSelected = -1;
+	if (IsFocus()) {
+		fFocused = fChannel.IsEmpty() ? HomeIndex() : ChannelTab();
+		_ClampFocus();
+	}
 	InvalidateLayout();
 	Invalidate();
 }

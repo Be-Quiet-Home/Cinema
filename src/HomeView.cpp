@@ -152,6 +152,7 @@ HomeView::HomeView()
 	:
 	BView("home", B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE
 		| B_SCROLL_VIEW_AWARE),
+	fFocusedShelf(0),
 	fContentHeight(0),
 	fLayingOut(false)
 {
@@ -327,6 +328,7 @@ HomeView::MoveFocus(const char* id, int32 delta)
 		item.row->Invalidate();
 	Shelf& shelf = fShelves[target];
 	shelf.row->MakeFocus(true);
+	fFocusedShelf = target;
 
 	_UpdateScrollBar();
 	BView* parent = Parent();
@@ -347,6 +349,7 @@ HomeView::MoveFocus(const char* id, int32 delta)
 void
 HomeView::MakeFirstFocus()
 {
+	fFocusedShelf = 0;
 	if (fShelves.empty()) {
 		MakeFocus(true);
 	} else {
@@ -355,6 +358,45 @@ HomeView::MakeFirstFocus()
 			shelf.row->Invalidate();
 		fShelves[0].row->MakeFocus(true);
 	}
+}
+
+
+void
+HomeView::MakeLastFocus()
+{
+	if (fShelves.empty()) {
+		MakeFocus(true);
+		return;
+	}
+	int32 target = std::max<int32>(0,
+		std::min<int32>(fFocusedShelf, fShelves.size() - 1));
+	for (Shelf& item : fShelves)
+		item.row->Invalidate();
+	Shelf& shelf = fShelves[target];
+	shelf.row->MakeFocus(true);
+
+	BView* parent = Parent();
+	float visible = parent != NULL
+		? static_cast<BScrollView*>(parent)->Bounds().Height()
+		: Bounds().Height();
+	float top = shelf.group->Frame().top;
+	float bottom = shelf.group->Frame().bottom;
+	float value = Bounds().top;
+	if (top < value)
+		ScrollTo(0, std::max(0.0f, top));
+	else if (bottom > value + visible)
+		ScrollTo(0, bottom - visible);
+}
+
+
+void
+HomeView::RememberFocus()
+{
+	for (size_t i = 0; i < fShelves.size(); i++)
+		if (fShelves[i].row->IsFocus()) {
+			fFocusedShelf = (int32)i;
+			return;
+		}
 }
 
 
