@@ -38,6 +38,7 @@ public:
 									const std::vector<BString>& folders);
 	virtual						~SettingsWindow();
 
+	virtual	void				Show();
 	virtual	void				MessageReceived(BMessage* message);
 	virtual	bool				QuitRequested();
 

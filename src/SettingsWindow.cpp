@@ -15,6 +15,7 @@
 #include <ListView.h>
 #include <MenuField.h>
 #include <MenuItem.h>
+#include <MessageRunner.h>
 #include <Path.h>
 #include <PopUpMenu.h>
 #include <ScrollView.h>
@@ -38,6 +39,7 @@ static const uint32 kMsgFolderSelected = 'ssel';
 static const uint32 kMsgPlayInCinema = 'splc';
 static const uint32 kMsgResume = 'sres';
 static const uint32 kMsgSource = 'ssrc';
+static const uint32 kMsgActivate = 'sact';
 
 
 static const char* kKeyPage = "https://www.themoviedb.org/settings/api";
@@ -165,6 +167,17 @@ SettingsWindow::~SettingsWindow()
 }
 
 
+void
+SettingsWindow::Show()
+{
+	BWindow::Show();
+	// opened from a menu, which gives the focus back to the main window
+	// as it closes: take it again a moment later
+	BMessageRunner::StartSending(BMessenger(this),
+		new BMessage(kMsgActivate), 200000, 1);
+}
+
+
 bool
 SettingsWindow::QuitRequested()
 {
@@ -199,6 +212,11 @@ void
 SettingsWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
+		case kMsgActivate:
+			Activate(true);
+			if (fKey->Text()[0] == '\0')
+				fKey->MakeFocus(true);
+			break;
 		case kMsgKeyChanged:
 			Settings::SetTmdbKey(fKey->Text());
 			fKeyStatus->SetText("");
