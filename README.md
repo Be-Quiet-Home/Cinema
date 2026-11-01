@@ -1,7 +1,11 @@
 # Cinema
 
-YouTube videos on [Haiku](https://www.haiku-os.org): found with
+YouTube videos on [Haiku](https://www.haiku-os.org) and
+[RenkuOS](https://github.com/RenkuOS): found with
 [yt-dlp](https://github.com/yt-dlp/yt-dlp) and played by MediaPlayer.
+
+It runs on x86_64, and on 32-bit ARM with RenkuOS, for example on the Toshiba
+AC100.
 
 ![The videos of a category](screenshots/main.png)
 
@@ -26,11 +30,34 @@ plays well also on slow machines such as the Toshiba AC100.
 
 ![The latest videos of a channel](screenshots/channel.png)
 
+## Installing
+
+The [releases](https://github.com/atomozero/Cinema/releases) have packages for
+x86_64 and 32-bit ARM:
+
+```sh
+pkgman install cinema-1.0.0-1-x86_64.hpkg
+```
+
+On x86_64 this brings Python and the yt-dlp module from HaikuPorts too.
+
+On ARM, where HaikuPorts has no yt-dlp package, put the single-file release of
+yt-dlp in the `PATH`:
+
+```sh
+mkdir -p ~/config/non-packaged/bin
+curl -L -o ~/config/non-packaged/bin/yt-dlp \
+	https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+chmod +x ~/config/non-packaged/bin/yt-dlp
+```
+
+YouTube changes often: when videos stop being found, a newer yt-dlp usually
+helps (`pkgman update`, or the same `curl` again).
+
 ## Needs
 
-- `python3` and yt-dlp, either the Python module (`pkgman install
-  yt_dlp_python3.14`, matching your Python) or the single-file `yt-dlp` in
-  the `PATH`.
+- `python3` and yt-dlp, either the Python module (`yt_dlp_python3.14`,
+  matching your Python) or the single-file `yt-dlp` in the `PATH`.
 - `curl`, for the pictures.
 
 yt-dlp is loaded once, by `cinema-helper.py`, which Cinema starts and talks to.
@@ -41,7 +68,8 @@ yt-dlp is loaded once, by `cinema-helper.py`, which Cinema starts and talks to.
 make
 ```
 
-Then put `objects/Cinema` and `helper/cinema-helper.py` together in a folder,
+`packaging/build-hpkg.sh`, run on Haiku or RenkuOS, builds the package of the
+machine's architecture. Otherwise, put `objects/Cinema` and `helper/cinema-helper.py` together in a folder,
 for example `~/config/non-packaged/apps/Cinema/`, and the catalogs of
 `objects/catalogs/` in
 `~/config/non-packaged/data/locale/catalogs/x-vnd.atomozero-Cinema/`.

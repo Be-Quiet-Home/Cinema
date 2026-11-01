@@ -1,0 +1,24 @@
+name			cinema
+version			@VERSION@-@REVISION@
+architecture	@ARCH@
+summary			"YouTube videos, found with yt-dlp and played by MediaPlayer"
+description		"Cinema shows YouTube videos as big pictures, by category, by \
+channel or for a search, and plays them with MediaPlayer. Channels can be kept \
+as tabs, and videos downloaded to be watched offline. It needs yt-dlp, which \
+it loads once in a small Python helper."
+packager		"atomozero <atomozero@users.noreply.github.com>"
+vendor			"atomozero"
+copyrights		"2026 Andrea Bernardi"
+licenses		"MIT"
+urls			"https://github.com/atomozero/Cinema"
+
+provides {
+	cinema = @VERSION@
+	app:Cinema = @VERSION@
+}
+requires {
+	haiku
+	cmd:python3
+	cmd:curl
+@REQUIRES@
+}
