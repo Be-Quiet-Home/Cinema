@@ -18,10 +18,12 @@ make clean
 make
 
 # yt-dlp as a Python module where HaikuPorts has it; elsewhere the single
-# file yt-dlp in the PATH works too (see README.md)
+# file yt-dlp in the PATH works too (see README.md). FFmpeg 6, which live TV
+# is linked with: a newer one has other libraries.
 REQUIRES=""
 case $ARCH in
-	x86_64)	REQUIRES="yt_dlp_python3.14" ;;
+	x86_64)	REQUIRES="yt_dlp_python3.14 ffmpeg6" ;;
+	arm)	REQUIRES="ffmpeg" ;;
 esac
 
 STAGE=$WORKDIR/stage
@@ -35,7 +37,8 @@ ln -s ../../../../apps/Cinema/Cinema \
 	"$STAGE/data/deskbar/menu/Applications/Cinema"
 
 awk -v version="$VERSION" -v revision="$REVISION" -v arch="$ARCH" -v requires="$REQUIRES" '
-	/^@REQUIRES@$/ { if (requires != "") print "\t" requires; next }
+	/^@REQUIRES@$/ { n = split(requires, list, " ")
+		for (i = 1; i <= n; i++) print "\t" list[i]; next }
 	{ gsub("@VERSION@", version); gsub("@REVISION@", revision)
 		gsub("@ARCH@", arch); print }
 	' packaging/Cinema.PackageInfo.in > "$WORKDIR/.PackageInfo"

@@ -22,10 +22,5 @@ requires {
 	haiku
 	cmd:python3
 	cmd:curl
-	lib:libavformat
-	lib:libavcodec
-	lib:libswscale
-	lib:libswresample
-	lib:libavutil
 @REQUIRES@
 }
