@@ -1,7 +1,7 @@
 # Cinema
 
-Videos on [Haiku](https://www.haiku-os.org) and
-[RenkuOS](https://github.com/RenkuOS), played by MediaPlayer: YouTube (with
+Videos and live TV on [Haiku](https://www.haiku-os.org) and
+[RenkuOS](https://github.com/RenkuOS), in a player of their own: YouTube (with
 [yt-dlp](https://github.com/yt-dlp/yt-dlp)), the public domain films and
 cartoons of the [Internet Archive](https://archive.org), the free video sites
 of [PeerTube](https://joinpeertube.org), BitTorrent, live TV channels, and the
@@ -31,15 +31,20 @@ AC100.
   **Movies** and **TV series** tabs. Their names are read from the files
   (`Title (1968)`, `Title.1968.720p`, `Show.S01E03`, `Show - 1x03`, or a
   `Season 1` folder), and, with a key of [TMDB](https://www.themoviedb.org)
-  in `~/config/settings/Cinema/tmdb_key` (an API key or a read access token,
-  both free), they get posters, plots, casts and the names of the episodes,
+  in the settings (an API key or a read access token, both free), they get
+  posters, plots, casts and the names of the episodes,
   kept for a month so that the library opens without the network too.
-  A series opens its episodes, with the next one to watch chosen.
+  A series opens its episodes, with the next one to watch chosen, and an
+  episode watched to the end goes on to the next.
 - **Player**: the videos play in Cinema, from where they were left. A check
   marks what was watched, a red bar what was started. Space pauses, the
   arrows go back and on by 10 seconds and change the volume, Esc closes,
   M plays the video in MediaPlayer instead. On the whole screen (**F**) the
   tabs go away too.
+- **Settings** (the **≡** menu, or Alt+,): the key of TMDB, the folders of
+  the library, the TV lists, whether videos play in Cinema or in MediaPlayer
+  and from where they were left, the video quality, and where a search goes
+  first.
 - **Video quality**, in the settings: Automatic (360p on 32-bit ARM, 720p
   elsewhere), or 360p to 1080p. Above 360p YouTube gives the picture and the
   sound apart: `ffmpeg` puts them together for the player, and finding them
@@ -54,7 +59,8 @@ AC100.
   the stars have a **Favorites** tab of their own.
 - **BitTorrent**: paste a magnet link in the search field, or drop a
   `.torrent` file on the window: the biggest video it shares is downloaded with
-  `aria2c` to the **Downloaded** tab, with its progress in a notification.
+  `aria2c` to the **Downloaded** tab, where its progress shows and it can be
+  stopped; a download stopped, or cut by a restart, goes on from where it was.
   Use it for what you may share, such as the films of the Blender Foundation
   or the torrents of the Internet Archive.
 - **Channels**: the name of the channel is under each video; a click shows its
@@ -88,6 +94,9 @@ pkgman install cinema-1.1.0-1-x86_64.hpkg
 ```
 
 On x86_64 this brings Python and the yt-dlp module from HaikuPorts too.
+Release 1.1.0 is older than live TV, favorites, the settings and the video
+quality, which are on `main` for now: build it (below) to have them before the
+next release.
 
 On ARM, where HaikuPorts has no yt-dlp package, put the single-file release of
 yt-dlp in the `PATH`:
@@ -107,8 +116,9 @@ helps (`pkgman update`, or the same `curl` again).
 - `python3` and yt-dlp, either the Python module (`yt_dlp_python3.14`,
   matching your Python) or the single-file `yt-dlp` in the `PATH`.
 - `curl`, for the pictures.
-- The FFmpeg libraries (`ffmpeg6` on x86_64), for live TV; the `ffmpeg`
-  command, for YouTube above 360p.
+- The FFmpeg libraries, for live TV: `ffmpeg6` on x86_64, `ffmpeg` on ARM.
+  The `ffmpeg` command too, for YouTube above 360p and for the length and the
+  picture of your own videos.
 
 yt-dlp is loaded once, by `cinema-helper.py`, which Cinema starts and talks to.
 
@@ -117,6 +127,8 @@ yt-dlp is loaded once, by `cinema-helper.py`, which Cinema starts and talks to.
 ```sh
 make
 ```
+
+It links the FFmpeg libraries: on x86_64, install `ffmpeg6_devel` first.
 
 `packaging/build-hpkg.sh`, run on Haiku or RenkuOS, builds the package of the
 machine's architecture. Otherwise, put `objects/Cinema` and `helper/cinema-helper.py` together in a folder,
