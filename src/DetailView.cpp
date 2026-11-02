@@ -331,6 +331,9 @@ DetailView::_Update()
 		fDownloadFrame = BRect(fPlayFrame.right + 12, buttonTop,
 			std::min(fTextFrame.right,
 				fPlayFrame.right + 12 + downloadWidth), fTextFrame.bottom);
+		// live television cannot be downloaded
+		if (fItem.kind == "live")
+			fDownloadFrame = BRect();
 	}
 
 	_ClampScroll();
@@ -396,7 +399,8 @@ DetailView::_DownloadLabel() const
 bool
 DetailView::_CanDownload() const
 {
-	return !fItem.downloaded && fItem.path.IsEmpty() && fItem.progress < 0;
+	return !fItem.downloaded && fItem.path.IsEmpty() && fItem.progress < 0
+		&& fItem.kind != "live";
 }
 
 
@@ -727,8 +731,10 @@ DetailView::Draw(BRect updateRect)
 
 	// what can be done with it
 	_DrawPlayButton();
-	_DrawButton(fDownloadFrame, _DownloadLabel().String(), false,
-		_CanDownload(), fHover == 3);
+	if (fDownloadFrame.IsValid()) {
+		_DrawButton(fDownloadFrame, _DownloadLabel().String(), false,
+			_CanDownload(), fHover == 3);
+	}
 	if (fItem.progress >= 0) {
 		BRect bar(fDownloadFrame.left + 8, fDownloadFrame.bottom - 6,
 			fDownloadFrame.right - 8, fDownloadFrame.bottom - 3);

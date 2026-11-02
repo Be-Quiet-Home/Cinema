@@ -19,6 +19,7 @@
 
 #include <algorithm>
 
+#include "LiveAddress.h"
 #include "Messages.h"
 
 
@@ -26,6 +27,10 @@ static const bigtime_t kLate = 120000;
 	// a picture later than this is not shown
 static const bigtime_t kRingTime = 2000000;
 	// the sound decoded ahead
+static const bigtime_t kStill = 250000;
+	// a picture too late is shown all the same when none was for this
+	// long: on a machine too slow for the video, it goes on by jerks
+	// instead of standing still
 
 
 Player::Player(const BMessenger& target)
@@ -35,6 +40,20 @@ Player::Player(const BMessenger& target)
 	fRelay(false),
 	fRelayDuration(0),
 	fFirstTime(-1),
+	fLive(false),
+	fLiveFormat(NULL),
+	fLiveVideo(NULL),
+	fLiveAudio(NULL),
+	fLiveResampler(NULL),
+	fLiveScaler(NULL),
+	fLiveVideoIndex(-1),
+	fLiveAudioIndex(-1),
+	fLiveSkipLevel(0),
+	fLiveLate(0),
+	fLiveOnTime(0),
+	fLivePixels(-1),
+	fLiveBase(0),
+	fLiveSoundEnd(0),
 	fFile(NULL),
 	fVideoTrack(NULL),
 	fAudioTrack(NULL),
@@ -88,6 +107,9 @@ Player::Open(const char* address, bigtime_t startAt)
 	fAddress = address;
 	fStartAt = startAt;
 	// the relay: how long it lasts is the last part of the address
+	fLive = LiveAddress::Is(address);
+	if (fLive)
+		fStartAt = 0;
 	fRelay = fAddress.StartsWith("http://127.0.0.1:");
 	fRelayDuration = 0;
 	fFirstTime = -1;
@@ -130,6 +152,7 @@ Player::Close()
 		wait_for_thread(fAudioThread, &status);
 		fAudioThread = -1;
 	}
+	_CloseLive();
 	if (fFile != NULL) {
 		if (fVideoTrack != NULL)
 			fFile->ReleaseTrack(fVideoTrack);
@@ -167,6 +190,10 @@ Player::_OpenEntry(void* data)
 void
 Player::_Open()
 {
+	if (fLive) {
+		_OpenLive();
+		return;
+	}
 	if (fAddress.ByteAt(0) == '/') {
 		entry_ref ref;
 		if (get_ref_for_path(fAddress.String(), &ref) == B_OK)
@@ -381,7 +408,7 @@ Player::_SeekTracks(bigtime_t time)
 void
 Player::Seek(bigtime_t time)
 {
-	if (!fOpened)
+	if (!fOpened || fLive)
 		return;
 	if (fRelay) {
 		if (fDuration <= 0)
@@ -517,6 +544,7 @@ Player::_VideoEntry(void* data)
 void
 Player::_VideoLoop()
 {
+	bigtime_t lastShown = system_time();
 	while (!fQuit) {
 		if (fVideoEnded || (fPaused && !fShowNext)) {
 			snooze(10000);
@@ -556,11 +584,13 @@ Player::_VideoLoop()
 			}
 			if (fQuit || generation != fGeneration)
 				continue;
-			show = fShowNext || _Clock() - time < kLate;
+			show = fShowNext || _Clock() - time < kLate
+				|| system_time() - lastShown > kStill;
 		}
 		if (!show)
 			continue;
 
+		lastShown = system_time();
 		_ShowFrame();
 		fShowNext = false;
 		if (!fFramePending.exchange(true))

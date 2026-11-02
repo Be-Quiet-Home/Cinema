@@ -1,10 +1,11 @@
-1	English	application/x-vnd.atomozero-Cinema	3147678896
+1	English	application/x-vnd.atomozero-Cinema	3071824546
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
 TV series	Window		TV series
 Video quality:	Settings		Video quality:
 Downloaded	Detail		Downloaded
 Search first in:	Settings		Search first in:
 full documentary	Categories		full documentary
+Add to favorites	Grid		Add to favorites
 Add this channel to the tabs	Categories		Add this channel to the tabs
 OK	Window		OK
 Show the latest videos	Grid		Show the latest videos
@@ -18,22 +19,27 @@ Remove	Settings		Remove
 Download	Detail		Download
 Getting the video ready	Grid		Getting the video ready
 Downloaded	Window		Downloaded
+Add	Settings		Add
 Settings…	Window		Settings…
 Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Remove from the tabs
 Add to the tabs	Grid		Add to the tabs
+Choose…	Settings		Choose…
 news today	Categories		news today
 Get a key…	Settings		Get a key…
 %peers% sources	Window		%peers% sources
 Library	Settings		Library
 Cinema settings	Settings		Cinema settings
+M3U list:	Settings		M3U list:
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent downloads need aria2c, which is not installed.
 %views% views	Detail		%views% views
-Science	Categories		Science
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		The address of a list of channels, or drop an .m3u file on Cinema.
 Back	Detail		Back
+Science	Categories		Science
 Classic cartoons	Categories		Classic cartoons
 Documentaries	Categories		Documentaries
 Play	Detail		Play
+Free channels of:	Settings		Free channels of:
 TMDB does not accept this key.	Settings		TMDB does not accept this key.
 Play the videos in Cinema, not in MediaPlayer	Settings		Play the videos in Cinema, not in MediaPlayer
 Details	Grid		Details
@@ -49,8 +55,11 @@ The video could not be moved to the Trash: %error%	Window		The video could not b
 Search	Settings		Search
 News	Categories		News
 Type what to look for at the top right	Window		Type what to look for at the top right
+TV	Window		TV
 Cinema	System name		Cinema
 Folders of the library	Settings		Folders of the library
+TV %country%	Settings		TV %country%
+TV channels	Settings		TV channels
 No videos found	Window		No videos found
 Technology	Categories		Technology
 See all	Home		See all
@@ -64,6 +73,7 @@ Downloading…	Grid		Downloading…
 Stop the download	Grid		Stop the download
 Search	Window		Search
 science explained	Categories		science explained
+# or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# or name = @iptv channel:<address of an M3U list> for TV channels
 Download	Grid		Download
 official music video	Categories		official music video
 Movies	Window		Movies
@@ -76,6 +86,8 @@ No videos downloaded yet: right click a video, or press D	Window		No videos down
 # or name = channel:<id> for the latest videos of a channel	Categories		# or name = channel:<id> for the latest videos of a channel
 MediaPlayer could not be started: %error%	Window		MediaPlayer could not be started: %error%
 Move to Trash	Grid		Move to Trash
+Remove from favorites	Grid		Remove from favorites
+Favorites	Window		Favorites
 Downloaded	Categories		Downloaded
 Home	Categories		Home
 Checking…	Settings		Checking…

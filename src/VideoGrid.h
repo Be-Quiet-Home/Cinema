@@ -57,6 +57,7 @@ public:
 									// -1: not downloading
 			void				SetDownloaded(const char* id,
 									bool downloaded);
+			void				SetFavorite(const char* id, bool favorite);
 			void				SetMessage(const char* message);
 			void				SetBusy(const char* title);
 									// NULL when no longer busy
@@ -74,6 +75,7 @@ private:
 			void				_Play(int32 index);
 			void				_Download(int32 index);
 			void				_ShowDetails(int32 index);
+			void				_ToggleFavorite(int32 index);
 			BMessage			_DownloadMessage(int32 index) const;
 			BMessage			_DetailsMessage(int32 index) const;
 			void				_ShowMenu(int32 index, BPoint where);

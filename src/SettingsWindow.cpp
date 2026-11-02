@@ -10,6 +10,8 @@
 #include <Button.h>
 #include <Catalog.h>
 #include <CheckBox.h>
+#include <Country.h>
+#include <LocaleRoster.h>
 #include <FilePanel.h>
 #include <LayoutBuilder.h>
 #include <ListView.h>
@@ -24,6 +26,10 @@
 #include <Url.h>
 
 #include "Messages.h"
+#include "TvLists.h"
+
+#include <algorithm>
+#include <utility>
 
 
 #undef B_TRANSLATION_CONTEXT
@@ -40,6 +46,11 @@ static const uint32 kMsgPlayInCinema = 'splc';
 static const uint32 kMsgResume = 'sres';
 static const uint32 kMsgSource = 'ssrc';
 static const uint32 kMsgQuality = 'squa';
+static const uint32 kMsgTvSelected = 'stvs';
+static const uint32 kMsgTvAddress = 'stva';
+static const uint32 kMsgTvAdd = 'stv+';
+static const uint32 kMsgTvRemove = 'stv-';
+static const uint32 kMsgTvCountry = 'stvc';
 static const uint32 kMsgActivate = 'sact';
 
 
@@ -105,6 +116,69 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 			.AddGlue()
 			.Add(fRemove)
 			.Add(add)
+		.End();
+
+	// the lists of TV channels
+	fTvLists = new BListView("tv lists");
+	fTvLists->SetSelectionMessage(new BMessage(kMsgTvSelected));
+	BScrollView* tvScroll = new BScrollView("tv scroll", fTvLists, 0,
+		false, true);
+	tvScroll->SetExplicitMinSize(BSize(B_SIZE_UNSET, 60));
+	fTvAddress = new BTextControl("tv address", B_TRANSLATE("M3U list:"), "",
+		new BMessage(kMsgTvAdd));
+	fTvAddress->SetModificationMessage(new BMessage(kMsgTvAddress));
+	fTvAdd = new BButton("tv add", B_TRANSLATE("Add"),
+		new BMessage(kMsgTvAdd));
+	fTvAdd->SetEnabled(false);
+	fTvRemove = new BButton("tv remove", B_TRANSLATE("Remove"),
+		new BMessage(kMsgTvRemove));
+	fTvRemove->SetEnabled(false);
+	// the free channels of a country, from the public lists of iptv-org
+	std::vector<std::pair<BString, BString>> countries;
+	BMessage available;
+	BLocaleRoster::Default()->GetAvailableCountries(&available);
+	const char* code;
+	for (int32 i = 0; available.FindString("country", i, &code) == B_OK;
+			i++) {
+		BString name;
+		if (strlen(code) != 2 || BCountry(code).GetName(name) != B_OK)
+			continue;
+		countries.push_back(std::make_pair(name, BString(code)));
+	}
+	std::sort(countries.begin(), countries.end(),
+		[](const std::pair<BString, BString>& a,
+			const std::pair<BString, BString>& b) {
+			return a.first.ICompare(b.first) < 0;
+		});
+	BPopUpMenu* countryMenu = new BPopUpMenu(B_TRANSLATE("Choose"
+		B_UTF8_ELLIPSIS), true, false);
+	for (const auto& country : countries) {
+		BMessage* message = new BMessage(kMsgTvCountry);
+		message->AddString("code", country.second);
+		message->AddString("name", country.first);
+		countryMenu->AddItem(new BMenuItem(country.first.String(), message));
+	}
+	fTvCountry = new BMenuField("tv country",
+		B_TRANSLATE("Free channels of:"), countryMenu);
+
+	BStringView* tvNote = new BStringView("tv note",
+		B_TRANSLATE("The address of a list of channels, or drop an .m3u file "
+			"on Cinema."));
+
+	BBox* tv = new BBox("tv");
+	tv->SetLabel(B_TRANSLATE("TV channels"));
+	BLayoutBuilder::Group<>(tv, B_VERTICAL, B_USE_SMALL_SPACING)
+		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_BIG_SPACING,
+			B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING)
+		.Add(tvScroll, 10)
+		.Add(fTvCountry)
+		.AddGroup(B_HORIZONTAL)
+			.Add(fTvAddress, 10)
+			.Add(fTvAdd)
+		.End()
+		.AddGroup(B_HORIZONTAL)
+			.Add(tvNote, 10)
+			.Add(fTvRemove)
 		.End();
 
 	// how the videos play
@@ -175,6 +249,7 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 		.SetInsets(B_USE_WINDOW_SPACING)
 		.Add(library)
 		.Add(foldersBox, 10)
+		.Add(tv, 10)
 		.Add(playback)
 		.Add(search);
 
@@ -222,6 +297,13 @@ SettingsWindow::_SetFolders(const BMessage* message)
 	for (int32 i = 0; message->FindString("path", i, &path) == B_OK; i++)
 		fFolders->AddItem(new BStringItem(path));
 	fRemove->SetEnabled(false);
+
+	while (BListItem* item = fTvLists->RemoveItem((int32)0))
+		delete item;
+	const char* address;
+	for (int32 i = 0; message->FindString("tv", i, &address) == B_OK; i++)
+		fTvLists->AddItem(new BStringItem(address));
+	fTvRemove->SetEnabled(false);
 }
 
 
@@ -297,6 +379,52 @@ SettingsWindow::MessageReceived(BMessage* message)
 		case kMsgSettingsFolders:
 			_SetFolders(message);
 			break;
+
+		case kMsgTvSelected:
+			fTvRemove->SetEnabled(fTvLists->CurrentSelection() >= 0);
+			break;
+		case kMsgTvAddress:
+		{
+			BString text(fTvAddress->Text());
+			text.Trim();
+			fTvAdd->SetEnabled(!text.IsEmpty());
+			break;
+		}
+		case kMsgTvAdd:
+		{
+			BString text(fTvAddress->Text());
+			text.Trim();
+			if (text.IsEmpty())
+				break;
+			BMessage add(kMsgAddTvList);
+			add.AddString("address", text);
+			fTarget.SendMessage(&add);
+			fTvAddress->SetText("");
+			fTvAdd->SetEnabled(false);
+			break;
+		}
+		case kMsgTvCountry:
+		{
+			BString name(B_TRANSLATE("TV %country%"));
+			name.ReplaceFirst("%country%", message->GetString("name", ""));
+			BMessage add(kMsgAddTvList);
+			add.AddString("address",
+				TvLists::Address(message->GetString("code", "")));
+			add.AddString("name", name);
+			fTarget.SendMessage(&add);
+			break;
+		}
+		case kMsgTvRemove:
+		{
+			BStringItem* item = dynamic_cast<BStringItem*>(
+				fTvLists->ItemAt(fTvLists->CurrentSelection()));
+			if (item == NULL)
+				break;
+			BMessage remove(kMsgRemoveTvList);
+			remove.AddString("address", item->Text());
+			fTarget.SendMessage(&remove);
+			break;
+		}
 
 		case kMsgPlayInCinema:
 			fSettings.playInCinema = fPlayInCinema->Value() == B_CONTROL_ON;

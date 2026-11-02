@@ -1,10 +1,11 @@
-1	spanish	application/x-vnd.atomozero-Cinema	3147678896
+1	spanish	application/x-vnd.atomozero-Cinema	3071824546
 YouTube could not be reached: is the network on?	Window		No se puede acceder a YouTube: ¿está activa la red?
 TV series	Window		Series
 Video quality:	Settings		Calidad de vídeo:
 Downloaded	Detail		Downloaded
 Search first in:	Settings		Buscar primero en:
 full documentary	Categories		documental completo
+Add to favorites	Grid		Añadir a favoritos
 Add this channel to the tabs	Categories		Añadir este canal a las pestañas
 OK	Window		Aceptar
 Show the latest videos	Grid		Mostrar los últimos vídeos
@@ -18,22 +19,27 @@ Remove	Settings		Quitar
 Download	Detail		Download
 Getting the video ready	Grid		Preparando el vídeo
 Downloaded	Window		Descargados
+Add	Settings		Añadir
 Settings…	Window		Ajustes…
 Downloading…	Detail		Downloading…
 Remove from the tabs	Categories		Quitar de las pestañas
 Add to the tabs	Grid		Añadir a las pestañas
+Choose…	Settings		Elegir…
 news today	Categories		noticias de hoy
 Get a key…	Settings		Obtener una clave…
 %peers% sources	Window		%peers% fuentes
 Library	Settings		Biblioteca
 Cinema settings	Settings		Ajustes de Cinema
+M3U list:	Settings		Lista M3U:
 BitTorrent downloads need aria2c, which is not installed.	Window		Las descargas BitTorrent necesitan aria2c, que no está instalado.
 %views% views	Detail		%views% views
-Science	Categories		Ciencia
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		La dirección de una lista de canales, o suelta un archivo .m3u sobre Cinema.
 Back	Detail		Back
+Science	Categories		Ciencia
 Classic cartoons	Categories		Dibujos animados clásicos
 Documentaries	Categories		Documentales
 Play	Detail		Play
+Free channels of:	Settings		Canales gratuitos de:
 TMDB does not accept this key.	Settings		TMDB no acepta esta clave.
 Play the videos in Cinema, not in MediaPlayer	Settings		Reproducir los vídeos en Cinema, no en MediaPlayer
 Details	Grid		Details
@@ -49,8 +55,11 @@ The video could not be moved to the Trash: %error%	Window		No se pudo mover el v
 Search	Settings		Búsqueda
 News	Categories		Noticias
 Type what to look for at the top right	Window		Escribe arriba a la derecha qué buscar
+TV	Window		TV
 Cinema	System name		Cinema
 Folders of the library	Settings		Carpetas de la biblioteca
+TV %country%	Settings		TV %country%
+TV channels	Settings		Canales de TV
 No videos found	Window		No se encontraron vídeos
 Technology	Categories		Tecnología
 See all	Home		Ver todo
@@ -64,6 +73,7 @@ Downloading…	Grid		Descargando…
 Stop the download	Grid		Detener la descarga
 Search	Window		Buscar
 science explained	Categories		ciencia explicada
+# or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# o nombre = @iptv channel:<dirección de una lista M3U> para canales de TV
 Download	Grid		Descargar
 official music video	Categories		videoclip oficial
 Movies	Window		Películas
@@ -76,6 +86,8 @@ No videos downloaded yet: right click a video, or press D	Window		Aún no hay v�
 # or name = channel:<id> for the latest videos of a channel	Categories		# o nombre = channel:<id> para los últimos vídeos de un canal
 MediaPlayer could not be started: %error%	Window		No se pudo abrir MediaPlayer: %error%
 Move to Trash	Grid		Mover a la papelera
+Remove from favorites	Grid		Quitar de favoritos
+Favorites	Window		Favoritos
 Downloaded	Categories		Descargados
 Home	Categories		Inicio
 Checking…	Settings		Comprobando…

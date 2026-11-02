@@ -1,10 +1,11 @@
-1	ukrainian	application/x-vnd.atomozero-Cinema	3147678896
+1	ukrainian	application/x-vnd.atomozero-Cinema	3071824546
 YouTube could not be reached: is the network on?	Window		Не вдається з'єднатися з YouTube: чи увімкнена мережа?
 TV series	Window		Серіали
 Video quality:	Settings		Якість відео:
 Downloaded	Detail		Завантажено
 Search first in:	Settings		Спершу шукати в:
 full documentary	Categories		повний документальний фільм
+Add to favorites	Grid		Додати до обраного
 Add this channel to the tabs	Categories		Додати цей канал до вкладок
 OK	Window		Гаразд
 Show the latest videos	Grid		Показати останні відео
@@ -18,22 +19,27 @@ Remove	Settings		Вилучити
 Download	Detail		Завантажити
 Getting the video ready	Grid		Підготовка відео
 Downloaded	Window		Завантажені
+Add	Settings		Додати
 Settings…	Window		Налаштування…
 Downloading…	Detail		Завантаження…
 Remove from the tabs	Categories		Вилучити з вкладок
 Add to the tabs	Grid		Додати до вкладок
+Choose…	Settings		Вибрати…
 news today	Categories		новини сьогодні
 Get a key…	Settings		Отримати ключ…
 %peers% sources	Window		%peers% джерел
 Library	Settings		Бібліотека
 Cinema settings	Settings		Налаштування Cinema
+M3U list:	Settings		Список M3U:
 BitTorrent downloads need aria2c, which is not installed.	Window		Для завантажень BitTorrent потрібен aria2c, який не встановлено.
 %views% views	Detail		%views% переглядів
-Science	Categories		Наука
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		Адреса списку каналів або перетягніть файл .m3u на Cinema.
 Back	Detail		Назад
+Science	Categories		Наука
 Classic cartoons	Categories		Класичні мультфільми
 Documentaries	Categories		Документальні фільми
 Play	Detail		Відтворити
+Free channels of:	Settings		Безкоштовні канали країни:
 TMDB does not accept this key.	Settings		TMDB не приймає цей ключ.
 Play the videos in Cinema, not in MediaPlayer	Settings		Відтворювати відео в Cinema, а не в MediaPlayer
 Details	Grid		Подробиці
@@ -49,8 +55,11 @@ The video could not be moved to the Trash: %error%	Window		Не вдалося �
 Search	Settings		Пошук
 News	Categories		Новини
 Type what to look for at the top right	Window		Введіть угорі праворуч, що шукати
+TV	Window		ТБ
 Cinema	System name		Cinema
 Folders of the library	Settings		Теки бібліотеки
+TV %country%	Settings		ТБ %country%
+TV channels	Settings		Телеканали
 No videos found	Window		Відео не знайдено
 Technology	Categories		Технології
 See all	Home		Усі
@@ -64,6 +73,7 @@ Downloading…	Grid		Завантаження…
 Stop the download	Grid		Зупинити завантаження
 Search	Window		Пошук
 science explained	Categories		наука простими словами
+# or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# або назва = @iptv channel:<адреса списку M3U> для телеканалів
 Download	Grid		Завантажити
 official music video	Categories		офіційний кліп
 Movies	Window		Фільми
@@ -76,6 +86,8 @@ No videos downloaded yet: right click a video, or press D	Window		Ще нема�
 # or name = channel:<id> for the latest videos of a channel	Categories		# або назва = channel:<id> для останніх відео каналу
 MediaPlayer could not be started: %error%	Window		Не вдалося запустити MediaPlayer: %error%
 Move to Trash	Grid		Перемістити до смітника
+Remove from favorites	Grid		Прибрати з обраного
+Favorites	Window		Обране
 Downloaded	Categories		Завантажені
 Home	Categories		Головна
 Checking…	Settings		Перевірка…

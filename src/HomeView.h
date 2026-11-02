@@ -47,6 +47,7 @@ public:
 									const char* message);
 			void				SetPicture(const char* id, BBitmap* picture);
 			void				SetProgress(const char* id, int32 progress);
+			void				SetFavorite(const char* id, bool favorite);
 			void				SetDownloaded(const char* id,
 									bool downloaded);
 			void				SetBusy(const char* id, const char* title);

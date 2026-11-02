@@ -35,9 +35,11 @@
 #include "CategoryBar.h"
 #include "DetailView.h"
 #include "Downloads.h"
+#include "Favorites.h"
 #include "Gamepad.h"
 #include "Helper.h"
 #include "History.h"
+#include "LiveAddress.h"
 #include "HomeView.h"
 #include "Player.h"
 #include "PlayerView.h"
@@ -46,6 +48,7 @@
 #include "SettingsWindow.h"
 #include "Messages.h"
 #include "Style.h"
+#include "TvLists.h"
 #include "VideoGrid.h"
 #include "Worker.h"
 #include "PictureName.h"
@@ -111,6 +114,7 @@ CinemaWindow::CinemaWindow()
 	pages->AddChild(homeScroll);
 	fSettings = Settings::Load();
 	fSearchProvider = fSettings.searchSource;
+	_OfferTv();
 	AddShortcut(',', B_COMMAND_KEY, new BMessage(kMsgShowSettings));
 
 	// the player, the fourth card
@@ -134,6 +138,7 @@ CinemaWindow::CinemaWindow()
 		B_ALIGN_VERTICAL_CENTER));
 
 	BGroupView* top = new BGroupView(B_HORIZONTAL, B_USE_SMALL_SPACING);
+	fTopBar = top;
 	top->SetViewColor(Style::kBar);
 	BLayoutBuilder::Group<>(top)
 		.SetInsets(12, 6, 12, 6)
@@ -471,6 +476,7 @@ CinemaWindow::_Videos(BMessage* message)
 		if (!video.channelId.IsEmpty())
 			fChannelProviders[video.channelId] = video.provider;
 		video.downloaded = fDownloaded.count(video.id) > 0;
+		video.favorite = Favorites::Has(video.id);
 		auto downloading = fDownloading.find(video.id);
 		if (downloading != fDownloading.end())
 			video.progress = downloading->second.GetInt32("percent", 0);
@@ -841,9 +847,11 @@ CinemaWindow::_Play(const char* url, const char* title, const char* id)
 
 
 void
-CinemaWindow::_PlayInMediaPlayer(const char* url, const char* title)
+CinemaWindow::_PlayInMediaPlayer(const char* address, const char* title)
 {
-	const char* argv[] = { url };
+	// a live stream as it is: MediaPlayer opens it by itself
+	BString url = LiveAddress::Url(address);
+	const char* argv[] = { url.String() };
 	status_t status = be_roster->Launch(kMediaPlayer, 1, argv);
 	if (status != B_OK && status != B_ALREADY_RUNNING) {
 		BString text(B_TRANSLATE("MediaPlayer could not be started: %error%"));
@@ -1052,6 +1060,27 @@ CinemaWindow::MessageReceived(BMessage* message)
 			for (size_t i = 0; i < fCategories.size(); i++) {
 				if (fCategories[i].provider == "local"
 					&& fCategories[i].channel == path) {
+					_RemoveCategory(i);
+					break;
+				}
+			}
+			_SendFolders();
+			break;
+		}
+		case kMsgToggleFavorite:
+			_ToggleFavorite(message);
+			break;
+		case kMsgAddTvList:
+			_AddTvList(message->GetString("address", ""),
+				message->GetString("name", NULL));
+			_SendFolders();
+			break;
+		case kMsgRemoveTvList:
+		{
+			BString address = message->GetString("address", "");
+			for (size_t i = 0; i < fCategories.size(); i++) {
+				if (fCategories[i].provider == "iptv"
+					&& fCategories[i].channel == address) {
 					_RemoveCategory(i);
 					break;
 				}
@@ -1275,7 +1304,22 @@ CinemaWindow::_SetFullScreen(bool fullScreen)
 		MoveTo(fWindowFrame.LeftTop());
 		ResizeTo(fWindowFrame.Width(), fWindowFrame.Height());
 	}
+	_UpdateTopBar();
 	Activate();
+}
+
+
+/*!	A video on the whole screen has the whole screen: the tabs and the
+	search go away, and come back with the window or without the player.
+*/
+void
+CinemaWindow::_UpdateTopBar()
+{
+	bool hide = fFullScreen && fPlayerShown;
+	if (hide && !fTopBar->IsHidden())
+		fTopBar->Hide();
+	else if (!hide && fTopBar->IsHidden())
+		fTopBar->Show();
 }
 
 
@@ -1603,6 +1647,109 @@ CinemaWindow::_AddFolder(const char* path)
 }
 
 
+/*!	A star given or taken away; the favorites have a tab of their own,
+	first, from the first one on.
+*/
+void
+CinemaWindow::_ToggleFavorite(BMessage* message)
+{
+	BString id = message->GetString("id", "");
+	bool favorite = Favorites::Toggle(*message);
+	fGrid->SetFavorite(id.String(), favorite);
+	fHome->SetFavorite(id.String(), favorite);
+	fHomeLoaded = false;
+
+	int32 index = -1;
+	for (size_t i = 0; i < fCategories.size(); i++) {
+		if (fCategories[i].provider == "favorites")
+			index = i;
+	}
+	if (index < 0 && favorite) {
+		Category category;
+		category.name = B_TRANSLATE("Favorites");
+		category.provider = "favorites";
+		category.channel = "all";
+		fCategories.insert(fCategories.begin(), category);
+		int32 selected = fCategoryBar->Selected();
+		SaveCategories(fCategories);
+		fCategoryBar->SetCategories(fCategories);
+		// the tab chosen moved one on
+		if (selected >= fCategoryBar->CategoryTab(0))
+			fCategoryBar->SetSelected(selected + 1);
+		return;
+	}
+	// the favorites shown: without the one taken away
+	if (index >= 0 && fCard == 0
+		&& fCategoryBar->Selected() == fCategoryBar->CategoryTab(index))
+		_ShowCategory(index);
+}
+
+
+/*!	Once, a tab with the free channels of the country of the system: if
+	it is taken away, it does not come back.
+*/
+void
+CinemaWindow::_OfferTv()
+{
+	if (fSettings.tvOffered)
+		return;
+	fSettings.tvOffered = true;
+	fSettings.Save();
+	BString country = TvLists::SystemCountry();
+	if (country.IsEmpty())
+		return;
+	BString address = TvLists::Address(country);
+	for (const Category& existing : fCategories) {
+		if (existing.provider == "iptv" && existing.channel == address)
+			return;
+	}
+	Category category;
+	category.name = B_TRANSLATE("TV");
+	category.provider = "iptv";
+	category.channel = address;
+	fCategories.push_back(category);
+	SaveCategories(fCategories);
+	fCategoryBar->SetCategories(fCategories);
+}
+
+
+/*!	A tab with the channels of a list M3U, an address or a file. */
+void
+CinemaWindow::_AddTvList(const char* address, const char* name)
+{
+	BString list(address);
+	list.Trim();
+	if (list.IsEmpty())
+		return;
+	int32 lists = 0;
+	for (size_t i = 0; i < fCategories.size(); i++) {
+		if (fCategories[i].provider != "iptv")
+			continue;
+		if (fCategories[i].channel == list) {
+			_ShowCategory(i);
+			return;
+		}
+		lists++;
+	}
+	Category category;
+	if (name != NULL && name[0] != '\0')
+		category.name = name;
+	else {
+		category.name = B_TRANSLATE("TV");
+		if (lists > 0)
+			category.name << " " << lists + 1;
+	}
+	category.provider = "iptv";
+	category.channel = list;
+	fCategories.push_back(category);
+
+	SaveCategories(fCategories);
+	fCategoryBar->SetCategories(fCategories);
+	fHomeLoaded = false;
+	_ShowCategory(fCategories.size() - 1);
+}
+
+
 void
 CinemaWindow::_Dropped(BMessage* message)
 {
@@ -1617,7 +1764,10 @@ CinemaWindow::_Dropped(BMessage* message)
 			_AddFolder(path.Path());
 		else if (name.IEndsWith(".torrent"))
 			_AddTorrent(path.Path());
-		else
+		else if (name.IEndsWith(".m3u") || name.IEndsWith(".m3u8")) {
+			_AddTvList(path.Path());
+			_SendFolders();
+		} else
 			_Play(path.Path(), path.Leaf());
 	}
 }
@@ -1638,6 +1788,7 @@ CinemaWindow::_OpenPlayer(const char* address, const char* title,
 	fCards->SetVisibleItem(3);
 	fCard = 3;
 	fPlayerShown = true;
+	_UpdateTopBar();
 	fPlayerView->Start(title);
 	fPlayerView->MakeFocus(true);
 	// the overlay of the video before goes before its bitmap
@@ -1653,6 +1804,9 @@ CinemaWindow::_OpenPlayer(const char* address, const char* title,
 void
 CinemaWindow::_SavePosition()
 {
+	// live, there is nowhere to go back to
+	if (fPlayingKind == "live")
+		return;
 	if (fPlayerShown && fPlayer->IsOpen() && !fPlayingId.IsEmpty())
 		Positions::Set(fPlayingId, fPlayer->Position(), fPlayer->Duration());
 }
@@ -1670,6 +1824,7 @@ CinemaWindow::_ClosePlayer(bool save)
 	fPlayerView->ClearOverlay();
 	fPlayer->Close();
 	fPlayerShown = false;
+	_UpdateTopBar();
 	fCards->SetVisibleItem(fPlayerReturn);
 	fCard = fPlayerReturn;
 	Positions::Position position = Positions::Get(fPlayingId);
@@ -1702,6 +1857,8 @@ CinemaWindow::_ShowSettings()
 		fProviders, folders);
 	fSettingsWindow = BMessenger(window);
 	window->Show();
+	// the lists of TV channels too
+	_SendFolders();
 }
 
 
@@ -1714,6 +1871,8 @@ CinemaWindow::_SendFolders()
 	for (const Category& category : fCategories) {
 		if (category.provider == "local")
 			folders.AddString("path", category.channel);
+		else if (category.provider == "iptv")
+			folders.AddString("tv", category.channel);
 	}
 	fSettingsWindow.SendMessage(&folders);
 }

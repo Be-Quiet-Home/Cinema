@@ -19,6 +19,11 @@ class BBitmap;
 class BMediaFile;
 class BMediaTrack;
 class BSoundPlayer;
+struct AVCodecContext;
+struct AVFormatContext;
+struct AVFrame;
+struct SwrContext;
+struct SwsContext;
 
 
 /*!	Plays a file or an address with the Media Kit: a thread decodes the
@@ -35,6 +40,11 @@ class BSoundPlayer;
 	<seconds>) cannot go back and on: it starts where it is asked
 	(?t=<seconds>), and Seek() asks the target with kMsgPlayerReopen
 	("time") to open it again from there.
+
+	A live stream (LiveAddress, "cinema-live:?url=...") is played with
+	FFmpeg instead (PlayerLive.cpp): it opens HLS by itself, with its
+	sound apart or not, and keeps up on a slow machine by decoding less.
+	It goes out the same way, by the ring of the sound and the bitmaps.
 */
 class Player {
 public:
@@ -84,6 +94,25 @@ private:
 			bool				_SetUpVideo();
 			void				_ShowFrame();
 			bigtime_t			_StreamTime(bigtime_t time);
+			bool				_SetUpBitmaps(int32 width, int32 height);
+
+			// live, with FFmpeg (PlayerLive.cpp)
+			void				_OpenLive();
+			void				_CloseLive();
+		static	status_t			_LiveEntry(void* data);
+			void				_LiveLoop();
+			int					_LiveVideoStream(int32 maxHeight);
+			void				_LiveSkip(int level);
+			void				_LiveLateness(bool late);
+			bool				_LiveRender(AVFrame* frame);
+			void				_LiveQueueSound(const void* data,
+									size_t bytes);
+			void				_LiveAlignSound(int64 micros);
+			void				_LivePushSound(AVFrame* frame);
+			int64				_LiveFrameMicros(int index,
+									const AVFrame* frame) const;
+			int64				_LiveClock();
+		static	int					_LiveInterrupt(void* data);
 
 			BMessenger			fTarget;
 			BString				fAddress;
@@ -91,6 +120,23 @@ private:
 			bool				fRelay;			// a stream of the relay
 			bigtime_t			fRelayDuration;
 			std::atomic<bigtime_t> fFirstTime;	// of the stream, or -1
+
+			bool				fLive;			// played with FFmpeg
+
+			AVFormatContext*	fLiveFormat;
+			AVCodecContext*		fLiveVideo;
+			AVCodecContext*		fLiveAudio;
+			SwrContext*			fLiveResampler;
+			SwsContext*			fLiveScaler;
+			int					fLiveVideoIndex;
+			int					fLiveAudioIndex;
+			int					fLiveSkipLevel;
+			int					fLiveLate;
+			int					fLiveOnTime;
+			int					fLivePixels;	// AVPixelFormat of the bitmaps
+			int64				fLiveBase;		// stream time of the clock's 0
+			int64				fLiveSoundEnd;	// stream time of the sound queued
+			std::vector<uint8>	fLivePcm;
 
 			BMediaFile*			fFile;
 			BMediaTrack*		fVideoTrack;

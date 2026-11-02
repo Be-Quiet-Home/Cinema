@@ -25,11 +25,13 @@ class BTextControl;
 
 
 /*!	The settings of Cinema: the key of TMDB, the folders of the library,
-	how the videos play, where a search goes first. What is changed is kept
-	at once, and told to the main window (the target): kMsgSettingsChanged,
-	kMsgAddFolder and kMsgRemoveFolder ("path"), kMsgCheckTmdb, whose answer,
-	kMsgTmdbChecked, it sends back here. It sends kMsgSettingsFolders when
-	the folders change, and kMsgSettingsClosed when this goes away.
+	the lists of TV channels, how the videos play, where a search goes
+	first. What is changed is kept at once, and told to the main window
+	(the target): kMsgSettingsChanged, kMsgAddFolder and kMsgRemoveFolder
+	("path"), kMsgAddTvList and kMsgRemoveTvList ("address"),
+	kMsgCheckTmdb, whose answer, kMsgTmdbChecked, it sends back here. It
+	sends kMsgSettingsFolders when the folders or the lists change, and
+	kMsgSettingsClosed when this goes away.
 */
 class SettingsWindow : public BWindow {
 public:
@@ -54,6 +56,11 @@ private:
 			BStringView*		fKeyStatus;
 			BListView*			fFolders;
 			BButton*			fRemove;
+			BListView*			fTvLists;
+			BTextControl*		fTvAddress;
+			BButton*			fTvAdd;
+			BButton*			fTvRemove;
+			BMenuField*			fTvCountry;
 			BCheckBox*			fPlayInCinema;
 			BCheckBox*			fResume;
 			BMenuField*			fQuality;

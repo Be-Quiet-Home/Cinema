@@ -7,6 +7,7 @@
 #include "VideoGrid.h"
 
 #include <algorithm>
+#include <math.h>
 
 #include <Bitmap.h>
 #include <Cursor.h>
@@ -224,6 +225,18 @@ VideoGrid::SetDownloaded(const char* id, bool downloaded)
 			fVideos[i].progress = -1;
 			Invalidate(_TileFrame(i));
 			return;
+		}
+	}
+}
+
+
+void
+VideoGrid::SetFavorite(const char* id, bool favorite)
+{
+	for (size_t i = 0; i < fVideos.size(); i++) {
+		if (fVideos[i].id == id) {
+			fVideos[i].favorite = favorite;
+			Invalidate(_TileFrame(i));
 		}
 	}
 }
@@ -489,6 +502,25 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 		SetPenSize(1);
 	}
 
+	if (video.favorite) {
+		// a star in the corner: among the favorites
+		BRect mark(picture.left + 6, picture.top + 6, picture.left + 28,
+			picture.top + 28);
+		FillRound(this, mark, 11, (rgb_color){ 0, 0, 0, 190 });
+		BPoint center(mark.left + mark.Width() / 2,
+			mark.top + mark.Height() / 2 + 1);
+		BPoint points[10];
+		for (int32 i = 0; i < 10; i++) {
+			float radius = i % 2 == 0 ? 8.5f : 3.6f;
+			float angle = -M_PI / 2 + i * M_PI / 5;
+			points[i] = center + BPoint(radius * cosf(angle),
+				radius * sinf(angle));
+		}
+		SetDrawingMode(B_OP_OVER);
+		SetHighColor(255, 196, 0);
+		FillPolygon(points, 10);
+	}
+
 	if (video.progress >= 0) {
 		// the download, as a bar along the bottom of the picture
 		BRect bar(picture.left, picture.bottom - 3, picture.right,
@@ -671,10 +703,22 @@ VideoGrid::_Download(int32 index)
 	if (index < 0 || index >= (int32)fVideos.size())
 		return;
 	const MediaItem& video = fVideos[index];
-	if (video.downloaded || video.progress >= 0 || !video.path.IsEmpty())
+	if (video.downloaded || video.progress >= 0 || !video.path.IsEmpty()
+		|| video.kind == "live")
 		return;
 	BMessage download = _DownloadMessage(index);
 	Window()->PostMessage(&download);
+}
+
+
+void
+VideoGrid::_ToggleFavorite(int32 index)
+{
+	if (index < 0 || index >= (int32)fVideos.size())
+		return;
+	BMessage favorite = _DetailsMessage(index);
+	favorite.what = kMsgToggleFavorite;
+	Window()->PostMessage(&favorite);
 }
 
 
@@ -749,8 +793,14 @@ VideoGrid::_ShowMenu(int32 index, BPoint where)
 	if (!video.path.IsEmpty())
 		play->AddString("path", video.path);
 	menu->AddItem(new BMenuItem(B_TRANSLATE("Play"), play));
+	BMessage* favorite = new BMessage(_DetailsMessage(index));
+	favorite->what = kMsgToggleFavorite;
+	menu->AddItem(new BMenuItem(video.favorite
+		? B_TRANSLATE("Remove from favorites")
+		: B_TRANSLATE("Add to favorites"), favorite));
 
-	if (video.path.IsEmpty()) {
+	// live television cannot be downloaded
+	if (video.path.IsEmpty() && video.kind != "live") {
 		BMessage* download = new BMessage(_DownloadMessage(index));
 		const char* label = B_TRANSLATE("Download");
 		if (video.downloaded)
@@ -766,7 +816,7 @@ VideoGrid::_ShowMenu(int32 index, BPoint where)
 			menu->AddItem(new BMenuItem(B_TRANSLATE("Stop the download"),
 				stop));
 		}
-	} else {
+	} else if (!video.path.IsEmpty()) {
 		BMessage* trash = new BMessage(kMsgTrash);
 		trash->AddString("id", video.id);
 		trash->AddString("path", video.path);
@@ -814,6 +864,11 @@ VideoGrid::KeyDown(const char* bytes, int32 count)
 		case 'i':
 		case 'I':
 			_ShowDetails(fSelected);
+			break;
+		case 's':
+		case 'S':
+		case '*':
+			_ToggleFavorite(fSelected);
 			break;
 		case 'f':
 		case 'F':

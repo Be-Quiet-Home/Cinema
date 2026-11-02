@@ -59,6 +59,11 @@ private:
 			void				_UpdateSources();
 			void				_AddTorrent(const char* source);
 			void				_AddFolder(const char* path);
+			void				_AddTvList(const char* address,
+									const char* name = NULL);
+			void				_OfferTv();
+			void				_UpdateTopBar();
+			void				_ToggleFavorite(BMessage* message);
 			void				_Dropped(BMessage* message);
 			BString				_DownloadStatus(const BMessage& download) const;
 			void				_DownloadCancelled(BMessage* message);
@@ -158,6 +163,7 @@ private:
 			BString				fWanted;		// chosen: worth finding
 			BMessageRunner*		fPrefetchRunner;
 			bool				fFullScreen;
+			BView*				fTopBar;	// the tabs and the search
 			BString				fChannelName;	// shown in a tab of its own
 			BString				fChannelId;
 			BString				fChannelProvider;

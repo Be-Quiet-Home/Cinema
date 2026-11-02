@@ -257,6 +257,14 @@ HomeView::SetProgress(const char* id, int32 progress)
 
 
 void
+HomeView::SetFavorite(const char* id, bool favorite)
+{
+	for (Shelf& shelf : fShelves)
+		shelf.row->SetFavorite(id, favorite);
+}
+
+
+void
 HomeView::SetDownloaded(const char* id, bool downloaded)
 {
 	for (Shelf& shelf : fShelves)

@@ -4,8 +4,8 @@ Videos on [Haiku](https://www.haiku-os.org) and
 [RenkuOS](https://github.com/RenkuOS), played by MediaPlayer: YouTube (with
 [yt-dlp](https://github.com/yt-dlp/yt-dlp)), the public domain films and
 cartoons of the [Internet Archive](https://archive.org), the free video sites
-of [PeerTube](https://joinpeertube.org), BitTorrent, and the videos of your own
-folders.
+of [PeerTube](https://joinpeertube.org), BitTorrent, live TV channels, and the
+videos of your own folders.
 
 It runs on x86_64, and on 32-bit ARM with RenkuOS, for example on the Toshiba
 AC100.
@@ -38,7 +38,20 @@ AC100.
 - **Player**: the videos play in Cinema, from where they were left. A check
   marks what was watched, a red bar what was started. Space pauses, the
   arrows go back and on by 10 seconds and change the volume, Esc closes,
-  M plays the video in MediaPlayer instead.
+  M plays the video in MediaPlayer instead. On the whole screen (**F**) the
+  tabs go away too.
+- **Video quality**, in the settings: Automatic (360p on 32-bit ARM, 720p
+  elsewhere), or 360p to 1080p. Above 360p YouTube gives the picture and the
+  sound apart: `ffmpeg` puts them together for the player, and finding them
+  takes longer (about a minute and a half on the AC100).
+- **TV**: the free channels of your country, from the public lists of
+  [iptv-org](https://github.com/iptv-org/iptv), get a **TV** tab the first
+  time; the settings add the channels of other countries, or any M3U list
+  (an address, or an `.m3u` file dropped on the window). Live channels play
+  with FFmpeg, which keeps up on slow machines by decoding less. Channels for
+  adults are left out.
+- **Favorites**: **S** or a right click gives a channel or a video a star;
+  the stars have a **Favorites** tab of their own.
 - **BitTorrent**: paste a magnet link in the search field, or drop a
   `.torrent` file on the window: the biggest video it shares is downloaded with
   `aria2c` to the **Downloaded** tab, with its progress in a notification.
@@ -52,7 +65,7 @@ AC100.
   attributes, and are listed in the **Downloaded** tab, which works without the
   network. A video downloaded plays from its file wherever it is shown.
 - **Keys**: arrows to choose, **Enter** or **Space** to play, **D** to download,
-  **F** for full screen and **Esc** to go back. **Tab** or **F6** goes to the
+  **S** for a star, **F** for full screen and **Esc** to go back. **Tab** or **F6** goes to the
   top tabs, the arrows choose one and **Enter** opens it. A gamepad works too:
   its D-pad or left stick chooses, **A** plays, **B** goes back, **X** downloads
   and **Y** toggles full screen; **L1**, **Select** or **Start** goes to the top tabs.
@@ -60,8 +73,8 @@ AC100.
   Japanese and Simplified Chinese (the last three need a CJK font, such as
   `noto_sans_cjk_jp`).
 
-Videos are played in a single file small enough for slow machines: 360p on
-32-bit ARM such as the Toshiba AC100, up to 720p elsewhere.
+Unless the settings ask for more, videos are played small enough for slow
+machines: 360p on 32-bit ARM such as the Toshiba AC100, up to 720p elsewhere.
 
 ![The latest videos of a channel](screenshots/channel.png)
 
@@ -94,6 +107,8 @@ helps (`pkgman update`, or the same `curl` again).
 - `python3` and yt-dlp, either the Python module (`yt_dlp_python3.14`,
   matching your Python) or the single-file `yt-dlp` in the `PATH`.
 - `curl`, for the pictures.
+- The FFmpeg libraries (`ffmpeg6` on x86_64), for live TV; the `ffmpeg`
+  command, for YouTube above 360p.
 
 yt-dlp is loaded once, by `cinema-helper.py`, which Cinema starts and talks to.
 
@@ -115,6 +130,11 @@ To translate: `make catkeys` writes `locales/en.catkeys`, and
 ## Credits
 
 This product uses the TMDB API but is not endorsed or certified by TMDB.
+
+Live TV is played after the FFmpeg player of
+[R Television](https://github.com/rainygirl/rtelevision), by Lee JunHaeng (MIT
+license), and its channels come from the lists of
+[iptv-org](https://github.com/iptv-org/iptv).
 
 ## License
 

@@ -1,10 +1,11 @@
-1	korean	application/x-vnd.atomozero-Cinema	3147678896
+1	korean	application/x-vnd.atomozero-Cinema	3071824546
 YouTube could not be reached: is the network on?	Window		YouTube에 연결할 수 없습니다. 네트워크가 켜져 있나요?
 TV series	Window		TV 시리즈
 Video quality:	Settings		동영상 화질:
 Downloaded	Detail		다운로드됨
 Search first in:	Settings		먼저 검색할 곳:
 full documentary	Categories		다큐멘터리 전편
+Add to favorites	Grid		즐겨찾기에 추가
 Add this channel to the tabs	Categories		이 채널을 탭에 추가
 OK	Window		확인
 Show the latest videos	Grid		최신 동영상 보기
@@ -18,22 +19,27 @@ Remove	Settings		제거
 Download	Detail		다운로드
 Getting the video ready	Grid		동영상 준비 중
 Downloaded	Window		다운로드한 동영상
+Add	Settings		추가
 Settings…	Window		설정…
 Downloading…	Detail		다운로드 중…
 Remove from the tabs	Categories		탭에서 제거
 Add to the tabs	Grid		탭에 추가
+Choose…	Settings		선택…
 news today	Categories		오늘의 뉴스
 Get a key…	Settings		키 받기…
 %peers% sources	Window		소스 %peers%개
 Library	Settings		라이브러리
 Cinema settings	Settings		Cinema 설정
+M3U list:	Settings		M3U 목록:
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent 다운로드에는 aria2c가 필요하지만 설치되어 있지 않습니다.
 %views% views	Detail		조회수 %views%회
-Science	Categories		과학
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		채널 목록의 주소를 입력하거나 .m3u 파일을 Cinema에 끌어다 놓으세요.
 Back	Detail		뒤로
+Science	Categories		과학
 Classic cartoons	Categories		고전 만화
 Documentaries	Categories		다큐멘터리
 Play	Detail		재생
+Free channels of:	Settings		무료 채널 국가:
 TMDB does not accept this key.	Settings		TMDB가 이 키를 받아들이지 않습니다.
 Play the videos in Cinema, not in MediaPlayer	Settings		MediaPlayer가 아닌 Cinema에서 동영상 재생
 Details	Grid		세부 정보
@@ -49,8 +55,11 @@ The video could not be moved to the Trash: %error%	Window		동영상을 휴지�
 Search	Settings		검색
 News	Categories		뉴스
 Type what to look for at the top right	Window		오른쪽 위에 찾을 내용을 입력하세요
+TV	Window		TV
 Cinema	System name		Cinema
 Folders of the library	Settings		라이브러리 폴더
+TV %country%	Settings		TV %country%
+TV channels	Settings		TV 채널
 No videos found	Window		동영상을 찾을 수 없습니다
 Technology	Categories		기술
 See all	Home		모두 보기
@@ -64,6 +73,7 @@ Downloading…	Grid		다운로드 중…
 Stop the download	Grid		다운로드 중지
 Search	Window		검색
 science explained	Categories		과학 설명
+# or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# 또는 이름 = @iptv channel:<M3U 목록 주소> (TV 채널)
 Download	Grid		다운로드
 official music video	Categories		공식 뮤직비디오
 Movies	Window		영화
@@ -76,6 +86,8 @@ No videos downloaded yet: right click a video, or press D	Window		다운로드�
 # or name = channel:<id> for the latest videos of a channel	Categories		# 또는 이름 = channel:<id> 로 채널의 최신 동영상
 MediaPlayer could not be started: %error%	Window		MediaPlayer를 시작할 수 없습니다: %error%
 Move to Trash	Grid		휴지통으로 이동
+Remove from favorites	Grid		즐겨찾기에서 제거
+Favorites	Window		즐겨찾기
 Downloaded	Categories		다운로드
 Home	Categories		홈
 Checking…	Settings		확인 중…

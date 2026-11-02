@@ -20,9 +20,11 @@ struct Settings {
 	BString		searchSource;	// the provider searched first, or empty
 	int32		videoHeight;	// the highest picture wanted, 0 for what
 								// suits the machine
+	bool		tvOffered;		// the free channels of the country were
+								// given a tab once
 
 				Settings() : playInCinema(true), resume(true),
-					videoHeight(0) {}
+					videoHeight(0), tvOffered(false) {}
 
 	static	Settings	Load();
 			void		Save() const;

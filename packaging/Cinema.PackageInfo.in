@@ -1,11 +1,13 @@
 name			cinema
 version			@VERSION@-@REVISION@
 architecture	@ARCH@
-summary			"YouTube videos, found with yt-dlp and played by MediaPlayer"
-description		"Cinema shows YouTube videos as big pictures, by category, by \
-channel or for a search, and plays them with MediaPlayer. Channels can be kept \
-as tabs, and videos downloaded to be watched offline. It needs yt-dlp, which \
-it loads once in a small Python helper."
+summary			"Videos and live TV: YouTube, Internet Archive, PeerTube, your folders"
+description		"Cinema shows videos as big pictures, by category, by \
+channel or for a search, and plays them: YouTube (with yt-dlp, which it loads \
+once in a small Python helper), the public domain films of the Internet \
+Archive, PeerTube, BitTorrent, the films and series of your folders, and the \
+free TV channels of every country. Channels can be kept as tabs, favorites \
+given a star, and videos downloaded to be watched offline."
 packager		"atomozero <atomozero@users.noreply.github.com>"
 vendor			"atomozero"
 copyrights		"2026 Andrea Bernardi"
@@ -20,5 +22,10 @@ requires {
 	haiku
 	cmd:python3
 	cmd:curl
+	lib:libavformat
+	lib:libavcodec
+	lib:libswscale
+	lib:libswresample
+	lib:libavutil
 @REQUIRES@
 }

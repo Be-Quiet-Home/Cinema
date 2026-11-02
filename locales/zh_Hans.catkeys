@@ -1,10 +1,11 @@
-1	chinese	application/x-vnd.atomozero-Cinema	3147678896
+1	chinese	application/x-vnd.atomozero-Cinema	3071824546
 YouTube could not be reached: is the network on?	Window		无法连接到 YouTube：网络是否已开启？
 TV series	Window		电视剧
 Video quality:	Settings		视频画质：
 Downloaded	Detail		已下载
 Search first in:	Settings		优先搜索：
 full documentary	Categories		完整纪录片
+Add to favorites	Grid		添加到收藏
 Add this channel to the tabs	Categories		将此频道添加到标签页
 OK	Window		确定
 Show the latest videos	Grid		显示最新视频
@@ -18,22 +19,27 @@ Remove	Settings		移除
 Download	Detail		下载
 Getting the video ready	Grid		正在准备视频
 Downloaded	Window		已下载的视频
+Add	Settings		添加
 Settings…	Window		设置…
 Downloading…	Detail		正在下载…
 Remove from the tabs	Categories		从标签页中移除
 Add to the tabs	Grid		添加到标签页
+Choose…	Settings		选择…
 news today	Categories		今日新闻
 Get a key…	Settings		获取密钥…
 %peers% sources	Window		%peers% 个来源
 Library	Settings		媒体库
 Cinema settings	Settings		Cinema 设置
+M3U list:	Settings		M3U 列表：
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent 下载需要 aria2c，但尚未安装。
 %views% views	Detail		%views% 次观看
-Science	Categories		科学
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		频道列表的地址，或将 .m3u 文件拖放到 Cinema 上。
 Back	Detail		返回
+Science	Categories		科学
 Classic cartoons	Categories		经典动画
 Documentaries	Categories		纪录片
 Play	Detail		播放
+Free channels of:	Settings		免费频道所在国家：
 TMDB does not accept this key.	Settings		TMDB 不接受此密钥。
 Play the videos in Cinema, not in MediaPlayer	Settings		在 Cinema 中播放视频，而不是在 MediaPlayer 中
 Details	Grid		详细信息
@@ -49,8 +55,11 @@ The video could not be moved to the Trash: %error%	Window		无法将视频移到
 Search	Settings		搜索
 News	Categories		新闻
 Type what to look for at the top right	Window		在右上角输入要搜索的内容
+TV	Window		电视
 Cinema	System name		Cinema
 Folders of the library	Settings		媒体库文件夹
+TV %country%	Settings		电视 %country%
+TV channels	Settings		电视频道
 No videos found	Window		未找到视频
 Technology	Categories		科技
 See all	Home		查看全部
@@ -64,6 +73,7 @@ Downloading…	Grid		正在下载…
 Stop the download	Grid		停止下载
 Search	Window		搜索
 science explained	Categories		科学解说
+# or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# 或 名称 = @iptv channel:<M3U 列表地址> 用于电视频道
 Download	Grid		下载
 official music video	Categories		官方音乐视频
 Movies	Window		电影
@@ -76,6 +86,8 @@ No videos downloaded yet: right click a video, or press D	Window		还没有下�
 # or name = channel:<id> for the latest videos of a channel	Categories		# 或 名称 = channel:<id> 显示某个频道的最新视频
 MediaPlayer could not be started: %error%	Window		无法启动 MediaPlayer：%error%
 Move to Trash	Grid		移到废纸篓
+Remove from favorites	Grid		从收藏中移除
+Favorites	Window		收藏
 Downloaded	Categories		已下载
 Home	Categories		主页
 Checking…	Settings		正在检查…

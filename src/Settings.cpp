@@ -65,6 +65,7 @@ Settings::Load()
 	settings.resume = archive.GetBool("resume", true);
 	settings.searchSource = archive.GetString("search source", "");
 	settings.videoHeight = archive.GetInt32("video height", 0);
+	settings.tvOffered = archive.GetBool("tv offered", false);
 	return settings;
 }
 
@@ -80,6 +81,7 @@ Settings::Save() const
 	archive.AddBool("resume", resume);
 	archive.AddString("search source", searchSource);
 	archive.AddInt32("video height", videoHeight);
+	archive.AddBool("tv offered", tvOffered);
 	write_file(path, &archive, NULL);
 }
 

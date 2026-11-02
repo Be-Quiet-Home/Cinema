@@ -33,6 +33,8 @@ write_examples(const char* path)
 		"name = what to search on YouTube"));
 	fprintf(file, "%s\n", B_TRANSLATE("# or name = channel:<id> for the "
 		"latest videos of a channel"));
+	fprintf(file, "%s\n", B_TRANSLATE("# or name = @iptv channel:<address "
+		"of an M3U list> for TV channels"));
 	fprintf(file, "%s = %s\n", B_TRANSLATE("News"),
 		B_TRANSLATE("news today"));
 	fprintf(file, "%s = %s\n", B_TRANSLATE("Music"),

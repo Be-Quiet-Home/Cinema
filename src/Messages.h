@@ -79,9 +79,13 @@ enum {
 	kMsgShowAbout		= 'abou',
 	kMsgSettingsChanged	= 'stch',
 	kMsgSettingsClosed	= 'stcl',
-	kMsgSettingsFolders	= 'stfd',	// "path": the folders of the library
+	kMsgSettingsFolders	= 'stfd',	// "path": the folders of the library,
+									// "tv": the lists of TV channels
 	kMsgAddFolder		= 'fadd',	// "path"
 	kMsgRemoveFolder	= 'frem',	// "path"
+	kMsgToggleFavorite	= 'favt',	// the fields of the item, as for details
+	kMsgAddTvList		= 'tvad',	// "address": of a list M3U, or its path
+	kMsgRemoveTvList	= 'tvrm',	// "address"
 	kMsgCheckTmdb		= 'tmck',
 	kMsgTmdbChecked		= 'tmok',	// "ok"
 	kMsgAnimate			= 'anim',

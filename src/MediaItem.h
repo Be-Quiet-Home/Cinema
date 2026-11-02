@@ -42,10 +42,11 @@ struct MediaItem {
 	bool		watched;		// played to the end
 	int32		resume;			// how far it was played, in thousandths
 	bool		downloaded;
+	bool		favorite;		// given a star
 
 				MediaItem() : duration(0), year(0), views(0), rating(0),
 					picture(NULL), progress(-1), watched(false), resume(0),
-					downloaded(false) {}
+					downloaded(false), favorite(false) {}
 };
 
 

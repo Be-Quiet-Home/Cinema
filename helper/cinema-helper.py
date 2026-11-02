@@ -906,10 +906,13 @@ class Relay:
 	def command(self, inputs, start):
 		command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin"]
 		for entry in inputs:
-			headers = "".join("%s: %s\r\n" % item
-				for item in (entry.get("headers") or {}).items())
+			headers = dict(entry.get("headers") or {})
+			agent = headers.pop("User-Agent", None)
+			if agent:
+				command += ["-user_agent", agent]
 			if headers:
-				command += ["-headers", headers]
+				command += ["-headers", "".join("%s: %s\r\n" % item
+					for item in headers.items())]
 			if start > 0:
 				command += ["-ss", "%.3f" % start]
 			command += ["-i", entry["url"]]
@@ -976,6 +979,159 @@ class Relay:
 
 
 RELAY = Relay()
+
+
+class IptvProvider(Provider):
+	"""Television channels, live, from a playlist M3U: an address or a
+	file. A channel of Cinema is the playlist, a video one of its streams,
+	which Cinema plays with FFmpeg. The free channels of each country that
+	iptv-org lists are offered; other lists the user adds.
+	"""
+
+	id = "iptv"
+	name = "TV"
+	kinds = ("channel", "find")
+	# read again each time: the streams of a list change often, and the
+	# headers they need are kept here
+	cache_channels = False
+
+	MAX_CHANNELS = 500
+	ATTRIBUTE = re.compile(r'([\w-]+)="([^"]*)"')
+	ADULT = re.compile(r"\b(xxx|adult|nsfw)", re.IGNORECASE)
+	NOTES = re.compile(r"\s*(\(\d+[pi]\)|\[[^\]]*\])")
+
+	def __init__(self):
+		self.headers = {}	# stream: the HTTP headers it asks for
+
+	def read(self, source, headers=None, limit=20 * 1024 * 1024):
+		return self.fetch(source, headers, limit)[0]
+
+	def fetch(self, source, headers=None, limit=20 * 1024 * 1024):
+		"""The text of a list, and where it was in the end: what it names
+		is from there."""
+		if source.startswith(("http://", "https://")):
+			request = urllib.request.Request(source,
+				headers=dict({"User-Agent": USER_AGENT}, **(headers or {})))
+			with urllib.request.urlopen(request, timeout=30) as response:
+				data = response.read(limit)
+				source = response.geturl()
+		else:
+			with open(os.path.expanduser(source), "rb") as file:
+				data = file.read(limit)
+		return data.decode("utf-8", "replace"), source
+
+	def channel(self, channel_id, count):
+		items = []
+		extinf = None
+		options = {}
+		for line in self.read(channel_id).splitlines():
+			line = line.strip()
+			if line.startswith("#EXTINF"):
+				# #EXTINF:-1 tvg-logo="..." group-title="...",Name
+				quote = line.rfind('"')
+				comma = line.find(",", quote + 1 if quote >= 0 else 0)
+				extinf = (dict(self.ATTRIBUTE.findall(line[:comma])),
+					line[comma + 1:].strip() if comma >= 0 else "")
+				options = {}
+			elif line.startswith("#EXTVLCOPT:"):
+				key, _, value = line[len("#EXTVLCOPT:"):].partition("=")
+				options[key.strip()] = value.strip()
+			elif line and not line.startswith("#") and extinf is not None:
+				attributes, title = extinf
+				extinf = None
+				# Cinema may be on a computer for children
+				if self.ADULT.search(attributes.get("group-title", "")):
+					continue
+				url = urllib.parse.urljoin(channel_id, line) \
+					if channel_id.startswith(("http://", "https://")) else line
+				if not url.startswith(("http://", "https://")):
+					continue
+				headers = {}
+				agent = options.get("http-user-agent") \
+					or attributes.get("http-user-agent")
+				referrer = options.get("http-referrer") \
+					or attributes.get("http-referrer")
+				if agent:
+					headers["User-Agent"] = agent
+				if referrer:
+					headers["Referer"] = referrer
+				self.headers[url] = headers
+				# "Name (720p) [Geo-blocked]": the name, and the rest told
+				title = title or attributes.get("tvg-name") or url
+				notes = self.NOTES.findall(title)
+				title = self.NOTES.sub("", title).strip() or title
+				group = attributes.get("group-title", "")
+				if group.lower() == "undefined":
+					group = ""
+				items.append({
+					"provider": self.id,
+					"kind": "live",
+					"id": url,
+					"title": clean(title),
+					"description": " · ".join(note.strip("()[] ")
+						for note in notes),
+					"channel": clean(group.replace(";", ", ")),
+					"channel_id": "",
+					"duration": 0,
+					"year": 0,
+					"date": "",
+					"views": 0,
+					"rating": 0.0,
+					"poster": "",
+					"thumbnail": attributes.get("tvg-logo", ""),
+					"season": 0,
+					"episode": 0,
+				})
+				if len(items) >= self.MAX_CHANNELS:
+					break
+		return items
+
+	def find(self, media_id, kind="live"):
+		"""Cinema plays it with FFmpeg, which opens HLS by itself: the
+		stream, the headers the list asks for and the height wanted."""
+		headers = self.headers.get(media_id, {})
+		return "cinema-live:?" + urllib.parse.urlencode({
+			"url": media_id,
+			"ua": headers.get("User-Agent", ""),
+			"referer": headers.get("Referer", ""),
+			"height": wanted_height(),
+		})
+
+
+class FavoritesProvider(Provider):
+	"""What was given a star in Cinema, of any source: the file Cinema
+	writes in the settings, Cinema/favorites, with MediaItems as the other
+	providers give them. Its only channel is "all"; a favorite is played
+	by the provider it came from.
+	"""
+
+	id = "favorites"
+	name = "Favorites"
+	kinds = ("channel",)
+	cache_channels = False
+
+	FIELDS = {"provider": "", "kind": "video", "id": "", "title": "",
+		"description": "", "channel": "", "channel_id": "", "duration": 0,
+		"year": 0, "date": "", "views": 0, "rating": 0.0, "poster": "",
+		"thumbnail": "", "season": 0, "episode": 0}
+
+	def channel(self, channel_id, count):
+		path = os.path.join(os.path.expanduser("~"), "config", "settings",
+			"Cinema", "favorites")
+		try:
+			with open(path, encoding="utf-8") as file:
+				favorites = json.load(file)
+		except (OSError, ValueError):
+			return []
+		items = []
+		for favorite in favorites if isinstance(favorites, list) else []:
+			if not isinstance(favorite, dict) or not favorite.get("id"):
+				continue
+			item = dict(self.FIELDS)
+			item.update({key: favorite[key] for key in self.FIELDS
+				if key in favorite})
+			items.append(item)
+		return items
 
 
 def stop_others(work):
@@ -1252,6 +1408,8 @@ register(PeerTubeProvider)
 if shutil.which("aria2c"):
 	register(TorrentProvider)
 register(LocalProvider)
+register(IptvProvider)
+register(FavoritesProvider)
 
 
 class LibraryProvider(Provider):
@@ -1643,7 +1801,10 @@ def job_search(provider, tag, count, query):
 def job_channel(provider, tag, count, channel_id):
 	try:
 		name = "%s channel %d %s" % (provider.id, count, channel_id)
-		items = cached(name, lambda: provider.channel(channel_id, count))
+		if getattr(provider, "cache_channels", True):
+			items = cached(name, lambda: provider.channel(channel_id, count))
+		else:
+			items = provider.channel(channel_id, count)
 		answer({"type": "results", "tag": tag, "items": items})
 	except Exception:
 		answer({"type": "nothing", "tag": tag})
