@@ -1,6 +1,7 @@
-1	ukrainian	application/x-vnd.atomozero-Cinema	2224778090
+1	ukrainian	application/x-vnd.atomozero-Cinema	3147678896
 YouTube could not be reached: is the network on?	Window		Не вдається з'єднатися з YouTube: чи увімкнена мережа?
 TV series	Window		Серіали
+Video quality:	Settings		Якість відео:
 Downloaded	Detail		Завантажено
 Search first in:	Settings		Спершу шукати в:
 full documentary	Categories		повний документальний фільм
@@ -55,6 +56,7 @@ Technology	Categories		Технології
 See all	Home		Усі
 TMDB key:	Settings		Ключ TMDB:
 Getting the details…	Detail		Отримання подробиць…
+Above 360p, YouTube takes longer to start.	Settings		Понад 360p YouTube запускається довше.
 With a key, the library gets posters, plots and casts. It is free.	Settings		З ключем бібліотека отримує постери, сюжети та акторський склад. Він безкоштовний.
 Check	Settings		Перевірити
 Playback	Settings		Відтворення
@@ -69,6 +71,7 @@ The video could not be downloaded	Window		Не вдалося завантажи
 Looking for the videos…	Window		Пошук відео…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Одна вкладка верхньої панелі на рядок: назва = що шукати на YouTube
 Classic films	Categories		Класичні фільми
+Automatic	Settings		Автоматично
 No videos downloaded yet: right click a video, or press D	Window		Ще немає завантажених відео: клацніть правою кнопкою на відео або натисніть D
 # or name = channel:<id> for the latest videos of a channel	Categories		# або назва = channel:<id> для останніх відео каналу
 MediaPlayer could not be started: %error%	Window		Не вдалося запустити MediaPlayer: %error%

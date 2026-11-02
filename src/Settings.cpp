@@ -64,6 +64,7 @@ Settings::Load()
 	settings.playInCinema = archive.GetBool("play in cinema", true);
 	settings.resume = archive.GetBool("resume", true);
 	settings.searchSource = archive.GetString("search source", "");
+	settings.videoHeight = archive.GetInt32("video height", 0);
 	return settings;
 }
 
@@ -78,6 +79,7 @@ Settings::Save() const
 	archive.AddBool("play in cinema", playInCinema);
 	archive.AddBool("resume", resume);
 	archive.AddString("search source", searchSource);
+	archive.AddInt32("video height", videoHeight);
 	write_file(path, &archive, NULL);
 }
 

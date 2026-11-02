@@ -18,8 +18,11 @@ struct Settings {
 	bool		playInCinema;	// or in MediaPlayer
 	bool		resume;			// from where it was left
 	BString		searchSource;	// the provider searched first, or empty
+	int32		videoHeight;	// the highest picture wanted, 0 for what
+								// suits the machine
 
-				Settings() : playInCinema(true), resume(true) {}
+				Settings() : playInCinema(true), resume(true),
+					videoHeight(0) {}
 
 	static	Settings	Load();
 			void		Save() const;

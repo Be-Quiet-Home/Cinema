@@ -39,6 +39,7 @@ static const uint32 kMsgFolderSelected = 'ssel';
 static const uint32 kMsgPlayInCinema = 'splc';
 static const uint32 kMsgResume = 'sres';
 static const uint32 kMsgSource = 'ssrc';
+static const uint32 kMsgQuality = 'squa';
 static const uint32 kMsgActivate = 'sact';
 
 
@@ -115,13 +116,37 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 	fResume->SetValue(fSettings.resume);
 	fResume->SetEnabled(fSettings.playInCinema);
 
+	// how big the pictures of YouTube and PeerTube are
+	BPopUpMenu* qualities = new BPopUpMenu("qualities");
+	static const int32 kHeights[] = { 0, 360, 480, 720, 1080 };
+	for (int32 height : kHeights) {
+		BString label;
+		if (height == 0)
+			label = B_TRANSLATE("Automatic");
+		else
+			label.SetToFormat("%" B_PRId32 "p", height);
+		BMessage* message = new BMessage(kMsgQuality);
+		message->AddInt32("height", height);
+		BMenuItem* item = new BMenuItem(label.String(), message);
+		item->SetMarked(height == fSettings.videoHeight);
+		qualities->AddItem(item);
+	}
+	if (qualities->FindMarked() == NULL)
+		qualities->ItemAt(0)->SetMarked(true);
+	fQuality = new BMenuField("quality", B_TRANSLATE("Video quality:"),
+		qualities);
+	BStringView* qualityNote = new BStringView("quality note",
+		B_TRANSLATE("Above 360p, YouTube takes longer to start."));
+
 	BBox* playback = new BBox("playback");
 	playback->SetLabel(B_TRANSLATE("Playback"));
 	BLayoutBuilder::Group<>(playback, B_VERTICAL, B_USE_SMALL_SPACING)
 		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_BIG_SPACING,
 			B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING)
 		.Add(fPlayInCinema)
-		.Add(fResume);
+		.Add(fResume)
+		.Add(fQuality)
+		.Add(qualityNote);
 
 	// where a search goes first
 	BPopUpMenu* sources = new BPopUpMenu("sources");
@@ -284,6 +309,10 @@ SettingsWindow::MessageReceived(BMessage* message)
 			break;
 		case kMsgSource:
 			fSettings.searchSource = message->GetString("provider", "");
+			_Changed();
+			break;
+		case kMsgQuality:
+			fSettings.videoHeight = message->GetInt32("height", 0);
 			_Changed();
 			break;
 

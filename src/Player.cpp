@@ -32,6 +32,9 @@ Player::Player(const BMessenger& target)
 	:
 	fTarget(target),
 	fStartAt(0),
+	fRelay(false),
+	fRelayDuration(0),
+	fFirstTime(-1),
 	fFile(NULL),
 	fVideoTrack(NULL),
 	fAudioTrack(NULL),
@@ -84,6 +87,17 @@ Player::Open(const char* address, bigtime_t startAt)
 	Close();
 	fAddress = address;
 	fStartAt = startAt;
+	// the relay: how long it lasts is the last part of the address
+	fRelay = fAddress.StartsWith("http://127.0.0.1:");
+	fRelayDuration = 0;
+	fFirstTime = -1;
+	if (fRelay) {
+		int32 slash = fAddress.FindLast('/');
+		fRelayDuration = (bigtime_t)atoll(fAddress.String() + slash + 1)
+			* 1000000;
+		if (fRelayDuration <= 0)
+			fStartAt = 0;
+	}
 	fQuit = false;
 	fPaused = false;
 	fEndSent = false;
@@ -157,6 +171,12 @@ Player::_Open()
 		entry_ref ref;
 		if (get_ref_for_path(fAddress.String(), &ref) == B_OK)
 			fFile = new BMediaFile(&ref);
+	} else if (fRelay) {
+		// from where it starts, which the times of the stream count from
+		BString address(fAddress);
+		if (fStartAt > 0)
+			address << "?t=" << (double)fStartAt / 1000000;
+		fFile = new BMediaFile(BUrl(address.String(), true));
 	} else
 		fFile = new BMediaFile(BUrl(fAddress.String(), true));
 	if (fFile == NULL || fFile->InitCheck() != B_OK) {
@@ -227,7 +247,11 @@ Player::_Open()
 	fClockBase = 0;
 	fPlayed = 0;
 	fClockStart = system_time();
-	if (fStartAt > 0)
+	if (fRelay) {
+		fDuration = fRelayDuration;
+		fClockBase = fStartAt;
+		fPausedClock = fStartAt;
+	} else if (fStartAt > 0)
 		_SeekTracks(fStartAt);
 	fShowNext = true;
 	fOpened = true;
@@ -359,7 +383,32 @@ Player::Seek(bigtime_t time)
 {
 	if (!fOpened)
 		return;
+	if (fRelay) {
+		if (fDuration <= 0)
+			return;
+		// opened again from there, by the window: the bitmap of the
+		// overlay goes with it
+		time = std::max((bigtime_t)0, std::min(time, fDuration - 1000000));
+		BMessage reopen(kMsgPlayerReopen);
+		reopen.AddInt64("time", time);
+		fTarget.SendMessage(&reopen);
+		return;
+	}
 	_SeekTracks(time);
+}
+
+
+/*!	The time of a picture or a sound in the video: for a stream of the
+	relay, which counts from where it starts as it likes, from fStartAt.
+*/
+bigtime_t
+Player::_StreamTime(bigtime_t time)
+{
+	if (!fRelay)
+		return time;
+	bigtime_t first = -1;
+	fFirstTime.compare_exchange_strong(first, time);
+	return time - fFirstTime + fStartAt;
 }
 
 
@@ -407,6 +456,7 @@ Player::_AudioLoop()
 		}
 		if (generation != fGeneration)
 			continue;
+		_StreamTime(header.start_time);
 
 		BAutolock ring(fRingLock);
 		size_t bytes = std::min((size_t)frames * fFrameSize,
@@ -490,7 +540,7 @@ Player::_VideoLoop()
 		if (generation != fGeneration)
 			continue;
 
-		bigtime_t time = header.start_time;
+		bigtime_t time = _StreamTime(header.start_time);
 		bool show = fShowNext;
 		if (!show) {
 			// waits for the sound to get there

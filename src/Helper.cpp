@@ -24,6 +24,7 @@ Helper::Helper(BMessenger target)
 	fTarget(target),
 	fLock("helper"),
 	fProvider("youtube"),
+	fHeight(0),
 	fInput(-1),
 	fOutput(-1),
 	fProcess(-1),
@@ -113,6 +114,14 @@ Helper::SetProvider(const char* id)
 }
 
 
+void
+Helper::SetHeight(int32 height)
+{
+	BAutolock locker(fLock);
+	fHeight = height;
+}
+
+
 BString
 Helper::_Provider(const char* provider)
 {
@@ -171,6 +180,7 @@ Helper::Find(const char* id, const char* provider)
 	request.Set("provider", _Provider(provider).String());
 	request.Set("id", id);
 	request.Set("kind", "video");
+	request.Set("height", (int)fHeight);
 	_Send(request);
 }
 
@@ -183,6 +193,7 @@ Helper::Download(const char* id, const char* folder, const char* provider)
 	request.Set("provider", _Provider(provider).String());
 	request.Set("id", id);
 	request.Set("folder", folder);
+	request.Set("height", (int)fHeight);
 	_Send(request);
 }
 

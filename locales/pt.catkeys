@@ -1,6 +1,7 @@
-1	portuguese	application/x-vnd.atomozero-Cinema	2224778090
+1	portuguese	application/x-vnd.atomozero-Cinema	3147678896
 YouTube could not be reached: is the network on?	Window		Não foi possível acessar o YouTube: a rede está ligada?
 TV series	Window		Séries
+Video quality:	Settings		Qualidade do vídeo:
 Downloaded	Detail		Downloaded
 Search first in:	Settings		Pesquisar primeiro em:
 full documentary	Categories		documentário completo
@@ -55,6 +56,7 @@ Technology	Categories		Tecnologia
 See all	Home		Ver tudo
 TMDB key:	Settings		Chave do TMDB:
 Getting the details…	Detail		Getting the details…
+Above 360p, YouTube takes longer to start.	Settings		Acima de 360p, o YouTube demora mais a começar.
 With a key, the library gets posters, plots and casts. It is free.	Settings		Com uma chave, a biblioteca recebe pôsteres, sinopses e elencos. É gratuita.
 Check	Settings		Verificar
 Playback	Settings		Reprodução
@@ -69,6 +71,7 @@ The video could not be downloaded	Window		Não foi possível baixar o vídeo
 Looking for the videos…	Window		Procurando os vídeos…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# Uma aba da barra superior por linha: nome = o que pesquisar no YouTube
 Classic films	Categories		Filmes clássicos
+Automatic	Settings		Automática
 No videos downloaded yet: right click a video, or press D	Window		Nenhum vídeo baixado ainda: clique com o botão direito num vídeo, ou pressione D
 # or name = channel:<id> for the latest videos of a channel	Categories		# ou nome = channel:<id> para os vídeos mais recentes de um canal
 MediaPlayer could not be started: %error%	Window		Não foi possível abrir o MediaPlayer: %error%

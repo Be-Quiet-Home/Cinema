@@ -138,7 +138,9 @@ Worker::_Follow(BMessage* message)
 {
 	BString url = message->GetString("url", "");
 	BString final;
-	if (RunProgram({ "curl", "-s", "-o", "/dev/null", "-L", "-r", "0-0",
+	// the relay of the helper starts a stream for each request
+	if (!url.StartsWith("http://127.0.0.1:")
+		&& RunProgram({ "curl", "-s", "-o", "/dev/null", "-L", "-r", "0-0",
 			"--max-time", "20", "-w", "%{url_effective}", url }, &final) == 0
 		&& final.StartsWith("http"))
 		url = final;

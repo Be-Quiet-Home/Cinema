@@ -56,6 +56,7 @@ private:
 			BButton*			fRemove;
 			BCheckBox*			fPlayInCinema;
 			BCheckBox*			fResume;
+			BMenuField*			fQuality;
 			BMenuField*			fSource;
 			BFilePanel*			fPanel;
 };

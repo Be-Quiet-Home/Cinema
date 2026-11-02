@@ -1,6 +1,7 @@
-1	japanese	application/x-vnd.atomozero-Cinema	2224778090
+1	japanese	application/x-vnd.atomozero-Cinema	3147678896
 YouTube could not be reached: is the network on?	Window		YouTube に接続できません。ネットワークはオンになっていますか?
 TV series	Window		テレビシリーズ
+Video quality:	Settings		動画の画質:
 Downloaded	Detail		ダウンロード済み
 Search first in:	Settings		最初に検索する場所:
 full documentary	Categories		ドキュメンタリー 全編
@@ -55,6 +56,7 @@ Technology	Categories		テクノロジー
 See all	Home		すべて表示
 TMDB key:	Settings		TMDB キー:
 Getting the details…	Detail		詳細を取得中…
+Above 360p, YouTube takes longer to start.	Settings		360pを超えると、YouTubeの再生開始に時間がかかります。
 With a key, the library gets posters, plots and casts. It is free.	Settings		キーがあると、ライブラリにポスター、あらすじ、キャストが表示されます。無料です。
 Check	Settings		確認
 Playback	Settings		再生
@@ -69,6 +71,7 @@ The video could not be downloaded	Window		動画をダウンロードできま�
 Looking for the videos…	Window		動画を検索中…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# 上部バーのタブを1行に1つ: 名前 = YouTube で検索する内容
 Classic films	Categories		名作映画
+Automatic	Settings		自動
 No videos downloaded yet: right click a video, or press D	Window		ダウンロードした動画はまだありません: 動画を右クリックするか、D を押してください
 # or name = channel:<id> for the latest videos of a channel	Categories		# または 名前 = channel:<id> でチャンネルの最新動画
 MediaPlayer could not be started: %error%	Window		MediaPlayer を起動できません: %error%

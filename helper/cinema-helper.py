@@ -15,6 +15,9 @@
 #   {"type": "find",     "id": "...", "provider": "youtube", "kind": "video"}
 #   {"type": "download", "id": "...", "provider": "youtube", "folder": "/..."}
 #
+# Any of them may carry "height": the highest picture wanted, 0 for what
+# suits the machine.
+#
 # The answers:
 #
 #   {"type": "providers", "providers": [{"id", "name", "kinds"}, ...]}
@@ -38,6 +41,7 @@
 
 import hashlib
 import html
+import http.server
 import json
 import os
 import platform
@@ -168,6 +172,13 @@ USER_AGENT = "Cinema (Haiku)"
 # machines that play 320x240 or 360p at once, and need a faster processor
 # for more, such as the Toshiba AC100
 SLOW_MACHINE = platform.machine().lower().startswith("arm")
+# the height of the videos Cinema asks for, which a request may carry: 0
+# lets the machine choose
+HEIGHT = [0]
+
+
+def wanted_height():
+	return HEIGHT[0] or (360 if SLOW_MACHINE else 720)
 
 
 def http_json(url, query=None):
@@ -391,8 +402,46 @@ class YouTubeProvider(Provider):
 			"https://www.youtube.com/channel/%s/videos" % channel_id,
 			count, channel_id=channel_id)
 
+	# what runs the JavaScript of the web client: QuickJS, built for the
+	# AC100, or Node.js, which HaikuPorts has
+	JS_RUNTIMES = {"quickjs": {}, "node": {}}
+
+	def separate(self, height):
+		"""The format of a picture up to height and its sound, as two files:
+		all YouTube gives above 360p. H.264 and AAC, which every machine
+		decodes; through HTTPS, not the playlists of segments."""
+		return ("bv*[height<=%d][vcodec^=avc1][protocol^=https]"
+			"+ba[acodec^=mp4a][protocol^=https]" % height)
+
+	def find_separate(self, url, height):
+		"""The address of the relay that plays the picture and the sound
+		of the video together, or None. Only the web client gives them,
+		with JavaScript: slow on the AC100, a few seconds elsewhere."""
+		if not shutil.which("ffmpeg"):
+			# the relay needs it
+			return None
+		options = dict(self.OPTIONS, format=self.separate(height),
+			js_runtimes=self.JS_RUNTIMES)
+		try:
+			with yt_dlp.YoutubeDL(options) as ydl:
+				info = ydl.extract_info(url, download=False)
+		except Exception:
+			return None
+		formats = info.get("requested_formats") or []
+		if len(formats) != 2 or not all(f.get("url") for f in formats) \
+				or as_int(formats[0].get("height"), 0) <= 360:
+			# not better than the single file
+			return None
+		inputs = [{"url": f["url"], "headers": f.get("http_headers") or {}}
+			for f in formats]
+		return RELAY.address(inputs, info.get("duration") or 0)
+
 	def find(self, media_id, kind="video"):
 		url = "https://www.youtube.com/watch?v=" + media_id
+		if wanted_height() > 360:
+			found = self.find_separate(url, wanted_height())
+			if found:
+				return found
 		clients = [
 			{"youtube": {"player_client": ["android"]}},
 			{"youtube": {}},
@@ -433,6 +482,24 @@ class YouTubeProvider(Provider):
 			outtmpl=os.path.join(folder,
 				"%(title).150B [%(id)s].%(ext)s"),
 			extractor_args={"youtube": {"player_client": ["android"]}})
+		if wanted_height() > 360 and shutil.which("ffmpeg"):
+			# above 360p, the picture and the sound that ffmpeg puts
+			# together; the single file if they cannot be had
+			better = dict(options, format=self.separate(wanted_height())
+				+ "/" + self.FORMAT, merge_output_format="mp4",
+				js_runtimes=self.JS_RUNTIMES)
+			del better["extractor_args"]
+			try:
+				with yt_dlp.YoutubeDL(better) as ydl:
+					info = ydl.extract_info(url, download=True)
+					done = info.get("requested_downloads") or [{}]
+					path = done[0].get("filepath") \
+						or ydl.prepare_filename(info)
+				if os.path.exists(path):
+					return path
+			except Exception:
+				if media_id in CANCELLED:
+					raise
 		for attempt in range(2):
 			try:
 				with yt_dlp.YoutubeDL(options) as ydl:
@@ -646,8 +713,6 @@ class PeerTubeProvider(Provider):
 	kinds = ("search", "channel", "details", "find", "download")
 
 	SEARCH = "https://sepiasearch.org/api/v1/search/videos"
-	# the highest resolution to play
-	RESOLUTION = 360 if SLOW_MACHINE else 720
 
 	@staticmethod
 	def split(media_id):
@@ -719,8 +784,8 @@ class PeerTubeProvider(Provider):
 		return item
 
 	def video_file(self, video):
-		"""The file to play: the biggest up to RESOLUTION, or the smallest
-		when they are all bigger."""
+		"""The file to play: the biggest up to the height wanted, or the
+		smallest when they are all bigger."""
 		files = list(video.get("files") or [])
 		for playlist in video.get("streamingPlaylists") or []:
 			files += playlist.get("files") or []
@@ -732,7 +797,7 @@ class PeerTubeProvider(Provider):
 		def height(f):
 			return as_int((f.get("resolution") or {}).get("id"), 0)
 
-		fitting = [f for f in files if height(f) <= self.RESOLUTION]
+		fitting = [f for f in files if height(f) <= wanted_height()]
 		if fitting:
 			return max(fitting, key=height)
 		return min(files, key=height)
@@ -780,6 +845,137 @@ def stop_children():
 				process.kill()
 			except OSError:
 				pass
+
+
+class Relay:
+	"""Plays what the Media Kit cannot open as it is, such as a video of
+	YouTube whose picture and sound are two files: ffmpeg puts them in one
+	MPEG-TS stream without decoding them, served on 127.0.0.1.
+
+	The address is http://127.0.0.1:<port>/<token>/<seconds>, the seconds
+	being how long the video lasts (0 when not known); ?t=<seconds> starts
+	it there, which ffmpeg finds much faster than the Media Kit through
+	HTTP. One stream at a time for each address: a new one stops the one
+	before.
+	"""
+
+	def __init__(self):
+		self.lock = threading.Lock()
+		self.server = None
+		self.sessions = {}		# token: the inputs, [{"url", "headers"}]
+		self.playing = {}		# token: the ffmpeg serving it
+
+	def address(self, inputs, duration=0):
+		key = "\n".join(entry["url"] for entry in inputs)
+		token = hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
+		with self.lock:
+			self.sessions[token] = inputs
+			if self.server is None:
+				self.start()
+		return "http://127.0.0.1:%d/%s/%d" % (self.server.server_port, token,
+			int(duration or 0))
+
+	def start(self):
+		relay = self
+
+		class Handler(http.server.BaseHTTPRequestHandler):
+			def log_message(self, *arguments):
+				pass
+
+			def do_HEAD(self):
+				if relay.inputs(self.path) is None:
+					self.send_error(404)
+					return
+				self.send_response(200)
+				self.send_header("Content-Type", "video/mp2t")
+				self.end_headers()
+
+			def do_GET(self):
+				relay.serve(self)
+
+		self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0),
+			Handler)
+		self.server.daemon_threads = True
+		threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+	def inputs(self, path):
+		token = urllib.parse.urlparse(path).path.strip("/").split("/")[0]
+		with self.lock:
+			return self.sessions.get(token)
+
+	def command(self, inputs, start):
+		command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin"]
+		for entry in inputs:
+			headers = "".join("%s: %s\r\n" % item
+				for item in (entry.get("headers") or {}).items())
+			if headers:
+				command += ["-headers", headers]
+			if start > 0:
+				command += ["-ss", "%.3f" % start]
+			command += ["-i", entry["url"]]
+		if len(inputs) > 1:
+			command += ["-map", "0:v:0", "-map", "1:a:0"]
+		else:
+			command += ["-map", "0:v:0?", "-map", "0:a:0?"]
+		return command + ["-c", "copy", "-f", "mpegts", "-"]
+
+	def serve(self, request):
+		parts = urllib.parse.urlparse(request.path)
+		token = parts.path.strip("/").split("/")[0]
+		with self.lock:
+			inputs = self.sessions.get(token)
+		if inputs is None:
+			request.send_error(404)
+			return
+		query = urllib.parse.parse_qs(parts.query)
+		try:
+			start = max(0.0, float((query.get("t") or ["0"])[0]))
+		except ValueError:
+			start = 0.0
+		try:
+			process = subprocess.Popen(self.command(inputs, start),
+				stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+				stdin=subprocess.DEVNULL)
+		except OSError:
+			request.send_error(500)
+			return
+		with self.lock:
+			before = self.playing.get(token)
+			self.playing[token] = process
+		with CHILDREN_LOCK:
+			CHILDREN.add(process)
+		if before is not None:
+			self.stop(before)
+		try:
+			request.send_response(200)
+			request.send_header("Content-Type", "video/mp2t")
+			request.send_header("Connection", "close")
+			request.end_headers()
+			while True:
+				data = process.stdout.read(65536)
+				if not data:
+					break
+				request.wfile.write(data)
+		except (OSError, ValueError):
+			# the player went away, or another stream took its place
+			pass
+		finally:
+			self.stop(process)
+			with self.lock:
+				if self.playing.get(token) is process:
+					del self.playing[token]
+
+	def stop(self, process):
+		try:
+			process.kill()
+			process.wait(5)
+		except Exception:
+			pass
+		with CHILDREN_LOCK:
+			CHILDREN.discard(process)
+
+
+RELAY = Relay()
 
 
 def stop_others(work):
@@ -1523,6 +1719,8 @@ def job_check():
 
 
 def work(request):
+	if "height" in request:
+		HEIGHT[0] = max(0, as_int(request.get("height"), 0))
 	if request.get("type") == "cancel":
 		cancel(request.get("id", ""))
 		return

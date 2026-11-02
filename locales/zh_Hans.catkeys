@@ -1,6 +1,7 @@
-1	chinese	application/x-vnd.atomozero-Cinema	2224778090
+1	chinese	application/x-vnd.atomozero-Cinema	3147678896
 YouTube could not be reached: is the network on?	Window		无法连接到 YouTube：网络是否已开启？
 TV series	Window		电视剧
+Video quality:	Settings		视频画质：
 Downloaded	Detail		已下载
 Search first in:	Settings		优先搜索：
 full documentary	Categories		完整纪录片
@@ -55,6 +56,7 @@ Technology	Categories		科技
 See all	Home		查看全部
 TMDB key:	Settings		TMDB 密钥：
 Getting the details…	Detail		正在获取详细信息…
+Above 360p, YouTube takes longer to start.	Settings		高于 360p 时，YouTube 开始播放需要更久。
 With a key, the library gets posters, plots and casts. It is free.	Settings		有了密钥，媒体库会获取海报、剧情简介和演员表。它是免费的。
 Check	Settings		检查
 Playback	Settings		播放
@@ -69,6 +71,7 @@ The video could not be downloaded	Window		无法下载该视频
 Looking for the videos…	Window		正在查找视频…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# 每行一个顶部栏标签：名称 = 要在 YouTube 上搜索的内容
 Classic films	Categories		经典电影
+Automatic	Settings		自动
 No videos downloaded yet: right click a video, or press D	Window		还没有下载的视频：右键点击视频，或按 D
 # or name = channel:<id> for the latest videos of a channel	Categories		# 或 名称 = channel:<id> 显示某个频道的最新视频
 MediaPlayer could not be started: %error%	Window		无法启动 MediaPlayer：%error%

@@ -1,6 +1,7 @@
-1	English	application/x-vnd.atomozero-Cinema	2224778090
+1	English	application/x-vnd.atomozero-Cinema	3147678896
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
 TV series	Window		TV series
+Video quality:	Settings		Video quality:
 Downloaded	Detail		Downloaded
 Search first in:	Settings		Search first in:
 full documentary	Categories		full documentary
@@ -55,6 +56,7 @@ Technology	Categories		Technology
 See all	Home		See all
 TMDB key:	Settings		TMDB key:
 Getting the details…	Detail		Getting the details…
+Above 360p, YouTube takes longer to start.	Settings		Above 360p, YouTube takes longer to start.
 With a key, the library gets posters, plots and casts. It is free.	Settings		With a key, the library gets posters, plots and casts. It is free.
 Check	Settings		Check
 Playback	Settings		Playback
@@ -69,6 +71,7 @@ The video could not be downloaded	Window		The video could not be downloaded
 Looking for the videos…	Window		Looking for the videos…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# One tab of the top bar per line: name = what to search on YouTube
 Classic films	Categories		Classic films
+Automatic	Settings		Automatic
 No videos downloaded yet: right click a video, or press D	Window		No videos downloaded yet: right click a video, or press D
 # or name = channel:<id> for the latest videos of a channel	Categories		# or name = channel:<id> for the latest videos of a channel
 MediaPlayer could not be started: %error%	Window		MediaPlayer could not be started: %error%

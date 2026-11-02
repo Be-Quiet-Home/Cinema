@@ -17,6 +17,7 @@
 #include <LayoutBuilder.h>
 #include <MenuField.h>
 #include <MenuItem.h>
+#include <MessageQueue.h>
 #include <MessageRunner.h>
 #include <Notification.h>
 #include <PopUpMenu.h>
@@ -159,6 +160,7 @@ CinemaWindow::CinemaWindow()
 	if (be_app->GetAppInfo(&info) == B_OK
 		&& script.SetTo(&info.ref) == B_OK && script.GetParent(&script) == B_OK)
 		script.Append("cinema-helper.py");
+	fHelper->SetHeight(fSettings.videoHeight);
 	fHelper->Start(script.Path(), fWorker->Cache());
 
 	// nearly the whole screen
@@ -1028,10 +1030,16 @@ CinemaWindow::MessageReceived(BMessage* message)
 			break;
 		case kMsgSettingsChanged:
 		{
+			int32 height = fSettings.videoHeight;
 			fSettings = Settings::Load();
 			if (!fSettings.searchSource.IsEmpty())
 				fSearchProvider = fSettings.searchSource;
 			_UpdateSources();
+			if (fSettings.videoHeight != height) {
+				// the files found before are of the other size
+				fHelper->SetHeight(fSettings.videoHeight);
+				fStreams.clear();
+			}
 			break;
 		}
 		case kMsgAddFolder:
@@ -1065,6 +1073,17 @@ CinemaWindow::MessageReceived(BMessage* message)
 		case kMsgPlayerFrame:
 			PostMessage(kMsgPlayerFrame, fPlayerView);
 			break;
+		case kMsgPlayerReopen:
+		{
+			// only the last of the steps asked one after the other
+			if (!fPlayerShown
+				|| MessageQueue()->FindMessage(kMsgPlayerReopen, 0) != NULL)
+				break;
+			fPlayerView->ClearOverlay();
+			fPlayer->Open(fPlayingAddress.String(),
+				message->GetInt64("time", 0));
+			break;
+		}
 		case kMsgPlayerSave:
 			_SavePosition();
 			break;

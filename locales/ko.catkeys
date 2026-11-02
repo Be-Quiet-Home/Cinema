@@ -1,6 +1,7 @@
-1	korean	application/x-vnd.atomozero-Cinema	2224778090
+1	korean	application/x-vnd.atomozero-Cinema	3147678896
 YouTube could not be reached: is the network on?	Window		YouTube에 연결할 수 없습니다. 네트워크가 켜져 있나요?
 TV series	Window		TV 시리즈
+Video quality:	Settings		동영상 화질:
 Downloaded	Detail		다운로드됨
 Search first in:	Settings		먼저 검색할 곳:
 full documentary	Categories		다큐멘터리 전편
@@ -55,6 +56,7 @@ Technology	Categories		기술
 See all	Home		모두 보기
 TMDB key:	Settings		TMDB 키:
 Getting the details…	Detail		세부 정보를 가져오는 중…
+Above 360p, YouTube takes longer to start.	Settings		360p보다 높으면 YouTube 시작이 더 오래 걸립니다.
 With a key, the library gets posters, plots and casts. It is free.	Settings		키가 있으면 라이브러리에 포스터, 줄거리, 출연진이 표시됩니다. 무료입니다.
 Check	Settings		확인
 Playback	Settings		재생
@@ -69,6 +71,7 @@ The video could not be downloaded	Window		동영상을 다운로드할 수 없�
 Looking for the videos…	Window		동영상을 찾는 중…
 # One tab of the top bar per line: name = what to search on YouTube	Categories		# 한 줄에 상단 막대의 탭 하나: 이름 = YouTube에서 검색할 내용
 Classic films	Categories		고전 영화
+Automatic	Settings		자동
 No videos downloaded yet: right click a video, or press D	Window		다운로드한 동영상이 없습니다. 동영상을 오른쪽 클릭하거나 D를 누르세요
 # or name = channel:<id> for the latest videos of a channel	Categories		# 또는 이름 = channel:<id> 로 채널의 최신 동영상
 MediaPlayer could not be started: %error%	Window		MediaPlayer를 시작할 수 없습니다: %error%

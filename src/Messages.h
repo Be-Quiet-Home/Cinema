@@ -67,6 +67,8 @@ enum {
 	kMsgPlayerFrame		= 'plfr',	// a new picture to show
 	kMsgPlayerEnded		= 'plen',
 	kMsgPlayerError		= 'pler',	// it cannot play it
+	kMsgPlayerReopen	= 'plro',	// "time": a stream of the relay, opened
+									// again from there to go there
 	kMsgPlayerTick		= 'pltk',	// the time shown, the controls hidden
 	kMsgPlayerSave		= 'plsv',	// where it is, to go on later
 	kMsgPlayerClose		= 'plcl',

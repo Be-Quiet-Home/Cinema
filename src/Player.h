@@ -30,6 +30,11 @@ class BSoundPlayer;
 	It tells the target kMsgPlayerOpened ("duration", "width", "height"),
 	kMsgPlayerFrame when there is a new picture to show, kMsgPlayerEnded,
 	and kMsgPlayerError when it cannot play the file at all.
+
+	A stream of the relay of the helper (http://127.0.0.1:<port>/<token>/
+	<seconds>) cannot go back and on: it starts where it is asked
+	(?t=<seconds>), and Seek() asks the target with kMsgPlayerReopen
+	("time") to open it again from there.
 */
 class Player {
 public:
@@ -78,10 +83,14 @@ private:
 			void				_Failed();
 			bool				_SetUpVideo();
 			void				_ShowFrame();
+			bigtime_t			_StreamTime(bigtime_t time);
 
 			BMessenger			fTarget;
 			BString				fAddress;
 			bigtime_t			fStartAt;
+			bool				fRelay;			// a stream of the relay
+			bigtime_t			fRelayDuration;
+			std::atomic<bigtime_t> fFirstTime;	// of the stream, or -1
 
 			BMediaFile*			fFile;
 			BMediaTrack*		fVideoTrack;

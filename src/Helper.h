@@ -29,6 +29,9 @@ public:
 			status_t			Start(const char* script, const char* cache);
 			void				SetProvider(const char* id);
 									// the one the next requests are for
+			void				SetHeight(int32 height);
+									// of the pictures found and downloaded
+									// next, 0 for what suits the machine
 			void				Search(int32 generation, int32 count,
 									const char* query,
 									const char* provider = NULL);
@@ -56,6 +59,7 @@ private:
 			BMessenger			fTarget;
 			BLocker				fLock;
 			BString				fProvider;	// "youtube" until it says
+			int32				fHeight;
 			int					fInput;		// its standard input
 			int					fOutput;	// its standard output
 			pid_t				fProcess;
