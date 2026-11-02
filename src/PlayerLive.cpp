@@ -24,6 +24,7 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,6 +34,8 @@ extern "C" {
 
 #include <algorithm>
 #include <deque>
+#include <mutex>
+#include <thread>
 
 #include "LiveAddress.h"
 #include "Messages.h"
@@ -54,12 +57,17 @@ static const int64 kMaxQueuedVideo = 8000000;
 static const size_t kMaxDecodedFrames = 12;
 static const int64 kLateMicros = 60000;
 	// a picture this late counts as late
+static const size_t kMaxReadPackets = 1500;
+	// read ahead of the playing, about fifteen seconds
+static const int64 kSettling = 3000000;
+	// the first pictures are often late, while everything starts
 
 
 int
 Player::_LiveInterrupt(void* data)
 {
-	return ((Player*)data)->fQuit ? 1 : 0;
+	Player* player = (Player*)data;
+	return player->fQuit || player->fLiveStopRead ? 1 : 0;
 }
 
 
@@ -92,27 +100,50 @@ open_decoder(AVFormatContext* format, int index, bool video)
 
 /*!	The bitmaps the pictures go to: YCbCr422 for the overlay when it is
 	free, which scales them by itself, or 32 bits RGB the view draws.
+
+	The overlay of the AC100 takes memory all in one piece, which after a
+	while is no longer there for a big picture: then a smaller one, the
+	size of the screen or half the picture, that swscale fills.
 */
 bool
 Player::_SetUpBitmaps(int32 width, int32 height)
 {
 	if (width <= 0 || height <= 0)
 		return false;
-	BRect bounds(0, 0, width - 1, height - 1);
 	BAutolock locker(fFrameLock);
-	BBitmap* overlay = new BBitmap(bounds, B_BITMAP_WILL_OVERLAY
-		| B_BITMAP_RESERVE_OVERLAY_CHANNEL, B_YCbCr422);
-	if (overlay->InitCheck() == B_OK) {
+
+	int32 sizes[3][2] = { { width, height } };
+	int32 count = 1;
+	if (width > 1024 || height > 600) {
+		float scale = std::min(1024.0f / width, 600.0f / height);
+		sizes[count][0] = (int32)(width * scale) & ~1;
+		sizes[count][1] = (int32)(height * scale);
+		count++;
+	}
+	if (width >= 640) {
+		sizes[count][0] = (width / 2) & ~1;
+		sizes[count][1] = height / 2;
+		count++;
+	}
+	for (int32 i = 0; i < count; i++) {
+		BRect bounds(0, 0, sizes[i][0] - 1, sizes[i][1] - 1);
+		BBitmap* overlay = new BBitmap(bounds, B_BITMAP_WILL_OVERLAY
+			| B_BITMAP_RESERVE_OVERLAY_CHANNEL, B_YCbCr422);
+		if (overlay->InitCheck() != B_OK) {
+			delete overlay;
+			continue;
+		}
 		fOverlay = overlay;
 		fFront = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, B_YCbCr422);
 		fBack = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, B_YCbCr422);
 		fLivePixels = AV_PIX_FMT_YUYV422;
-	} else {
-		delete overlay;
-		fFront = new BBitmap(bounds, 0, B_RGB32);
-		fBack = new BBitmap(bounds, 0, B_RGB32);
-		fLivePixels = AV_PIX_FMT_BGRA;
+		return fFront->InitCheck() == B_OK && fBack->InitCheck() == B_OK;
 	}
+
+	BRect bounds(0, 0, width - 1, height - 1);
+	fFront = new BBitmap(bounds, 0, B_RGB32);
+	fBack = new BBitmap(bounds, 0, B_RGB32);
+	fLivePixels = AV_PIX_FMT_BGRA;
 	return fFront->InitCheck() == B_OK && fBack->InitCheck() == B_OK;
 }
 
@@ -368,12 +399,14 @@ Player::_LiveSkip(int level)
 }
 
 
-/*!	Skips more after a few late pictures in a row, less after about five
-	seconds on time.
+/*!	Skips more after a few late pictures in a row, less after about two
+	seconds on time; not while it starts.
 */
 void
 Player::_LiveLateness(bool late)
 {
+	if (_LiveClock() < kSettling)
+		return;
 	int base = kSlowProcessor ? 1 : 0;
 	if (late) {
 		fLiveOnTime = 0;
@@ -383,7 +416,7 @@ Player::_LiveLateness(bool late)
 		}
 	} else {
 		fLiveLate = 0;
-		if (++fLiveOnTime >= 125 && fLiveSkipLevel > base) {
+		if (++fLiveOnTime >= 60 && fLiveSkipLevel > base) {
 			_LiveSkip(fLiveSkipLevel - 1);
 			fLiveOnTime = 0;
 		}
@@ -525,6 +558,17 @@ Player::_LiveLoop()
 	const int video = fLiveVideoIndex;
 	const int audio = fLiveAudioIndex;
 
+	// CINEMA_LIVE_DEBUG=1: what happens, every five seconds
+	const bool debug = getenv("CINEMA_LIVE_DEBUG") != NULL;
+	int decoded = 0, shown = 0, dropped = 0, lateCount = 0, audioFrames = 0;
+	bigtime_t nextReport = system_time() + 5000000;
+	if (debug) {
+		fprintf(stderr, "live: video %d (%dx%d), audio %d of %u streams\n",
+			video, fLiveVideo != NULL ? fLiveVideo->width : 0,
+			fLiveVideo != NULL ? fLiveVideo->height : 0, audio,
+			format->nb_streams);
+	}
+
 	auto packetMicros = [&](const AVPacket* p) -> int64 {
 		int64 time = p->dts != AV_NOPTS_VALUE ? p->dts : p->pts;
 		if (time == AV_NOPTS_VALUE)
@@ -581,6 +625,12 @@ Player::_LiveLoop()
 			}
 			if (known)
 				_LiveLateness(late);
+			if (late)
+				lateCount++;
+			if (drop)
+				dropped++;
+			else
+				shown++;
 			bool ok = drop || _LiveRender(next);
 			av_frame_free(&next);
 			if (!ok)
@@ -617,6 +667,7 @@ Player::_LiveLoop()
 					fClockBase = 0;
 					fClockStart = system_time();
 				}
+				decoded++;
 				if (AVFrame* copy = av_frame_clone(frame))
 					frames.push_back(copy);
 				av_frame_unref(frame);
@@ -651,12 +702,67 @@ Player::_LiveLoop()
 		return true;
 	};
 
+	// the network apart: reading a segment of HLS may hold av_read_frame()
+	// for a second or more, while the pictures have to go on
+	std::mutex readLock;
+	std::deque<AVPacket*> read;
+	bool readEnded = false;
+	fLiveStopRead = false;
+	std::thread reader([&]() {
+		AVPacket* got = av_packet_alloc();
+		while (!fQuit && !fLiveStopRead) {
+			bool full;
+			{
+				std::lock_guard<std::mutex> locker(readLock);
+				full = read.size() >= kMaxReadPackets;
+			}
+			if (full) {
+				snooze(20000);
+				continue;
+			}
+			if (av_read_frame(format, got) < 0)
+				break;
+			if (got->stream_index != video && got->stream_index != audio) {
+				av_packet_unref(got);
+				continue;
+			}
+			AVPacket* copy = av_packet_alloc();
+			av_packet_move_ref(copy, got);
+			std::lock_guard<std::mutex> locker(readLock);
+			read.push_back(copy);
+		}
+		av_packet_free(&got);
+		std::lock_guard<std::mutex> locker(readLock);
+		readEnded = true;
+	});
+
 	while (!fQuit && !failed) {
 		if (fPaused) {
 			snooze(40000);
 			continue;
 		}
-		if (av_read_frame(format, packet) < 0) {
+		AVPacket* next = NULL;
+		bool ended;
+		{
+			std::lock_guard<std::mutex> locker(readLock);
+			if (!read.empty()) {
+				next = read.front();
+				read.pop_front();
+			}
+			ended = next == NULL && readEnded;
+		}
+		if (next == NULL && !ended) {
+			// nothing read yet: the pictures that are due meanwhile
+			if (video >= 0 && (!pumpVideo(false) || !showFrames(false)))
+				failed = true;
+			snooze(5000);
+			continue;
+		}
+		if (next != NULL) {
+			av_packet_move_ref(packet, next);
+			av_packet_free(&next);
+		}
+		if (ended) {
 			// the end: what is still there
 			while (!fQuit && !failed && (!packets.empty() || !frames.empty())) {
 				if (!pumpVideo(true) || !showFrames(true))
@@ -679,6 +785,7 @@ Player::_LiveLoop()
 					fLiveBase = micros;
 					fLiveSoundEnd = micros;
 				}
+				audioFrames++;
 				_LiveAlignSound(micros);
 				_LivePushSound(frame);
 				av_frame_unref(frame);
@@ -693,12 +800,41 @@ Player::_LiveLoop()
 		if (video >= 0 && (!pumpVideo(false) || !showFrames(false)))
 			failed = true;
 
+		if (debug && system_time() > nextReport) {
+			size_t fill;
+			{
+				BAutolock ring(fRingLock);
+				fill = fRingFill;
+			}
+			size_t readCount;
+			{
+				std::lock_guard<std::mutex> locker(readLock);
+				readCount = read.size();
+			}
+			int64 head = frames.empty() ? 0
+				: dueAt(_LiveFrameMicros(video, frames.front()));
+			fprintf(stderr, "live: decoded %d shown %d dropped %d late %d "
+				"audio %d skip %d | clock %.2f next %.2f | packets %zu "
+				"(%.1fs) frames %zu read %zu sound %.2fs\n", decoded, shown, dropped,
+				lateCount, audioFrames, fLiveSkipLevel, _LiveClock() / 1e6,
+				head / 1e6, packets.size(), queuedSpan() / 1e6, frames.size(),
+				readCount,
+				fFrameSize > 0 && fSound.frame_rate > 0
+					? fill / (double)fFrameSize / fSound.frame_rate : 0.0);
+			decoded = shown = dropped = lateCount = audioFrames = 0;
+			nextReport += 5000000;
+		}
+
 		// without sound nothing else paces the reading
 		if (!failed && video >= 0 && frames.size() >= kMaxDecodedFrames
 			&& queuedSpan() >= kMaxQueuedVideo && !showFrames(true))
 			failed = true;
 	}
 
+	fLiveStopRead = true;
+	reader.join();
+	for (AVPacket* queued : read)
+		av_packet_free(&queued);
 	for (AVPacket* queued : packets)
 		av_packet_free(&queued);
 	for (AVFrame* queued : frames)

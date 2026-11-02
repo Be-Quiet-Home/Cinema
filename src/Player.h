@@ -137,6 +137,7 @@ private:
 			int64				fLiveBase;		// stream time of the clock's 0
 			int64				fLiveSoundEnd;	// stream time of the sound queued
 			std::vector<uint8>	fLivePcm;
+			std::atomic<bool>	fLiveStopRead;	// the reader of the stream stops
 
 			BMediaFile*			fFile;
 			BMediaTrack*		fVideoTrack;

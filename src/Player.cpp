@@ -54,6 +54,7 @@ Player::Player(const BMessenger& target)
 	fLivePixels(-1),
 	fLiveBase(0),
 	fLiveSoundEnd(0),
+	fLiveStopRead(false),
 	fFile(NULL),
 	fVideoTrack(NULL),
 	fAudioTrack(NULL),
