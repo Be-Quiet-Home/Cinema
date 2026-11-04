@@ -1014,9 +1014,11 @@ CinemaWindow::MessageReceived(BMessage* message)
 		case kMsgThumbnail:
 		{
 			int32 generation = message->GetInt32("generation", -1);
-			// read and made small by the worker already
-			BBitmap* picture = NULL;
-			message->FindPointer("picture", (void**)&picture);
+			// read and made small by the worker already, as a bitmap of
+			// its own memory: made one of app_server here
+			BBitmap* read = NULL;
+			message->FindPointer("picture", (void**)&read);
+			BBitmap* picture = Pictures::ForScreen(read);
 			auto home = fHomeRequests.find(generation);
 			if (home != fHomeRequests.end())
 				fHome->SetPicture(message->GetString("id", ""), picture);

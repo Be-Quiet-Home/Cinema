@@ -146,8 +146,10 @@ private:
 			// base of the stream, not in microseconds (its packets carry the
 			// raw pts and dts), so header.start_time cannot be trusted
 			bigtime_t			fFrameDuration = 0;	// 0 if the rate is unknown
-			bigtime_t			fFrameBase = 0;
+			std::atomic<bigtime_t> fFrameBase{0};
 			int64				fFrameCount = 0;	// with fVideoLock
+			bigtime_t			fStatFrameTime = 0;
+			int32				fFormatsAsked = 0;
 
 			bool				fLive;			// played with FFmpeg
 			std::atomic<bool>	fNoOverlay;
@@ -199,6 +201,22 @@ private:
 			// fClockStart was the system time without sound
 			std::atomic<bigtime_t> fClockBase;
 			std::atomic<int64>	fPlayed;
+			// when each sound buffer is heard: the sound player's node plays
+			// buffer n at fPerformanceStart plus the frames sent before it, in
+			// the time of its time source (MediaPlayer's model). Latency()
+			// alone left the sound 300 ms behind the pictures on a VAIO.
+			struct SoundFill {
+				int64		sent;		// frames sent before this buffer
+				int64		content;	// fPlayed when it was filled
+				int64		frames;		// frames of sound in it, not silence
+			};
+			mutable BLocker		fFillLock{"player fills"};
+			SoundFill			fFills[64];
+			int32				fFillCount = 0;	// with fFillLock
+			int32				fFillNext = 0;
+			int64				fSentFrames = 0;
+			std::atomic<bigtime_t> fPerformanceStart{0};	// 0 if unknown
+			void				_NoteFill(size_t requested, size_t content);
 			bigtime_t			fClockStart;
 			bigtime_t			fPausedClock;
 

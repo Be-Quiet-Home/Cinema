@@ -260,9 +260,16 @@ Player::_Open()
 		fFile->ReleaseTrack(fVideoTrack);
 		fVideoTrack = NULL;
 	}
+	if (fVideoTrack != NULL && !fRelay && fStartAt <= 0 && fFormatsAsked > 1) {
+		bigtime_t start = 0;
+		fVideoTrack->SeekToTime(&start, B_MEDIA_SEEK_CLOSEST_BACKWARD);
+	}
 	fFrameDuration = 0;
 	fFrameBase = fRelay ? fStartAt : 0;
 	fFrameCount = 0;
+	// the times the add-on gives for the first sound and pictures are not
+	// even in one unit: a file opened from its start needs nothing, and
+	// the relay starts the sound at the picture's key frame
 	if (fVideoTrack != NULL) {
 		media_format encoded;
 		if (fVideoTrack->EncodedFormat(&encoded) == B_OK) {
@@ -291,6 +298,12 @@ Player::_Open()
 			fRing.resize((size_t)(fSound.frame_rate * kRingTime / 1000000)
 				* fFrameSize);
 			fRingRead = fRingFill = 0;
+			fPerformanceStart = 0;
+			{
+				BAutolock locker(fFillLock);
+				fFillCount = fFillNext = 0;
+				fSentFrames = 0;
+			}
 			fSoundPlayer = new BSoundPlayer(&fSound, "Cinema", &_PlayBuffer,
 				NULL, this);
 			if (fSoundPlayer->InitCheck() != B_OK) {
@@ -352,7 +365,12 @@ Player::_Open()
 		fAudioThread = spawn_thread(&_AudioEntry, "player sound",
 			B_URGENT_DISPLAY_PRIORITY, this);
 		resume_thread(fAudioThread);
+		// as BSoundPlayer::Start() starts its node
+		bigtime_t performance = fSoundPlayer->PerformanceTime();
+		bigtime_t latency = fSoundPlayer->Latency();
 		fSoundPlayer->Start();
+		if (performance > 0)
+			fPerformanceStart = performance + latency + 5000;
 		fSoundPlayer->SetHasData(true);
 	}
 }
@@ -368,6 +386,25 @@ Player::_Failed()
 bigtime_t
 Player::_Clock() const
 {
+	if (fSoundPlayer != NULL && fPerformanceStart > 0) {
+		// the frame heard now, and the sound of the video it carries
+		double rate = std::max(1.0f, fSound.frame_rate);
+		bigtime_t now = fSoundPlayer->PerformanceTime();
+		int64 heard = (int64)((now - fPerformanceStart) * rate / 1000000.0);
+		int64 content = 0;
+		{
+			BAutolock locker(fFillLock);
+			for (int32 i = 1; i <= fFillCount; i++) {
+				const SoundFill& fill = fFills[(fFillNext - i + 64) % 64];
+				if (fill.sent > heard)
+					continue;
+				content = fill.content
+					+ std::min(heard - fill.sent, fill.frames);
+				break;
+			}
+		}
+		return fClockBase + (bigtime_t)(content * 1000000.0 / rate);
+	}
 	if (fSoundPlayer != NULL) {
 		bigtime_t played = fPlayed * 1000000LL
 			/ (int64)std::max(1.0f, fSound.frame_rate);
@@ -520,6 +557,12 @@ Player::_SeekTracks(bigtime_t time)
 	fClockBase = time;
 	fPlayed = 0;
 	fLastFill = 0;
+	{
+		// the buffers queued still have the sound of before: until the
+		// first one of now is heard, the clock stays at the new base
+		BAutolock locker(fFillLock);
+		fFillCount = 0;
+	}
 	fClockStart = system_time();
 	fPausedClock = time;
 	fVideoEnded = fVideoTrack == NULL;
@@ -574,6 +617,7 @@ Player::_AudioEntry(void* data)
 void
 Player::_AudioLoop()
 {
+
 	size_t size = std::max((size_t)fSound.buffer_size, (size_t)65536);
 	uint8* buffer = (uint8*)malloc(size * 2);
 	if (buffer == NULL)
@@ -636,6 +680,7 @@ Player::_FillSound(void* buffer, size_t size)
 	uint8* out = (uint8*)buffer;
 	if (fPaused || fRing.empty()) {
 		memset(out, 0, size);
+		_NoteFill(size, 0);
 		return;
 	}
 	BAutolock ring(fRingLock);
@@ -648,12 +693,31 @@ Player::_FillSound(void* buffer, size_t size)
 	fRingFill -= bytes;
 	if (bytes < size)
 		memset(out + bytes, 0, size - bytes);
+	_NoteFill(size, bytes);
 	fPlayed += bytes / std::max((size_t)1, fFrameSize);
 	fFillTime = (bigtime_t)(size / std::max((size_t)1, fFrameSize)) * 1000000LL
 		/ (int64)std::max(1.0f, fSound.frame_rate);
 	fLastFill = system_time();
 	if (fRingFill == 0 && fAudioEnded)
 		_CheckEnded();
+}
+
+
+/*!	A buffer given to the sound player: requested bytes in all, content
+	bytes of the video's sound at its start, silence after.
+*/
+void
+Player::_NoteFill(size_t requested, size_t content)
+{
+	size_t frameSize = std::max((size_t)1, fFrameSize);
+	BAutolock locker(fFillLock);
+	SoundFill& fill = fFills[fFillNext];
+	fill.sent = fSentFrames;
+	fill.content = fPlayed;
+	fill.frames = content / frameSize;
+	fFillNext = (fFillNext + 1) % 64;
+	fFillCount = std::min(fFillCount + 1, (int32)64);
+	fSentFrames += requested / frameSize;
 }
 
 
@@ -700,6 +764,8 @@ Player::_VideoLoop()
 
 		bigtime_t time = frameTime >= 0 ? frameTime
 			: _StreamTime(header.start_time);
+		fStatFrameTime = time;
+
 		bool show = fShowNext;
 		if (!show) {
 			// waits for the sound to get there
@@ -790,14 +856,16 @@ Player::_Stats()
 		fprintf(stderr, "player: stats %s %.1f s decoded %" B_PRId32
 			" shown %" B_PRId32 " late %" B_PRId32 " merged %" B_PRId32
 			" drawn %" B_PRId32 " fps %.1f decode %.1f ms copy %.2f ms"
-			" cinema %.0f%% system %.0f%% cpus %" B_PRId32 "\n",
+			" cinema %.0f%% system %.0f%% cpus %" B_PRId32
+			" | picture %.3f clock %.3f\n",
 			fOverlay != NULL ? "overlay" : "rgb", seconds, decoded, shown,
 			(int32)fStatLate, (int32)fStatMerged, (int32)fStatDrawn,
 			shown / seconds,
 			decoded > 0 ? fStatDecodeTime / 1000.0 / decoded : 0.0,
 			shown > 0 ? fStatCopyTime / 1000.0 / shown : 0.0,
 			100.0 * (team - fStatTeamCpu) / capacity,
-			100.0 * (system - fStatSystemCpu) / capacity, cpus);
+			100.0 * (system - fStatSystemCpu) / capacity, cpus,
+			fStatFrameTime / 1e6, _Clock() / 1e6);
 	}
 	fStatStart = now;
 	fStatTeamCpu = team;
@@ -845,10 +913,16 @@ Player::UnlockFrame()
 bool
 Player::_SetUpVideo()
 {
+	// each format the decoder is asked for may cost it pictures: it gives
+	// RGB32 only, for Haiku's ffmpeg add-on, and the two tries took the
+	// first 8 pictures of a video, 0.32 s ahead of the sound then. A file
+	// is sought back to its start after; the relay's stream cannot be.
+	fFormatsAsked = 0;
 	const color_space spaces[] = { B_YCbCr420, B_YCbCr422 };
 	for (color_space space : spaces) {
-		if (fNoOverlay)
+		if (fNoOverlay || fRelay)
 			break;
+		fFormatsAsked++;
 		media_format format;
 		format.type = B_MEDIA_RAW_VIDEO;
 		format.u.raw_video = media_raw_video_format::wildcard;
@@ -900,6 +974,7 @@ Player::_SetUpVideo()
 	format.type = B_MEDIA_RAW_VIDEO;
 	format.u.raw_video = media_raw_video_format::wildcard;
 	format.u.raw_video.display.format = B_RGB32;
+	fFormatsAsked++;
 	if (fVideoTrack->DecodedFormat(&format) != B_OK
 		|| (format.u.raw_video.display.format != B_RGB32
 			&& format.u.raw_video.display.format != B_RGBA32))

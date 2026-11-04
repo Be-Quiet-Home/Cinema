@@ -159,7 +159,8 @@ Worker::_Thumbnails(BMessage* message)
 				BAutolock locker(fPictureLock);
 				if (fStopping)
 					return;
-				picture = Pictures::Load(path.String(), largest);
+				// without app_server: the window makes it one of its own
+				picture = Pictures::Read(path.String(), largest);
 			}
 			if (picture != NULL)
 				thumbnail.AddPointer("picture", picture);

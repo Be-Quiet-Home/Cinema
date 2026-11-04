@@ -1086,16 +1086,46 @@ class Relay:
 		with self.lock:
 			return self.sessions.get(token)
 
+	@staticmethod
+	def http_options(entry):
+		"""The user agent and headers of an input, as ffmpeg takes them."""
+		options = []
+		headers = dict(entry.get("headers") or {})
+		agent = headers.pop("User-Agent", None)
+		if agent:
+			options += ["-user_agent", agent]
+		if headers:
+			options += ["-headers", "".join("%s: %s\r\n" % item
+				for item in headers.items())]
+		return options
+
+	def key_frame(self, entry, start):
+		"""The time of the key frame of the picture at or before start, or
+		None. Copied without decoding, the picture can only begin there."""
+		command = ["ffprobe", "-v", "error"] + self.http_options(entry) + [
+			"-select_streams", "v:0", "-read_intervals", "%.3f%%+#1" % start,
+			"-show_entries", "packet=pts_time", "-of", "csv=p=0",
+			entry["url"]]
+		try:
+			found = subprocess.run(command, capture_output=True, text=True,
+				timeout=30, stdin=subprocess.DEVNULL).stdout.split()
+			time = float(found[0].strip(",")) if found else None
+		except (OSError, ValueError, subprocess.SubprocessError):
+			return None
+		if time is None or time < 0 or time > start + 0.001:
+			return None
+		return time
+
 	def command(self, inputs, start):
 		command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin"]
+		if start > 0 and len(inputs) > 1:
+			# the picture starts at a key frame, seconds before start maybe:
+			# the sound starts there too, or it would be that much ahead
+			key = self.key_frame(inputs[0], start)
+			if key is not None:
+				start = key + 0.001
 		for entry in inputs:
-			headers = dict(entry.get("headers") or {})
-			agent = headers.pop("User-Agent", None)
-			if agent:
-				command += ["-user_agent", agent]
-			if headers:
-				command += ["-headers", "".join("%s: %s\r\n" % item
-					for item in headers.items())]
+			command += self.http_options(entry)
 			if start > 0:
 				command += ["-ss", "%.3f" % start]
 			command += ["-i", entry["url"]]
