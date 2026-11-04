@@ -23,14 +23,14 @@
 using namespace Style;
 
 
-static const float kHeight = 44;
-static const float kPadding = 14;
-static const float kGap = 2;
+static const float kBaseHeight = 44;
+static const float kBasePadding = 14;
+static const float kBaseGap = 2;
 static const float kFontSize = 15;
-static const float kChannelGap = 16;
-static const float kAddSize = 22;
-static const float kMoreWidth = 26;
-static const float kMoreGap = 6;
+static const float kBaseChannelGap = 16;
+static const float kBaseAddSize = 22;
+static const float kBaseMoreWidth = 26;
+static const float kBaseMoreGap = 6;
 
 
 CategoryBar::CategoryBar(const std::vector<Category>& categories)
@@ -50,7 +50,7 @@ CategoryBar::CategoryBar(const std::vector<Category>& categories)
 BSize
 CategoryBar::MinSize()
 {
-	return BSize(100, kHeight);
+	return BSize(100, S(kBaseHeight));
 }
 
 
@@ -62,7 +62,7 @@ CategoryBar::PreferredSize()
 		width = _AddFrame().right;
 	else if (_Count() > 0)
 		width = _ButtonFrame(_Count() - 1).right;
-	return BSize(width, kHeight);
+	return BSize(width, S(kBaseHeight));
 }
 
 
@@ -94,14 +94,14 @@ CategoryBar::_ButtonFrame(int32 index) const
 	for (int32 i = 0; i <= index; i++) {
 		// a gap with a line before the categories and before the channel
 		if (i == 2 && !fCategories.empty())
-			left += kChannelGap;
+			left += S(kBaseChannelGap);
 		else if (!fChannel.IsEmpty() && i == ChannelTab())
-			left += kChannelGap;
+			left += S(kBaseChannelGap);
 		if (i < index)
-			left += font.StringWidth(_Name(i)) + 2 * kPadding + kGap;
+			left += font.StringWidth(_Name(i)) + 2 * S(kBasePadding) + S(kBaseGap);
 	}
-	float width = font.StringWidth(_Name(index)) + 2 * kPadding;
-	return BRect(left, 0, left + width, kHeight - 1);
+	float width = font.StringWidth(_Name(index)) + 2 * S(kBasePadding);
+	return BRect(left, 0, left + width, S(kBaseHeight) - 1);
 }
 
 
@@ -111,17 +111,17 @@ CategoryBar::_AddFrame() const
 	if (fChannel.IsEmpty())
 		return BRect();
 	BRect tab = _ButtonFrame(ChannelTab());
-	float top = (kHeight - kAddSize) / 2;
-	return BRect(tab.right, top, tab.right + kAddSize, top + kAddSize);
+	float top = (S(kBaseHeight) - S(kBaseAddSize)) / 2;
+	return BRect(tab.right, top, tab.right + S(kBaseAddSize), top + S(kBaseAddSize));
 }
 
 
 BRect
 CategoryBar::_MoreFrame() const
 {
-	float top = (kHeight - kMoreWidth) / 2;
-	return BRect(Bounds().right - kMoreWidth, top, Bounds().right,
-		top + kMoreWidth);
+	float top = (S(kBaseHeight) - S(kBaseMoreWidth)) / 2;
+	return BRect(Bounds().right - S(kBaseMoreWidth), top, Bounds().right,
+		top + S(kBaseMoreWidth));
 }
 
 
@@ -139,7 +139,7 @@ CategoryBar::_FitLimit() const
 {
 	if (!_HasMore())
 		return Bounds().right;
-	return Bounds().right - kMoreWidth - kMoreGap;
+	return Bounds().right - S(kBaseMoreWidth) - S(kBaseMoreGap);
 }
 
 
@@ -165,16 +165,18 @@ CategoryBar::Draw(BRect updateRect)
 			// a line apart from the other groups
 			SetDrawingMode(B_OP_COPY);
 			SetHighColor(kCard);
-			float x = frame.left - kChannelGap / 2;
-			StrokeLine(BPoint(x, frame.top + 12), BPoint(x, frame.bottom - 12));
+			float x = frame.left - S(kBaseChannelGap) / 2;
+			StrokeLine(BPoint(x, frame.top + S(12)),
+				BPoint(x, frame.bottom - S(12)));
 		}
 		DrawCentered(this, _Name(i), frame, Font(kFontSize, selected),
 			selected ? kText : kTextDim);
 		if (selected) {
 			SetDrawingMode(B_OP_COPY);
 			SetHighColor(kAccent);
-			FillRect(BRect(frame.left + kPadding / 2, frame.bottom - 2,
-				frame.right - kPadding / 2, frame.bottom));
+			FillRect(BRect(frame.left + S(kBasePadding) / 2,
+				frame.bottom - S(2), frame.right - S(kBasePadding) / 2,
+				frame.bottom));
 		}
 	}
 
@@ -196,17 +198,17 @@ CategoryBar::Draw(BRect updateRect)
 			FillRound(this, add, add.Height() / 2, kCard);
 		SetDrawingMode(B_OP_COPY);
 		SetHighColor(fAddHover ? kText : kTextDim);
-		SetPenSize(2);
+		SetPenSize(S(2));
 		BPoint center(add.left + add.Width() / 2, add.top + add.Height() / 2);
-		StrokeLine(center - BPoint(5, 0), center + BPoint(5, 0));
-		StrokeLine(center - BPoint(0, 5), center + BPoint(0, 5));
+		StrokeLine(center - BPoint(S(5), 0), center + BPoint(S(5), 0));
+		StrokeLine(center - BPoint(0, S(5)), center + BPoint(0, S(5)));
 		SetPenSize(1);
 	}
 
 	if (IsFocus() && fFocused >= 0 && fFocused < _Count()) {
 		BRect frame = _ButtonFrame(fFocused);
 		if (frame.right <= limit)
-			StrokeRound(this, frame.InsetByCopy(1, 6), 5, 1, kAccent);
+			StrokeRound(this, frame.InsetByCopy(1, S(6)), S(5), 1, kAccent);
 	}
 }
 
@@ -405,6 +407,7 @@ CategoryBar::_ShowMenu(int32 index, BPoint where)
 	menu->AddItem(new BMenuItem(B_TRANSLATE("Remove from the tabs"),
 		message));
 	menu->SetTargetForItems(Window());
+	ScaleMenu(menu);
 	menu->Go(ConvertToScreen(where), true, false, true);
 }
 
@@ -444,6 +447,7 @@ CategoryBar::_ShowMore(BPoint where)
 		menu->AddItem(new BMenuItem(remove));
 	}
 	menu->SetTargetForItems(Window());
+	ScaleMenu(menu);
 	menu->Go(ConvertToScreen(where), true, false, true);
 }
 

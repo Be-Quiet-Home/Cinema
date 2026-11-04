@@ -5,6 +5,7 @@
 
 
 #include "Downloads.h"
+#include "Pictures.h"
 #include "PictureName.h"
 
 #include <algorithm>
@@ -106,7 +107,7 @@ Load(std::map<BString, BString>* files)
 		[](const Found& a, const Found& b) { return a.time > b.time; });
 	std::vector<MediaItem> videos;
 	for (Found& file : found) {
-		file.video.picture = BTranslationUtils::GetBitmap(
+		file.video.picture = Pictures::Load(
 			picture_path(file.video.id).String());
 		videos.push_back(file.video);
 	}

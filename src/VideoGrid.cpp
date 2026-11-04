@@ -29,13 +29,13 @@
 using namespace Style;
 
 
-static const float kMinTileWidth = 260;
-static const float kGap = 20;
-static const float kTitleHeight = 74;
+static const float kBaseMinTileWidth = 260;
+static const float kBaseGap = 20;
+static const float kBaseTitleHeight = 74;
 	// two lines of title, one with the channel
 static const float kTitleSize = 15;
 static const float kChannelSize = 13;
-static const float kRadius = 6;
+static const float kBaseRadius = 6;
 
 
 VideoGrid::VideoGrid()
@@ -109,7 +109,7 @@ float
 VideoGrid::ShelfHeightFor(float tileWidth)
 {
 	float pictureHeight = roundf(tileWidth * 9 / 16);
-	return 2 * kGap + pictureHeight + kTitleHeight;
+	return 2 * S(kBaseGap) + pictureHeight + S(kBaseTitleHeight);
 }
 
 
@@ -271,12 +271,12 @@ int32
 VideoGrid::_Columns() const
 {
 	if (fShelf) {
-		float width = Bounds().Width() - 2 * kGap + kGap;
+		float width = Bounds().Width() - 2 * S(kBaseGap) + S(kBaseGap);
 		return std::max<int32>(1,
-			(int32)(width / (fShelfTileWidth + kGap)));
+			(int32)(width / (fShelfTileWidth + S(kBaseGap))));
 	}
-	float width = Bounds().Width() + 1 - kGap;
-	return std::max<int32>(1, (int32)(width / (kMinTileWidth + kGap)));
+	float width = Bounds().Width() + 1 - S(kBaseGap);
+	return std::max<int32>(1, (int32)(width / (S(kBaseMinTileWidth) + S(kBaseGap))));
 }
 
 
@@ -294,17 +294,17 @@ VideoGrid::_TileFrame(int32 index) const
 {
 	if (fShelf) {
 		float pictureHeight = roundf(fShelfTileWidth * 9 / 16);
-		float tileHeight = pictureHeight + kTitleHeight;
-		float left = kGap + (index % _Columns()) * (fShelfTileWidth + kGap);
-		return BRect(left, kGap, left + fShelfTileWidth,
-			kGap + tileHeight);
+		float tileHeight = pictureHeight + S(kBaseTitleHeight);
+		float left = S(kBaseGap) + (index % _Columns()) * (fShelfTileWidth + S(kBaseGap));
+		return BRect(left, S(kBaseGap), left + fShelfTileWidth,
+			S(kBaseGap) + tileHeight);
 	}
 	int32 columns = _Columns();
-	float tileWidth = (Bounds().Width() + 1 - kGap) / columns - kGap;
+	float tileWidth = (Bounds().Width() + 1 - S(kBaseGap)) / columns - S(kBaseGap);
 	float pictureHeight = roundf(tileWidth * 9 / 16);
-	float tileHeight = pictureHeight + kTitleHeight;
-	float left = kGap + (index % columns) * (tileWidth + kGap);
-	float top = kGap + (index / columns) * (tileHeight + kGap);
+	float tileHeight = pictureHeight + S(kBaseTitleHeight);
+	float left = S(kBaseGap) + (index % columns) * (tileWidth + S(kBaseGap));
+	float top = S(kBaseGap) + (index / columns) * (tileHeight + S(kBaseGap));
 	return BRect(left, top, left + tileWidth, top + tileHeight);
 }
 
@@ -337,8 +337,8 @@ VideoGrid::_ChannelFrame(int32 index) const
 		return BRect();
 	BRect frame = _TileFrame(index);
 	BFont font = Font(kChannelSize);
-	float top = frame.bottom - kTitleHeight + 8
-		+ 2 * line_height(Font(kTitleSize)) + 4;
+	float top = frame.bottom - S(kBaseTitleHeight) + S(8)
+		+ 2 * line_height(Font(kTitleSize)) + S(4);
 	float width = std::min(frame.Width(),
 		font.StringWidth(video.channel.String()));
 	return BRect(frame.left, top, frame.left + width,
@@ -368,12 +368,12 @@ VideoGrid::_UpdateScrollBar()
 		return;
 	}
 	float content = fVideos.empty() ? 0
-		: _TileFrame(fVideos.size() - 1).bottom + kGap;
+		: _TileFrame(fVideos.size() - 1).bottom + S(kBaseGap);
 	float visible = Bounds().Height() + 1;
 	float range = std::max(0.0f, content - visible);
 	bar->SetRange(0, range);
 	bar->SetProportion(content > 0 ? std::min(1.0f, visible / content) : 1);
-	bar->SetSteps(40, visible * 0.9f);
+	bar->SetSteps(S(40), visible * 0.9f);
 }
 
 
@@ -442,8 +442,8 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 	bool hover = index == fHover;
 
 	BRect picture(frame.left, frame.top, frame.right,
-		frame.bottom - kTitleHeight);
-	FillRound(this, picture, kRadius, kCard);
+		frame.bottom - S(kBaseTitleHeight));
+	FillRound(this, picture, S(kBaseRadius), kCard);
 	if (video.picture != NULL) {
 		SetDrawingMode(B_OP_COPY);
 		BRect source = video.picture->Bounds();
@@ -457,9 +457,9 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 		}
 		DrawBitmap(video.picture, source, target, B_FILTER_BITMAP_BILINEAR);
 	} else {
-		BRect play(0, 0, 36, 36);
-		play.OffsetTo(picture.left + (picture.Width() - 36) / 2,
-			picture.top + (picture.Height() - 36) / 2);
+		BRect play(0, 0, S(36), S(36));
+		play.OffsetTo(picture.left + (picture.Width() - S(36)) / 2,
+			picture.top + (picture.Height() - S(36)) / 2);
 		DrawPlay(this, play, kTextDim);
 	}
 	if (hover) {
@@ -472,11 +472,12 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 		DrawPlay(this, circle.InsetByCopy(size * 0.32f, size * 0.3f), kText);
 	}
 	if (selected)
-		StrokeRound(this, picture.InsetByCopy(-3, -3), kRadius + 2, 2, kAccent);
+		StrokeRound(this, picture.InsetByCopy(-S(3), -S(3)),
+			S(kBaseRadius) + S(2), S(2), kAccent);
 
 	if (video.resume > 0 && !video.watched && video.progress < 0) {
 		// how far it was watched, red as on the video sites
-		BRect bar(picture.left, picture.bottom - 3, picture.right,
+		BRect bar(picture.left, picture.bottom - S(3), picture.right,
 			picture.bottom);
 		SetDrawingMode(B_OP_ALPHA);
 		SetHighColor(0, 0, 0, 160);
@@ -489,29 +490,29 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 	}
 	if (video.watched) {
 		// a check in the corner: seen already
-		BRect mark(picture.right - 26, picture.top + 6, picture.right - 6,
-			picture.top + 26);
-		FillRound(this, mark, 10, (rgb_color){ 0, 0, 0, 190 });
+		BRect mark(picture.right - S(26), picture.top + S(6),
+			picture.right - S(6), picture.top + S(26));
+		FillRound(this, mark, S(10), (rgb_color){ 0, 0, 0, 190 });
 		SetDrawingMode(B_OP_COPY);
 		SetHighColor(kText);
-		SetPenSize(2);
-		StrokeLine(BPoint(mark.left + 5, mark.top + 10),
-			BPoint(mark.left + 9, mark.top + 14));
-		StrokeLine(BPoint(mark.left + 9, mark.top + 14),
-			BPoint(mark.left + 15, mark.top + 6));
+		SetPenSize(S(2));
+		StrokeLine(BPoint(mark.left + S(5), mark.top + S(10)),
+			BPoint(mark.left + S(9), mark.top + S(14)));
+		StrokeLine(BPoint(mark.left + S(9), mark.top + S(14)),
+			BPoint(mark.left + S(15), mark.top + S(6)));
 		SetPenSize(1);
 	}
 
 	if (video.favorite) {
 		// a star in the corner: among the favorites
-		BRect mark(picture.left + 6, picture.top + 6, picture.left + 28,
-			picture.top + 28);
-		FillRound(this, mark, 11, (rgb_color){ 0, 0, 0, 190 });
+		BRect mark(picture.left + S(6), picture.top + S(6),
+			picture.left + S(28), picture.top + S(28));
+		FillRound(this, mark, S(11), (rgb_color){ 0, 0, 0, 190 });
 		BPoint center(mark.left + mark.Width() / 2,
-			mark.top + mark.Height() / 2 + 1);
+			mark.top + mark.Height() / 2 + S(1));
 		BPoint points[10];
 		for (int32 i = 0; i < 10; i++) {
-			float radius = i % 2 == 0 ? 8.5f : 3.6f;
+			float radius = i % 2 == 0 ? S(8.5f) : S(3.6f);
 			float angle = -M_PI / 2 + i * M_PI / 5;
 			points[i] = center + BPoint(radius * cosf(angle),
 				radius * sinf(angle));
@@ -523,7 +524,7 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 
 	if (video.progress >= 0) {
 		// the download, as a bar along the bottom of the picture
-		BRect bar(picture.left, picture.bottom - 3, picture.right,
+		BRect bar(picture.left, picture.bottom - S(3), picture.right,
 			picture.bottom);
 		SetDrawingMode(B_OP_ALPHA);
 		SetHighColor(0, 0, 0, 160);
@@ -536,18 +537,18 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 	}
 	if (video.downloaded && video.path.IsEmpty()) {
 		// a mark in the other corner: it can be watched offline
-		BRect mark(picture.left + 6, picture.bottom - 24, picture.left + 24,
-			picture.bottom - 6);
-		FillRound(this, mark, 3, (rgb_color){ 0, 0, 0, 200 });
+		BRect mark(picture.left + S(6), picture.bottom - S(24),
+			picture.left + S(24), picture.bottom - S(6));
+		FillRound(this, mark, S(3), (rgb_color){ 0, 0, 0, 200 });
 		SetDrawingMode(B_OP_COPY);
 		SetHighColor(kText);
-		SetPenSize(2);
-		BPoint center(mark.left + mark.Width() / 2, mark.top + 4);
-		StrokeLine(center, center + BPoint(0, 8));
-		StrokeLine(center + BPoint(-4, 4), center + BPoint(0, 8));
-		StrokeLine(center + BPoint(4, 4), center + BPoint(0, 8));
-		StrokeLine(BPoint(mark.left + 4, mark.bottom - 3),
-			BPoint(mark.right - 4, mark.bottom - 3));
+		SetPenSize(S(2));
+		BPoint center(mark.left + mark.Width() / 2, mark.top + S(4));
+		StrokeLine(center, center + BPoint(0, S(8)));
+		StrokeLine(center + BPoint(-S(4), S(4)), center + BPoint(0, S(8)));
+		StrokeLine(center + BPoint(S(4), S(4)), center + BPoint(0, S(8)));
+		StrokeLine(BPoint(mark.left + S(4), mark.bottom - S(3)),
+			BPoint(mark.right - S(4), mark.bottom - S(3)));
 		SetPenSize(1);
 	}
 
@@ -555,10 +556,10 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 	if (video.duration > 0) {
 		BFont small = Font(12, true);
 		BString length = duration_text(video.duration);
-		float width = small.StringWidth(length.String()) + 10;
-		BRect badge(picture.right - 6 - width, picture.bottom - 24,
-			picture.right - 6, picture.bottom - 6);
-		FillRound(this, badge, 3, (rgb_color){ 0, 0, 0, 200 });
+		float width = small.StringWidth(length.String()) + S(10);
+		BRect badge(picture.right - S(6) - width, picture.bottom - S(24),
+			picture.right - S(6), picture.bottom - S(6));
+		FillRound(this, badge, S(3), (rgb_color){ 0, 0, 0, 200 });
 		DrawCentered(this, length.String(), badge, small, kText);
 	}
 
@@ -568,7 +569,7 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 	font.GetHeight(&height);
 	float lineHeight = line_height(font);
 	BString rest(video.title);
-	float y = picture.bottom + 8 + height.ascent;
+	float y = picture.bottom + S(8) + height.ascent;
 	for (int line = 0; line < 2 && !rest.IsEmpty(); line++) {
 		BString text(rest);
 		// break after the last word that fits, or cut the line short
@@ -595,8 +596,8 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 		small.GetHeight(&smallHeight);
 		BString status(video.status);
 		small.TruncateString(&status, B_TRUNCATE_END, frame.Width());
-		float baseline = frame.bottom - kTitleHeight + 8
-			+ 2 * line_height(Font(kTitleSize)) + 4 + smallHeight.ascent;
+		float baseline = frame.bottom - S(kBaseTitleHeight) + S(8)
+			+ 2 * line_height(Font(kTitleSize)) + S(4) + smallHeight.ascent;
 		DrawText(this, status.String(), BPoint(frame.left, baseline), small,
 			kAccent);
 		return;
@@ -615,8 +616,8 @@ VideoGrid::_DrawTile(int32 index, BRect frame)
 		DrawText(this, name.String(), BPoint(channel.left, baseline), small,
 			link ? kText : kTextDim);
 		if (link) {
-			StrokeLine(BPoint(channel.left, baseline + 2),
-				BPoint(channel.right, baseline + 2));
+			StrokeLine(BPoint(channel.left, baseline + S(2)),
+				BPoint(channel.right, baseline + S(2)));
 		}
 	}
 }
@@ -637,13 +638,13 @@ VideoGrid::_DrawBusy()
 		dots << ".";
 	BString text(B_TRANSLATE("Getting the video ready"));
 	text << dots;
-	DrawCentered(this, text.String(), BRect(bounds.left, centerY - 60,
-		bounds.right, centerY - 20), Font(22, true), kText);
+	DrawCentered(this, text.String(), BRect(bounds.left, centerY - S(60),
+		bounds.right, centerY - S(20)), Font(22, true), kText);
 	BString title(fBusy);
 	BFont font = Font(16);
-	font.TruncateString(&title, B_TRUNCATE_END, bounds.Width() - 80);
+	font.TruncateString(&title, B_TRUNCATE_END, bounds.Width() - S(80));
 	DrawCentered(this, title.String(), BRect(bounds.left, centerY,
-		bounds.right, centerY + 30), font, kTextDim);
+		bounds.right, centerY + S(30)), font, kTextDim);
 }
 
 
@@ -656,9 +657,9 @@ VideoGrid::_Select(int32 index)
 	index = std::max<int32>(0, std::min<int32>(index, count - 1));
 	if (index == fSelected)
 		return;
-	Invalidate(_TileFrame(fSelected).InsetByCopy(-6, -6));
+	Invalidate(_TileFrame(fSelected).InsetByCopy(-S(6), -S(6)));
 	fSelected = index;
-	BRect frame = _TileFrame(fSelected).InsetByCopy(-6, -6);
+	BRect frame = _TileFrame(fSelected).InsetByCopy(-S(6), -S(6));
 	Invalidate(frame);
 
 	BMessage selected(kMsgSelected);
@@ -669,10 +670,10 @@ VideoGrid::_Select(int32 index)
 		_UpdateScrollBar();
 		BRect bounds = Bounds();
 		if (frame.top < bounds.top)
-			ScrollTo(0, std::max(0.0f, frame.top - kGap));
+			ScrollTo(0, std::max(0.0f, frame.top - S(kBaseGap)));
 		else if (frame.bottom > bounds.bottom) {
 			ScrollTo(0, std::max(0.0f,
-				frame.bottom + kGap - bounds.Height()));
+				frame.bottom + S(kBaseGap) - bounds.Height()));
 		}
 	}
 }
@@ -823,6 +824,7 @@ VideoGrid::_ShowMenu(int32 index, BPoint where)
 		menu->AddItem(new BMenuItem(B_TRANSLATE("Move to Trash"), trash));
 	}
 	menu->SetTargetForItems(Window());
+	ScaleMenu(menu);
 	menu->Go(ConvertToScreen(where), true, false, true);
 }
 
@@ -903,6 +905,7 @@ VideoGrid::MouseDown(BPoint where)
 			new BMessage(show)));
 		menu->AddItem(new BMenuItem(B_TRANSLATE("Add to the tabs"), add));
 		menu->SetTargetForItems(Window());
+		ScaleMenu(menu);
 		menu->Go(ConvertToScreen(where), true, false, true);
 		return;
 	}
@@ -926,10 +929,10 @@ VideoGrid::MouseMoved(BPoint where, uint32 transit,
 	int32 channel = transit == B_EXITED_VIEW ? -1 : _ChannelAt(where);
 	if (channel != fHoverChannel) {
 		if (fHoverChannel >= 0)
-			Invalidate(_ChannelFrame(fHoverChannel).InsetByCopy(-1, -4));
+			Invalidate(_ChannelFrame(fHoverChannel).InsetByCopy(-1, -S(4)));
 		fHoverChannel = channel;
 		if (fHoverChannel >= 0)
-			Invalidate(_ChannelFrame(fHoverChannel).InsetByCopy(-1, -4));
+			Invalidate(_ChannelFrame(fHoverChannel).InsetByCopy(-1, -S(4)));
 		BCursor cursor(channel >= 0
 			? B_CURSOR_ID_FOLLOW_LINK : B_CURSOR_ID_SYSTEM_DEFAULT);
 		SetViewCursor(&cursor);

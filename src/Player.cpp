@@ -6,6 +6,7 @@
 
 #include "Player.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,10 +15,12 @@
 #include <Entry.h>
 #include <MediaFile.h>
 #include <MediaTrack.h>
+#include <OS.h>
 #include <SoundPlayer.h>
 #include <Url.h>
 
 #include <algorithm>
+#include <vector>
 
 #include "LiveAddress.h"
 #include "Messages.h"
@@ -33,6 +36,14 @@ static const bigtime_t kStill = 250000;
 	// instead of standing still
 
 
+static bool
+no_overlay()
+{
+	const char* value = getenv("CINEMA_NO_OVERLAY");
+	return value != NULL && value[0] != '\0' && strcmp(value, "0") != 0;
+}
+
+
 Player::Player(const BMessenger& target)
 	:
 	fTarget(target),
@@ -41,9 +52,11 @@ Player::Player(const BMessenger& target)
 	fRelayDuration(0),
 	fFirstTime(-1),
 	fLive(false),
+	fNoOverlay(no_overlay()),
 	fLiveFormat(NULL),
 	fLiveVideo(NULL),
 	fLiveAudio(NULL),
+	fLiveHwOpaque(NULL),
 	fLiveResampler(NULL),
 	fLiveScaler(NULL),
 	fLiveVideoIndex(-1),
@@ -92,6 +105,7 @@ Player::Player(const BMessenger& target)
 	fVideoThread(-1),
 	fAudioThread(-1)
 {
+	fStatsOn = getenv("CINEMA_PLAYER_DEBUG") != NULL;
 }
 
 
@@ -101,10 +115,23 @@ Player::~Player()
 }
 
 
+/*!	A video of its own: the overlay is tried again, even when the last one
+	had to go without it (full screen with the direct screen, or the screen
+	refusing it), unless CINEMA_NO_OVERLAY turns it off for good.
+*/
 void
 Player::Open(const char* address, bigtime_t startAt)
 {
+	fNoOverlay = no_overlay();
+	_Start(address, startAt);
+}
+
+
+void
+Player::_Start(const char* address, bigtime_t startAt)
+{
 	Close();
+	fStatStart = 0;
 	fAddress = address;
 	fStartAt = startAt;
 	// the relay: how long it lasts is the last part of the address
@@ -154,6 +181,7 @@ Player::Close()
 		fAudioThread = -1;
 	}
 	_CloseLive();
+	fSubtitles.Clear();
 	if (fFile != NULL) {
 		if (fVideoTrack != NULL)
 			fFile->ReleaseTrack(fVideoTrack);
@@ -232,6 +260,21 @@ Player::_Open()
 		fFile->ReleaseTrack(fVideoTrack);
 		fVideoTrack = NULL;
 	}
+	fFrameDuration = 0;
+	fFrameBase = fRelay ? fStartAt : 0;
+	fFrameCount = 0;
+	if (fVideoTrack != NULL) {
+		media_format encoded;
+		if (fVideoTrack->EncodedFormat(&encoded) == B_OK) {
+			float rate = encoded.u.encoded_video.output.field_rate;
+			if (rate >= 1 && rate <= 240)
+				fFrameDuration = (bigtime_t)(1000000.0 / rate + 0.5);
+		}
+		if (fStatsOn) {
+			fprintf(stderr, "player: %" B_PRIdBIGTIME " us a picture\n",
+				fFrameDuration);
+		}
+	}
 
 	// the sound, as 16 bit samples of the machine's order
 	if (fAudioTrack != NULL) {
@@ -283,6 +326,11 @@ Player::_Open()
 		_SeekTracks(fStartAt);
 	fShowNext = true;
 	fOpened = true;
+
+	if (fAddress.ByteAt(0) == '/') {
+		fSubtitles.LoadSidecars(fAddress.String());
+		fSubtitles.StartEmbedded(fAddress.String());
+	}
 
 	BMessage opened(kMsgPlayerOpened);
 	opened.AddInt64("duration", fDuration);
@@ -364,11 +412,80 @@ Player::SetPaused(bool paused)
 
 
 void
+Player::DisableOverlay()
+{
+	if (fNoOverlay.exchange(true) || !fOpened || fAddress.IsEmpty())
+		return;
+	// for this video only: Open() tries the overlay again for the next one
+	BString address(fAddress);
+	_Start(address.String(), Position());
+}
+
+
+void
 Player::SetVolume(float volume)
 {
 	fVolume = std::max(0.0f, std::min(1.0f, volume));
 	if (fSoundPlayer != NULL)
 		fSoundPlayer->SetVolume(fVolume);
+}
+
+
+int32
+Player::SubtitleCount() const
+{
+	return fSubtitles.Count();
+}
+
+
+bool
+Player::SubtitleTrack(int32 index, SubtitleTrackInfo* info) const
+{
+	return fSubtitles.TrackAt(index, info);
+}
+
+
+int32
+Player::SelectedSubtitle() const
+{
+	return fSubtitles.Selected();
+}
+
+
+void
+Player::SelectSubtitle(int32 index)
+{
+	fSubtitles.Select(index);
+}
+
+
+void
+Player::ToggleSubtitles()
+{
+	fSubtitles.Toggle();
+}
+
+
+BString
+Player::SubtitleText(bigtime_t time) const
+{
+	return fSubtitles.TextAt(time);
+}
+
+
+int32
+Player::AddSubtitleTrack(const char* language, const char* name,
+	bool automatic)
+{
+	return fSubtitles.AddTrack(language, name, automatic, false);
+}
+
+
+void
+Player::LoadSubtitleText(const char* language, bool automatic,
+	const char* text)
+{
+	fSubtitles.Load(language, automatic, text);
 }
 
 
@@ -384,12 +501,18 @@ Player::_SeekTracks(bigtime_t time)
 	time = std::max((bigtime_t)0, time);
 	if (fDuration > 0)
 		time = std::min(time, fDuration - 1000000);
+	bigtime_t wanted = time;
 	if (fVideoTrack != NULL)
 		fVideoTrack->SeekToTime(&time, B_MEDIA_SEEK_CLOSEST_BACKWARD);
-	if (fAudioTrack != NULL) {
-		bigtime_t soundTime = time;
+	bigtime_t soundTime = time;
+	if (fAudioTrack != NULL)
 		fAudioTrack->SeekToTime(&soundTime);
+	if (fStatsOn) {
+		fprintf(stderr, "player: seek wanted %.3f video %.3f audio %.3f\n",
+			wanted / 1e6, time / 1e6, soundTime / 1e6);
 	}
+	fFrameBase = time;
+	fFrameCount = 0;
 	{
 		BAutolock ring(fRingLock);
 		fRingRead = fRingFill = 0;
@@ -556,11 +679,17 @@ Player::_VideoLoop()
 		int64 frames = 1;
 		media_header header;
 		status_t status;
+		bigtime_t frameTime = -1;
 		{
 			BAutolock locker(fVideoLock);
 			generation = fGeneration;
+			bigtime_t start = system_time();
 			status = fVideoTrack->ReadFrames(fBack->Bits(), &frames, &header);
+			fStatDecodeTime += system_time() - start;
+			if (status == B_OK && fFrameDuration > 0)
+				frameTime = fFrameBase + fFrameCount++ * fFrameDuration;
 		}
+		fStatDecoded++;
 		if (status != B_OK) {
 			fVideoEnded = true;
 			_CheckEnded();
@@ -569,7 +698,8 @@ Player::_VideoLoop()
 		if (generation != fGeneration)
 			continue;
 
-		bigtime_t time = _StreamTime(header.start_time);
+		bigtime_t time = frameTime >= 0 ? frameTime
+			: _StreamTime(header.start_time);
 		bool show = fShowNext;
 		if (!show) {
 			// waits for the sound to get there
@@ -581,22 +711,99 @@ Player::_VideoLoop()
 				bigtime_t wait = time - _Clock();
 				if (wait <= 0)
 					break;
-				snooze(std::min(wait, (bigtime_t)10000));
+				bigtime_t sleep = std::min(wait, (bigtime_t)50000);
+				snooze_until(system_time() + sleep, B_SYSTEM_TIMEBASE);
 			}
 			if (fQuit || generation != fGeneration)
 				continue;
 			show = fShowNext || _Clock() - time < kLate
 				|| system_time() - lastShown > kStill;
 		}
-		if (!show)
+		if (!show) {
+			fStatLate++;
+			_Stats();
 			continue;
+		}
 
 		lastShown = system_time();
 		_ShowFrame();
+		fStatCopyTime += system_time() - lastShown;
+		fStatShown++;
 		fShowNext = false;
 		if (!fFramePending.exchange(true))
 			fTarget.SendMessage(kMsgPlayerFrame);
+		else
+			fStatMerged++;
+		_Stats();
 	}
+}
+
+
+void
+Player::NoteDrawn()
+{
+	fStatDrawn++;
+}
+
+
+/*static*/ void
+Player::_CpuTimes(bigtime_t& team, bigtime_t& system, int32& cpus)
+{
+	team_usage_info usage;
+	team = 0;
+	if (get_team_usage_info(B_CURRENT_TEAM, B_TEAM_USAGE_SELF, &usage)
+			== B_OK)
+		team = usage.user_time + usage.kernel_time;
+	system_info info;
+	get_system_info(&info);
+	cpus = std::max((uint32)1, info.cpu_count);
+	std::vector<cpu_info> perCpu(cpus);
+	system = 0;
+	if (get_cpu_info(0, cpus, perCpu.data()) == B_OK) {
+		for (const cpu_info& cpu : perCpu)
+			system += cpu.active_time;
+	}
+}
+
+
+/*!	What the video loop did in the last 5 seconds: pictures decoded, shown,
+	thrown away as too late, shown but never drawn because the one before
+	was still waiting (merged), drawn by the view (RGB only); the time to
+	decode one and to copy it to the overlay; how busy Cinema and the whole
+	system (app_server included, which scales the RGB pictures) were.
+*/
+void
+Player::_Stats()
+{
+	if (!fStatsOn)
+		return;
+	bigtime_t now = system_time();
+	if (fStatStart != 0 && now - fStatStart < 5000000)
+		return;
+	bigtime_t team, system;
+	int32 cpus;
+	_CpuTimes(team, system, cpus);
+	if (fStatStart != 0) {
+		double seconds = (now - fStatStart) / 1e6;
+		int32 decoded = fStatDecoded, shown = fStatShown;
+		double capacity = (now - fStatStart) * (double)cpus;
+		fprintf(stderr, "player: stats %s %.1f s decoded %" B_PRId32
+			" shown %" B_PRId32 " late %" B_PRId32 " merged %" B_PRId32
+			" drawn %" B_PRId32 " fps %.1f decode %.1f ms copy %.2f ms"
+			" cinema %.0f%% system %.0f%% cpus %" B_PRId32 "\n",
+			fOverlay != NULL ? "overlay" : "rgb", seconds, decoded, shown,
+			(int32)fStatLate, (int32)fStatMerged, (int32)fStatDrawn,
+			shown / seconds,
+			decoded > 0 ? fStatDecodeTime / 1000.0 / decoded : 0.0,
+			shown > 0 ? fStatCopyTime / 1000.0 / shown : 0.0,
+			100.0 * (team - fStatTeamCpu) / capacity,
+			100.0 * (system - fStatSystemCpu) / capacity, cpus);
+	}
+	fStatStart = now;
+	fStatTeamCpu = team;
+	fStatSystemCpu = system;
+	fStatDecoded = fStatShown = fStatLate = fStatMerged = fStatDrawn = 0;
+	fStatDecodeTime = fStatCopyTime = 0;
 }
 
 
@@ -638,29 +845,58 @@ Player::UnlockFrame()
 bool
 Player::_SetUpVideo()
 {
-	media_format format;
-	format.type = B_MEDIA_RAW_VIDEO;
-	format.u.raw_video = media_raw_video_format::wildcard;
-	format.u.raw_video.display.format = B_YCbCr422;
-	if (fVideoTrack->DecodedFormat(&format) == B_OK
-		&& format.u.raw_video.display.format == B_YCbCr422) {
+	const color_space spaces[] = { B_YCbCr420, B_YCbCr422 };
+	for (color_space space : spaces) {
+		if (fNoOverlay)
+			break;
+		media_format format;
+		format.type = B_MEDIA_RAW_VIDEO;
+		format.u.raw_video = media_raw_video_format::wildcard;
+		format.u.raw_video.display.format = space;
+		status_t decoded = fVideoTrack->DecodedFormat(&format);
+		if (fStatsOn) {
+			fprintf(stderr, "player: decoder asked %#x: %s, gives %#x\n",
+				space, strerror(decoded), format.u.raw_video.display.format);
+		}
+		if (decoded != B_OK || format.u.raw_video.display.format != space)
+			continue;
 		const media_video_display_info& display = format.u.raw_video.display;
 		BRect bounds(0, 0, display.line_width - 1, display.line_count - 1);
 		BBitmap* overlay = new BBitmap(bounds, B_BITMAP_WILL_OVERLAY
-			| B_BITMAP_RESERVE_OVERLAY_CHANNEL, B_YCbCr422);
-		if (overlay->InitCheck() == B_OK) {
-			BAutolock locker(fFrameLock);
-			fOverlay = overlay;
-			fFront = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, B_YCbCr422,
-				display.bytes_per_row);
-			fBack = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, B_YCbCr422,
-				display.bytes_per_row);
-			fDuration = std::max(fDuration, fVideoTrack->Duration());
-			return true;
+			| B_BITMAP_RESERVE_OVERLAY_CHANNEL, space);
+		if (fStatsOn) {
+			fprintf(stderr, "player: overlay %#x %dx%d: %s\n", space,
+				display.line_width, display.line_count,
+				strerror(overlay->InitCheck()));
 		}
-		delete overlay;
+		if (overlay->InitCheck() != B_OK) {
+			delete overlay;
+			continue;
+		}
+		BBitmap* front = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, space,
+			display.bytes_per_row);
+		BBitmap* back = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, space,
+			display.bytes_per_row);
+		if (front->InitCheck() != B_OK || back->InitCheck() != B_OK) {
+			delete front;
+			delete back;
+			delete overlay;
+			continue;
+		}
+		BAutolock locker(fFrameLock);
+		fOverlay = overlay;
+		fFront = front;
+		fBack = back;
+		fDuration = std::max(fDuration, fVideoTrack->Duration());
+		if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
+			fprintf(stderr, "player: %dx%d %s overlay\n",
+				display.line_width, display.line_count,
+				space == B_YCbCr420 ? "420" : "422");
+		}
+		return true;
 	}
 
+	media_format format;
 	format.type = B_MEDIA_RAW_VIDEO;
 	format.u.raw_video = media_raw_video_format::wildcard;
 	format.u.raw_video.display.format = B_RGB32;
@@ -670,10 +906,22 @@ Player::_SetUpVideo()
 		return false;
 	const media_video_display_info& display = format.u.raw_video.display;
 	BRect bounds(0, 0, display.line_width - 1, display.line_count - 1);
+	BBitmap* front = new BBitmap(bounds, 0, B_RGB32,
+		display.bytes_per_row);
+	BBitmap* back = new BBitmap(bounds, 0, B_RGB32, display.bytes_per_row);
+	if (front->InitCheck() != B_OK || back->InitCheck() != B_OK) {
+		delete front;
+		delete back;
+		return false;
+	}
 	BAutolock locker(fFrameLock);
-	fFront = new BBitmap(bounds, 0, B_RGB32, display.bytes_per_row);
-	fBack = new BBitmap(bounds, 0, B_RGB32, display.bytes_per_row);
+	fFront = front;
+	fBack = back;
 	fDuration = std::max(fDuration, fVideoTrack->Duration());
+	if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
+		fprintf(stderr, "player: %dx%d rgb\n", display.line_width,
+			display.line_count);
+	}
 	return true;
 }
 
@@ -695,7 +943,11 @@ Player::_ShowFrame()
 	int32 toRow = fOverlay->BytesPerRow();
 	int32 row = std::min(fromRow, toRow);
 	int32 rows = fFront->Bounds().IntegerHeight() + 1;
-	for (int32 y = 0; y < rows; y++)
-		memcpy(to + y * toRow, from + y * fromRow, row);
+	if (fromRow == toRow)
+		memcpy(to, from, (size_t)row * rows);
+	else {
+		for (int32 y = 0; y < rows; y++)
+			memcpy(to + y * toRow, from + y * fromRow, row);
+	}
 	fOverlay->UnlockBits();
 }

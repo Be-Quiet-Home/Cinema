@@ -8,6 +8,7 @@
 
 #include <Alert.h>
 #include <Application.h>
+#include <Autolock.h>
 #include <Bitmap.h>
 #include <CardLayout.h>
 #include <Entry.h>
@@ -23,6 +24,9 @@
 #include <PopUpMenu.h>
 #include <Url.h>
 
+#include <algorithm>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <Path.h>
 #include <Roster.h>
@@ -32,6 +36,7 @@
 #include <TranslationUtils.h>
 #include <View.h>
 
+#include "Pictures.h"
 #include "CategoryBar.h"
 #include "DetailView.h"
 #include "Downloads.h"
@@ -58,6 +63,9 @@
 #define B_TRANSLATION_CONTEXT "Window"
 
 
+using namespace Style;
+
+
 static const char* kMediaPlayer = "application/x-vnd.Haiku-MediaPlayer";
 static const int32 kResultCount = 24;
 static const bigtime_t kPrefetchDelay = 1200000;
@@ -66,9 +74,18 @@ static const bigtime_t kStreamLifetime = 3LL * 60 * 60 * 1000000;
 	// YouTube's addresses expire after about six hours
 
 
+static bool
+direct_enabled()
+{
+	const char* value = getenv("CINEMA_DIRECT");
+	return value != NULL && value[0] != '\0' && strcmp(value, "0") != 0;
+}
+
+
 CinemaWindow::CinemaWindow()
 	:
-	BWindow(BRect(50, 50, 1000, 650), B_TRANSLATE_SYSTEM_NAME("Cinema"),
+	BDirectWindow(BRect(S(50), S(50), S(1000), S(650)),
+		B_TRANSLATE_SYSTEM_NAME("Cinema"),
 		B_TITLED_WINDOW, B_AUTO_UPDATE_SIZE_LIMITS | B_QUIT_ON_WINDOW_CLOSE),
 	fCategories(LoadCategories()),
 	fProvider("youtube"),
@@ -82,7 +99,22 @@ CinemaWindow::CinemaWindow()
 	fDetailsReturn(0),
 	fCard(2),
 	fPrefetchRunner(NULL),
-	fFullScreen(false)
+	fFullScreen(false),
+	fDirectActive(false),
+	fDirectFailed(false),
+	fDirectStart(0),
+	fDirectFallbackAsked(false),
+	fDirectPaused(false),
+	fDirectLock("direct draw"),
+	fDirectConnected(false),
+	fDirectBits(NULL),
+	fDirectRowBytes(0),
+	fDirectBpp(0),
+	fDirectFormat(B_NO_COLOR_SPACE),
+	fDirectBounds((clipping_rect){ 0, 0, -1, -1 }),
+	fDirectUi(NULL),
+	fDirectUiView(NULL),
+	fDirectRunner(NULL)
 {
 	fCategoryBar = new CategoryBar(fCategories);
 	fSearchField = new BTextControl("search", NULL, "",
@@ -91,6 +123,7 @@ CinemaWindow::CinemaWindow()
 		new BMessage(kMsgSearchField));
 	// where the search goes: filled when the helper tells its providers
 	BPopUpMenu* sources = new BPopUpMenu("sources");
+	Style::ScaleMenu(sources);
 	fSourceField = new BMenuField("source", NULL, sources);
 	fSourceField->SetExplicitAlignment(BAlignment(B_ALIGN_HORIZONTAL_UNSET,
 		B_ALIGN_VERTICAL_CENTER));
@@ -129,8 +162,8 @@ CinemaWindow::CinemaWindow()
 
 	// the field as high as the text, not as the bar
 	BLayoutItem* textItem = fSearchField->CreateTextViewLayoutItem();
-	textItem->SetExplicitMinSize(BSize(320, B_SIZE_UNSET));
-	textItem->SetExplicitMaxSize(BSize(460,
+	textItem->SetExplicitMinSize(BSize(S(320), B_SIZE_UNSET));
+	textItem->SetExplicitMaxSize(BSize(S(460),
 		textItem->PreferredSize().height));
 	textItem->SetExplicitAlignment(BAlignment(B_ALIGN_USE_FULL_WIDTH,
 		B_ALIGN_VERTICAL_CENTER));
@@ -141,7 +174,7 @@ CinemaWindow::CinemaWindow()
 	fTopBar = top;
 	top->SetViewColor(Style::kBar);
 	BLayoutBuilder::Group<>(top)
-		.SetInsets(12, 6, 12, 6)
+		.SetInsets(S(12), S(6), S(12), S(6))
 		.Add(fCategoryBar, 10)
 		.Add(fSourceField, 0)
 		.Add(textItem)
@@ -151,6 +184,7 @@ CinemaWindow::CinemaWindow()
 	BLayoutBuilder::Group<>(this, B_VERTICAL, 0)
 		.Add(top)
 		.Add(pages, 10);
+	Style::ScaleView(top);
 
 	fWorker = new Worker(BMessenger(this));
 	fWorker->Run();
@@ -170,8 +204,8 @@ CinemaWindow::CinemaWindow()
 
 	// nearly the whole screen
 	BRect frame = BScreen(this).Frame();
-	MoveTo(frame.left + 20, frame.top + 30);
-	ResizeTo(frame.Width() - 40, frame.Height() - 60);
+	MoveTo(frame.left + S(20), frame.top + S(30));
+	ResizeTo(frame.Width() - S(40), frame.Height() - S(60));
 
 	// which videos can be watched offline
 	for (MediaItem& video : Downloads::Load(&fDownloaded))
@@ -191,6 +225,15 @@ CinemaWindow::~CinemaWindow()
 	delete fGamepad;
 	delete fPrefetchRunner;
 	delete fPlayerSaver;
+	delete fDirectRunner;
+	fDirectRunner = NULL;
+	if (fDirectUi != NULL) {
+		if (fDirectUiView != NULL) {
+			fDirectUi->RemoveChild(fDirectUiView);
+			delete fDirectUiView;
+		}
+		delete fDirectUi;
+	}
 	delete fPlayer;
 	delete fHelper;
 }
@@ -238,7 +281,7 @@ CinemaWindow::DispatchMessage(BMessage* message, BHandler* handler)
 			}
 		}
 	}
-	BWindow::DispatchMessage(message, handler);
+	BDirectWindow::DispatchMessage(message, handler);
 }
 
 
@@ -248,7 +291,9 @@ CinemaWindow::QuitRequested()
 	fGamepad->Stop();
 	// where it was left, and no more sound
 	_ClosePlayer();
-	// it may be waiting for curl: no need to wait for it
+	// no picture made once the application is gone; curl, which it may be
+	// waiting for, is not waited for
+	fWorker->Stop();
 	fWorker->PostMessage(B_QUIT_REQUESTED);
 	return true;
 }
@@ -325,6 +370,7 @@ CinemaWindow::_UpdateSources()
 		menu->AddItem(item);
 		count++;
 	}
+	Style::ScaleMenu(menu);
 	if (count > 1 && fSourceField->IsHidden())
 		fSourceField->Show();
 	else if (count <= 1 && !fSourceField->IsHidden())
@@ -489,10 +535,11 @@ CinemaWindow::_Videos(BMessage* message)
 
 void
 CinemaWindow::_Thumbnails(const std::vector<MediaItem>& videos,
-	int32 generation)
+	int32 generation, float largest)
 {
 	BMessage thumbnails(kMsgThumbnails);
 	thumbnails.AddInt32("generation", generation);
+	thumbnails.AddFloat("largest", largest);
 	for (const MediaItem& video : videos) {
 		thumbnails.AddString("id", video.id);
 		thumbnails.AddString("url", video.thumbnail);
@@ -663,7 +710,8 @@ CinemaWindow::_HomeResults(BMessage* message, int32 shelf)
 		fHome->SetShelfMessage(shelf, B_TRANSLATE("No videos found"));
 	else {
 		fHome->SetShelfVideos(shelf, videos);
-		_Thumbnails(videos, message->GetInt32("generation", -1));
+		_Thumbnails(videos, message->GetInt32("generation", -1),
+			Pictures::kShelf);
 	}
 	if (fHomeActive > 0)
 		fHomeActive--;
@@ -723,7 +771,8 @@ CinemaWindow::_ShowDetails(BMessage* message)
 	BString path(fWorker->Cache());
 	path << "/" << PictureName(item.id) << ".jpg";
 	if (BEntry(path.String()).Exists())
-		fDetail->SetPicture(BTranslationUtils::GetBitmap(path.String()));
+		fDetail->SetPicture(Pictures::Load(path.String(),
+			Pictures::kDetail));
 
 	fCards->SetVisibleItem(1);
 	fCard = 1;
@@ -777,8 +826,8 @@ CinemaWindow::_Picture(BMessage* message)
 	BString id = message->GetString("id", "");
 	if (!fDetailsShown || id != fDetailsId)
 		return;
-	BBitmap* picture = BTranslationUtils::GetBitmap(
-		message->GetString("path", ""));
+	BBitmap* picture = Pictures::Load(message->GetString("path", ""),
+		Pictures::kDetail);
 	if (picture != NULL)
 		fDetail->SetPicture(picture);
 }
@@ -965,8 +1014,9 @@ CinemaWindow::MessageReceived(BMessage* message)
 		case kMsgThumbnail:
 		{
 			int32 generation = message->GetInt32("generation", -1);
-			BBitmap* picture = BTranslationUtils::GetBitmap(
-				message->GetString("path", ""));
+			// read and made small by the worker already
+			BBitmap* picture = NULL;
+			message->FindPointer("picture", (void**)&picture);
 			auto home = fHomeRequests.find(generation);
 			if (home != fHomeRequests.end())
 				fHome->SetPicture(message->GetString("id", ""), picture);
@@ -1098,9 +1148,66 @@ CinemaWindow::MessageReceived(BMessage* message)
 		case kMsgPlayerOpened:
 			fPlayerView->SetOpened(true);
 			fPlayerView->SetOverlay(fPlayer->Overlay());
+			fPlayerView->RefreshSubtitles();
+			if (fFullScreen)
+				_DirectSync();
+			break;
+		case kMsgSubtitles:
+		{
+			BString id = message->GetString("id", "");
+			if (!fPlayerShown || id != fPlayingId)
+				break;
+			BMessage track;
+			for (int32 i = 0;
+				message->FindMessage("track", i, &track) == B_OK; i++) {
+				fPlayer->AddSubtitleTrack(
+					track.GetString("language", ""),
+					track.GetString("name", ""),
+					track.GetBool("automatic", false));
+			}
+			_RequestSelectedSubtitle();
+			fPlayerView->RefreshSubtitles();
+			break;
+		}
+		case kMsgSubtitle:
+		{
+			BString id = message->GetString("id", "");
+			if (!fPlayerShown || id != fPlayingId)
+				break;
+			fPlayer->LoadSubtitleText(
+				message->GetString("language", ""),
+				message->GetBool("automatic", false),
+				message->GetString("text", ""));
+			fPlayerView->RefreshSubtitles();
+			break;
+		}
+		case kMsgSubtitleRequest:
+			_RequestSubtitle(message->GetString("language", ""),
+				message->GetBool("automatic", false));
 			break;
 		case kMsgPlayerFrame:
 			PostMessage(kMsgPlayerFrame, fPlayerView);
+			if (fDirectActive && !fDirectPaused)
+				_DirectDraw();
+			break;
+		case kMsgDirectDraw:
+			_DirectDraw();
+			break;
+		case kMsgDirectFallback:
+			if (fDirectActive) {
+				fDirectActive = false;
+				fDirectFailed = true;
+				fPlayerView->SetDirect(false);
+				delete fDirectRunner;
+				fDirectRunner = NULL;
+				if (BDirectWindow::IsFullScreen())
+					BDirectWindow::SetFullScreen(false);
+				if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+					fprintf(stderr, fDirectConnected
+						? "direct: buffer unsupported, fallback\n"
+						: "direct: no connection, fallback\n");
+				_DirectSync();
+			}
 			break;
 		case kMsgPlayerReopen:
 		{
@@ -1279,7 +1386,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 			break;
 
 		default:
-			BWindow::MessageReceived(message);
+			BDirectWindow::MessageReceived(message);
 	}
 }
 
@@ -1289,10 +1396,74 @@ CinemaWindow::_SetFullScreen(bool fullScreen)
 {
 	if (fullScreen == fFullScreen)
 		return;
-	fFullScreen = fullScreen;
-
-	if (fullScreen) {
+	if (fullScreen)
 		fWindowFrame = Frame();
+	fFullScreen = fullScreen;
+	fDirectFailed = false;
+	_DirectSync();
+	_UpdateTopBar();
+	Activate();
+}
+
+
+/*!	The direct screen is used only full screen and only when no overlay is
+	free: the overlay already sends the picture to the screen and leaves
+	the controls to the view.
+*/
+void
+CinemaWindow::_DirectSync()
+{
+	bool wanted = fFullScreen && fPlayerShown && direct_enabled()
+		&& !fDirectFailed;
+	bool live = fPlayingKind == "live" || LiveAddress::Is(fPlayingAddress);
+	bool subtitles = fPlayer->SubtitleCount() > 0;
+	if (wanted && fPlayer->Overlay() != NULL && !live && !subtitles) {
+		fPlayerView->ClearOverlay();
+		fPlayer->DisableOverlay();
+	}
+	bool direct = wanted && fPlayer->Overlay() == NULL;
+	if (direct != fDirectActive) {
+		fDirectActive = direct;
+		fPlayerView->SetDirect(fDirectActive);
+		if (fDirectActive) {
+			fDirectStart = system_time();
+			fDirectFallbackAsked = false;
+			delete fDirectRunner;
+			fDirectRunner = NULL;
+			if (!fDirectPaused) {
+				BMessage draw(kMsgDirectDraw);
+				fDirectRunner = new BMessageRunner(BMessenger(this), &draw,
+					100000);
+			}
+			SetLook(B_NO_BORDER_WINDOW_LOOK);
+			BRect screen = BScreen(this).Frame();
+			MoveTo(screen.LeftTop());
+			ResizeTo(screen.Width(), screen.Height());
+			SetFlags(Flags() | B_NOT_MOVABLE | B_NOT_RESIZABLE);
+			if (BDirectWindow::SetFullScreen(true) != B_OK) {
+				fDirectActive = false;
+				fDirectFailed = true;
+				fPlayerView->SetDirect(false);
+				delete fDirectRunner;
+				fDirectRunner = NULL;
+				if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+					fprintf(stderr, "direct: unavailable\n");
+			} else if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+				fprintf(stderr, "direct: on\n");
+		} else {
+			fDirectPaused = false;
+			delete fDirectRunner;
+			fDirectRunner = NULL;
+			if (BDirectWindow::IsFullScreen())
+				BDirectWindow::SetFullScreen(false);
+			if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+				fprintf(stderr, "direct: off\n");
+		}
+	}
+
+	if (fFullScreen) {
+		if (fDirectActive)
+			return;
 		BRect screen = BScreen(this).Frame();
 		SetLook(B_NO_BORDER_WINDOW_LOOK);
 		MoveTo(screen.LeftTop());
@@ -1304,8 +1475,275 @@ CinemaWindow::_SetFullScreen(bool fullScreen)
 		MoveTo(fWindowFrame.LeftTop());
 		ResizeTo(fWindowFrame.Width(), fWindowFrame.Height());
 	}
-	_UpdateTopBar();
-	Activate();
+}
+
+
+void
+CinemaWindow::SetDirectPaused(bool paused)
+{
+	if (!fDirectActive || fDirectPaused == paused)
+		return;
+	fDirectPaused = paused;
+	delete fDirectRunner;
+	fDirectRunner = NULL;
+	if (!fDirectPaused) {
+		BMessage draw(kMsgDirectDraw);
+		fDirectRunner = new BMessageRunner(BMessenger(this), &draw,
+			100000);
+		_DirectDraw();
+	}
+}
+
+
+void
+CinemaWindow::DirectConnected(direct_buffer_info* info)
+{
+	BAutolock locker(fDirectLock);
+	direct_buffer_state state =
+		(direct_buffer_state)(info->buffer_state & B_DIRECT_MODE_MASK);
+	if (state == B_DIRECT_START || state == B_DIRECT_MODIFY) {
+		fDirectConnected = true;
+		fDirectBits = info->bits;
+		fDirectRowBytes = info->bytes_per_row;
+		fDirectBpp = info->bits_per_pixel;
+		fDirectFormat = info->pixel_format;
+		fDirectBounds = info->window_bounds;
+		fDirectClips.clear();
+		if (info->clip_list != NULL && info->clip_list_count > 0)
+			fDirectClips.assign(info->clip_list,
+				info->clip_list + info->clip_list_count);
+	} else if (state == B_DIRECT_STOP) {
+		fDirectConnected = false;
+		fDirectBits = NULL;
+		fDirectClips.clear();
+	}
+	bool supported = fDirectBpp == 32 && fDirectRowBytes > 0
+		&& (fDirectFormat == B_RGB32 || fDirectFormat == B_RGBA32);
+	if (state == B_DIRECT_START && getenv("CINEMA_PLAYER_DEBUG") != NULL) {
+		fprintf(stderr, "direct: buffer %dx%d %dbpp format %d clips %d\n",
+			(int)(fDirectBounds.right - fDirectBounds.left + 1),
+			(int)(fDirectBounds.bottom - fDirectBounds.top + 1),
+			(int)fDirectBpp, (int)fDirectFormat,
+			(int)fDirectClips.size());
+	}
+	if (state != B_DIRECT_STOP && !supported)
+		PostMessage(kMsgDirectFallback);
+	BDirectWindow::DirectConnected(info);
+	PostMessage(kMsgDirectDraw);
+}
+
+
+void
+CinemaWindow::_DirectCreateLayerLocked()
+{
+	int32 width = fDirectBounds.right - fDirectBounds.left + 1;
+	int32 height = fDirectBounds.bottom - fDirectBounds.top + 1;
+	if (width <= 0 || height <= 0)
+		return;
+	if (fDirectUi != NULL && fDirectUiView != NULL
+		&& fDirectUi->Bounds().IntegerWidth() + 1 == width
+		&& fDirectUi->Bounds().IntegerHeight() + 1 == height)
+		return;
+	if (fDirectUiView != NULL) {
+		fDirectUi->RemoveChild(fDirectUiView);
+		delete fDirectUiView;
+		fDirectUiView = NULL;
+	}
+	delete fDirectUi;
+	fDirectUi = NULL;
+
+	BRect bounds(0, 0, width - 1, height - 1);
+	fDirectUi = new BBitmap(bounds, B_RGBA32, true);
+	if (fDirectUi->InitCheck() != B_OK) {
+		delete fDirectUi;
+		fDirectUi = NULL;
+		return;
+	}
+	fDirectUiView = new BView(bounds, "direct ui", B_FOLLOW_NONE, 0);
+	fDirectUi->AddChild(fDirectUiView);
+	fDirectUiView->SetViewColor(B_TRANSPARENT_COLOR);
+}
+
+
+void
+CinemaWindow::_DirectFillLocked(uint32 pixel)
+{
+	if (fDirectBits == NULL || fDirectBpp != 32)
+		return;
+	for (const clipping_rect& clip : fDirectClips) {
+		int32 left = std::max((int32)clip.left, (int32)fDirectBounds.left);
+		int32 top = std::max((int32)clip.top, (int32)fDirectBounds.top);
+		int32 right = std::min((int32)clip.right,
+			(int32)fDirectBounds.right);
+		int32 bottom = std::min((int32)clip.bottom,
+			(int32)fDirectBounds.bottom);
+		for (int32 y = top; y <= bottom; y++) {
+			uint32* row = (uint32*)((uint8*)fDirectBits
+				+ (y - fDirectBounds.top) * fDirectRowBytes);
+			for (int32 x = left; x <= right; x++)
+				row[x - fDirectBounds.left] = pixel;
+		}
+	}
+}
+
+
+void
+CinemaWindow::_DirectBlitLocked(BBitmap* picture)
+{
+	if (picture == NULL || fDirectBits == NULL || fDirectBpp != 32)
+		return;
+	color_space sourceFormat = picture->ColorSpace();
+	if (sourceFormat != B_RGB32 && sourceFormat != B_RGBA32)
+		return;
+
+	int32 windowWidth = fDirectBounds.right - fDirectBounds.left + 1;
+	int32 windowHeight = fDirectBounds.bottom - fDirectBounds.top + 1;
+	BRect source = picture->Bounds();
+	int32 sourceWidth = source.IntegerWidth() + 1;
+	int32 sourceHeight = source.IntegerHeight() + 1;
+	if (sourceWidth <= 0 || sourceHeight <= 0)
+		return;
+	float scale = std::min((float)windowWidth / sourceWidth,
+		(float)windowHeight / sourceHeight);
+	int32 width = std::max(1, (int32)(sourceWidth * scale + 0.5f));
+	int32 height = std::max(1, (int32)(sourceHeight * scale + 0.5f));
+	int32 left = (windowWidth - width) / 2;
+	int32 top = (windowHeight - height) / 2;
+
+	const uint32* bits = (const uint32*)picture->Bits();
+	bits += (int32)source.top * (picture->BytesPerRow() / 4)
+		+ (int32)source.left;
+	int32 rowBytes = picture->BytesPerRow();
+	for (const clipping_rect& clip : fDirectClips) {
+		int32 x0 = std::max((int32)clip.left,
+			fDirectBounds.left + left);
+		int32 y0 = std::max((int32)clip.top,
+			fDirectBounds.top + top);
+		int32 x1 = std::min((int32)clip.right,
+			fDirectBounds.left + left + width - 1);
+		int32 y1 = std::min((int32)clip.bottom,
+			fDirectBounds.top + top + height - 1);
+		for (int32 y = y0; y <= y1; y++) {
+			int32 sourceY = (int32)((int64)(y - fDirectBounds.top - top)
+				* sourceHeight / height);
+			const uint32* sourceRow = (const uint32*)((const uint8*)bits
+				+ sourceY * rowBytes);
+			uint32* row = (uint32*)((uint8*)fDirectBits
+				+ (y - fDirectBounds.top) * fDirectRowBytes);
+			if (sourceWidth == width && sourceHeight == height) {
+				memcpy(row + (x0 - fDirectBounds.left),
+					sourceRow + (x0 - fDirectBounds.left - left),
+					(x1 - x0 + 1) * sizeof(uint32));
+				continue;
+			}
+			for (int32 x = x0; x <= x1; x++) {
+				int32 sourceX = (int32)((int64)(x - fDirectBounds.left
+					- left) * sourceWidth / width);
+				row[x - fDirectBounds.left] = sourceRow[sourceX];
+			}
+		}
+	}
+}
+
+
+void
+CinemaWindow::_DirectCompositeLocked()
+{
+	if (fDirectUi == NULL || fDirectUiView == NULL || fDirectBits == NULL
+		|| fDirectBpp != 32)
+		return;
+	int32 width = fDirectUi->Bounds().IntegerWidth() + 1;
+	int32 height = fDirectUi->Bounds().IntegerHeight() + 1;
+	int32 windowWidth = fDirectBounds.right - fDirectBounds.left + 1;
+	int32 windowHeight = fDirectBounds.bottom - fDirectBounds.top + 1;
+	if (width != windowWidth || height != windowHeight)
+		return;
+
+	const uint32* bits = (const uint32*)fDirectUi->Bits();
+	int32 rowBytes = fDirectUi->BytesPerRow();
+	for (const clipping_rect& clip : fDirectClips) {
+		int32 x0 = std::max((int32)clip.left, (int32)fDirectBounds.left);
+		int32 y0 = std::max((int32)clip.top, (int32)fDirectBounds.top);
+		int32 x1 = std::min((int32)clip.right,
+			(int32)fDirectBounds.right);
+		int32 y1 = std::min((int32)clip.bottom,
+			(int32)fDirectBounds.bottom);
+		for (int32 y = y0; y <= y1; y++) {
+			const uint32* sourceRow = (const uint32*)((const uint8*)bits
+				+ (y - fDirectBounds.top) * rowBytes);
+			uint32* row = (uint32*)((uint8*)fDirectBits
+				+ (y - fDirectBounds.top) * fDirectRowBytes);
+			for (int32 x = x0; x <= x1; x++) {
+				uint32 sourcePixel = sourceRow[x - fDirectBounds.left];
+				uint32 alpha = sourcePixel >> 24;
+				if (alpha == 0)
+					continue;
+				int32 at = x - fDirectBounds.left;
+				if (alpha == 255) {
+					row[at] = sourcePixel | 0xFF000000;
+					continue;
+				}
+				uint32 destination = row[at];
+				uint32 rb = ((sourcePixel & 0x00FF00FF) * alpha
+					+ (destination & 0x00FF00FF) * (255 - alpha)
+					+ 0x00800080) >> 8;
+				uint32 g = ((sourcePixel & 0x0000FF00) * alpha
+					+ (destination & 0x0000FF00) * (255 - alpha))
+					>> 8;
+				row[at] = (rb & 0x00FF00FF) | (g & 0x0000FF00)
+					| 0xFF000000;
+			}
+		}
+	}
+}
+
+
+void
+CinemaWindow::_DirectDraw()
+{
+	BAutolock locker(fDirectLock);
+	_DirectDrawLocked();
+}
+
+
+void
+CinemaWindow::_DirectDrawLocked()
+{
+	bool supported = fDirectBpp == 32 && fDirectRowBytes > 0
+		&& (fDirectFormat == B_RGB32 || fDirectFormat == B_RGBA32);
+	if (fDirectActive && (!fDirectConnected || !supported)
+		&& !fDirectFallbackAsked && fDirectStart > 0
+		&& system_time() - fDirectStart > 3000000) {
+		fDirectFallbackAsked = true;
+		PostMessage(kMsgDirectFallback);
+	}
+	if (!fDirectActive || fDirectPaused || !fDirectConnected || !supported
+		|| fDirectBits == NULL)
+		return;
+	_DirectFillLocked(0xFF000000);
+	BBitmap* picture = fPlayer->LockFrame();
+	if (picture != NULL) {
+		_DirectBlitLocked(picture);
+		fPlayer->UnlockFrame();
+	}
+	if (fPlayerView->HasOverlayContent()) {
+		_DirectCreateLayerLocked();
+	}
+	if (fDirectUi != NULL && fDirectUiView != NULL
+		&& fPlayerView->HasOverlayContent() && fDirectUi->Lock()) {
+		uint32 state;
+		if (fDirectUi->LockBits(&state) == B_OK) {
+			memset(fDirectUi->Bits(), 0, fDirectUi->BitsLength());
+			fDirectUi->UnlockBits();
+		}
+		fPlayerView->DrawOverlay(fDirectUiView);
+		fDirectUiView->Sync();
+		fDirectUi->Unlock();
+		if (fDirectUi->LockBits(&state) == B_OK) {
+			_DirectCompositeLocked();
+			fDirectUi->UnlockBits();
+		}
+	}
 }
 
 
@@ -1356,7 +1794,7 @@ CinemaWindow::_ShowDownloads()
 		item.status = _DownloadStatus(download);
 		BString picture(fWorker->Cache());
 		picture << "/" << PictureName(entry.first) << ".jpg";
-		item.picture = BTranslationUtils::GetBitmap(picture.String());
+		item.picture = Pictures::Load(picture.String());
 		videos.push_back(item);
 	}
 	std::vector<MediaItem> saved = Downloads::Load(&fDownloaded);
@@ -1367,7 +1805,7 @@ CinemaWindow::_ShowDownloads()
 			continue;
 		BString picture(fWorker->Cache());
 		picture << "/" << PictureName(item.path) << ".jpg";
-		item.picture = BTranslationUtils::GetBitmap(picture.String());
+		item.picture = Pictures::Load(picture.String());
 	}
 	videos.insert(videos.end(), saved.begin(), saved.end());
 	if (videos.empty()) {
@@ -1794,6 +2232,14 @@ CinemaWindow::_OpenPlayer(const char* address, const char* title,
 	// the overlay of the video before goes before its bitmap
 	fPlayerView->ClearOverlay();
 	fPlayer->Open(address, fSettings.resume ? Positions::ResumeAt(id) : 0);
+	fPlayerView->RefreshSubtitles();
+
+	fSubtitlesAsked.clear();
+	if (!fPlayingId.IsEmpty() && address[0] != '/'
+		&& fPlayingKind != "live" && !LiveAddress::Is(address)) {
+		fHelper->Subtitles(fPlayingId.String(),
+			_ProviderOf(fPlayingId).String(), fPlayingKind.String());
+	}
 
 	delete fPlayerSaver;
 	BMessage save(kMsgPlayerSave);
@@ -1823,7 +2269,10 @@ CinemaWindow::_ClosePlayer(bool save)
 	fPlayerSaver = NULL;
 	fPlayerView->ClearOverlay();
 	fPlayer->Close();
+	fSubtitlesAsked.clear();
 	fPlayerShown = false;
+	if (fFullScreen)
+		_DirectSync();
 	_UpdateTopBar();
 	fCards->SetVisibleItem(fPlayerReturn);
 	fCard = fPlayerReturn;
@@ -1831,6 +2280,34 @@ CinemaWindow::_ClosePlayer(bool save)
 	fGrid->SetWatched(fPlayingId, position.watched, position.duration > 0
 		? (int32)(position.position * 1000 / position.duration) : 0);
 	_FocusContent();
+}
+
+
+void
+CinemaWindow::_RequestSubtitle(const char* language, bool automatic)
+{
+	if (!fPlayerShown || fPlayingId.IsEmpty() || language == NULL
+		|| language[0] == '\0')
+		return;
+	BString key(fPlayingId);
+	key << "\n" << language << "\n" << (automatic ? "1" : "0");
+	if (!fSubtitlesAsked.insert(key).second)
+		return;
+	fHelper->Subtitle(fPlayingId.String(), language, automatic,
+		_ProviderOf(fPlayingId).String(), fPlayingKind.String());
+}
+
+
+void
+CinemaWindow::_RequestSelectedSubtitle()
+{
+	if (!fPlayerShown)
+		return;
+	int32 index = fPlayer->SelectedSubtitle();
+	SubtitleTrackInfo info;
+	if (index < 0 || !fPlayer->SubtitleTrack(index, &info) || info.loaded)
+		return;
+	_RequestSubtitle(info.language.String(), info.automatic);
 }
 
 

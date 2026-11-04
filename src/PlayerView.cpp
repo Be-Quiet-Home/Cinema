@@ -7,12 +7,18 @@
 #include "PlayerView.h"
 
 #include <algorithm>
+#include <stdlib.h>
+#include <string.h>
 
 #include <Bitmap.h>
 #include <Catalog.h>
+#include <Menu.h>
+#include <MenuItem.h>
 #include <MessageRunner.h>
+#include <PopUpMenu.h>
 #include <Window.h>
 
+#include "CinemaWindow.h"
 #include "Messages.h"
 #include "Player.h"
 #include "Style.h"
@@ -28,8 +34,81 @@ using namespace Style;
 static const bigtime_t kControlsTime = 3000000;
 static const bigtime_t kStep = 10000000;
 static const bigtime_t kBigStep = 60000000;
-static const float kBarHeight = 56;
-static const float kTitleHeight = 44;
+static const float kBaseBarHeight = 56;
+static const float kBaseTitleHeight = 44;
+static const float kBaseSubtitleSize = 28;
+
+
+static bool
+overlay_filters()
+{
+	const char* value = getenv("CINEMA_OVERLAY_FILTER");
+	return value == NULL || (value[0] != '\0' && strcmp(value, "0") != 0);
+}
+
+
+static void
+wrap_text(const BFont& font, float maxWidth, const BString& text,
+	std::vector<BString>& lines)
+{
+	int32 start = 0;
+	while (start <= text.Length()) {
+		int32 end = text.FindFirst('\n', start);
+		BString paragraph;
+		if (end < 0)
+			paragraph = text.String() + start;
+		else
+			paragraph = BString(text.String() + start, end - start);
+		paragraph.Trim();
+
+		if (!paragraph.IsEmpty()) {
+			BString line;
+			int32 position = 0;
+			while (position < paragraph.Length()) {
+				while (position < paragraph.Length()
+					&& paragraph[position] == ' ')
+					position++;
+				int32 wordEnd = position;
+				while (wordEnd < paragraph.Length()
+					&& paragraph[wordEnd] != ' ')
+					wordEnd++;
+				if (wordEnd == position)
+					break;
+				BString word(paragraph.String() + position,
+					wordEnd - position);
+				position = wordEnd;
+
+				BString candidate(line);
+				if (!candidate.IsEmpty())
+					candidate << ' ';
+				candidate << word;
+				if (line.IsEmpty()
+					|| font.StringWidth(candidate.String()) <= maxWidth)
+					line = candidate;
+				else {
+					lines.push_back(line);
+					line = word;
+				}
+			}
+			while (font.StringWidth(line.String()) > maxWidth
+				&& line.Length() > 1) {
+				int32 fit = line.Length();
+				while (fit > 1 && font.StringWidth(
+					BString(line.String(), fit).String()) > maxWidth)
+					fit--;
+				lines.push_back(BString(line.String(), fit));
+				line = line.String() + fit;
+				line.Trim();
+			}
+			if (!line.IsEmpty())
+				lines.push_back(line);
+		}
+
+		if (end < 0)
+			break;
+		start = end + 1;
+	}
+}
 
 
 static BString
@@ -53,12 +132,17 @@ PlayerView::PlayerView(Player* player)
 	BView("player", B_WILL_DRAW | B_NAVIGABLE | B_FULL_UPDATE_ON_RESIZE),
 	fPlayer(player),
 	fOpened(false),
+	fDirect(false),
 	fOverlay(NULL),
 	fOverlayShown(false),
 	fControls(true),
 	fControlsUntil(0),
 	fLastMouse(-1, -1),
-	fTicker(NULL)
+	fTicker(NULL),
+	fSubtitleRect(0, 0, -1, -1),
+	fSubtitleWidth(-1),
+	fSubtitleHeight(-1),
+	fSubtitleControls(false)
 {
 	SetViewColor(B_TRANSPARENT_COLOR);
 }
@@ -94,6 +178,12 @@ PlayerView::Start(const char* title)
 {
 	fTitle = title;
 	fOpened = false;
+	fSubtitleLines.clear();
+	fSubtitleShown = "";
+	fSubtitleRect.Set(0, 0, -1, -1);
+	fSubtitleWidth = -1;
+	fSubtitleHeight = -1;
+	fSubtitleControls = false;
 	_ShowControls();
 	Invalidate();
 }
@@ -121,6 +211,43 @@ PlayerView::SetOverlay(BBitmap* overlay)
 
 
 void
+PlayerView::RefreshSubtitles()
+{
+	_UpdateSubtitle();
+	Invalidate(_SubtitleButtonFrame());
+}
+
+
+void
+PlayerView::DrawOverlay(BView* target)
+{
+	if (target == NULL)
+		return;
+	_DrawSubtitle(target);
+	if (fControls || fPlayer->IsPaused())
+		_DrawControls(target);
+}
+
+
+void
+PlayerView::SetDirect(bool direct)
+{
+	if (fDirect == direct)
+		return;
+	fDirect = direct;
+	if (!fDirect)
+		Invalidate();
+}
+
+
+bool
+PlayerView::HasOverlayContent() const
+{
+	return !fSubtitleLines.empty() || fControls || fPlayer->IsPaused();
+}
+
+
+void
 PlayerView::ClearOverlay()
 {
 	if (fOverlay != NULL)
@@ -134,15 +261,27 @@ PlayerView::ClearOverlay()
 /*!	Where the screen puts the pictures: the color key marks it, and the
 	controls drawn over it stay.
 */
-void
+bool
 PlayerView::_PlaceOverlay()
 {
 	if (fOverlay == NULL)
-		return;
-	SetViewOverlay(fOverlay, fOverlay->Bounds(), _PictureFrame(fOverlay),
-		&fKey, B_FOLLOW_TOP | B_FOLLOW_LEFT,
-		B_OVERLAY_FILTER_HORIZONTAL | B_OVERLAY_FILTER_VERTICAL);
+		return true;
+	BRect source = fOverlay->Bounds();
+	BRect destination = _PictureFrame(fOverlay);
+	uint32 options = overlay_filters() && (destination.Width() < source.Width()
+		|| destination.Height() < source.Height())
+		? B_OVERLAY_FILTER_HORIZONTAL | B_OVERLAY_FILTER_VERTICAL : 0;
+	if (SetViewOverlay(fOverlay, source, destination, &fKey,
+		B_FOLLOW_TOP | B_FOLLOW_LEFT, options) != B_OK) {
+		ClearViewOverlay();
+		fOverlay = NULL;
+		fOverlayShown = false;
+		Invalidate();
+		fPlayer->DisableOverlay();
+		return false;
+	}
 	Invalidate();
+	return true;
 }
 
 
@@ -151,6 +290,7 @@ PlayerView::FrameResized(float width, float height)
 {
 	BView::FrameResized(width, height);
 	_PlaceOverlay();
+	_UpdateSubtitle();
 }
 
 
@@ -173,24 +313,56 @@ PlayerView::_PictureFrame(const BBitmap* picture) const
 BRect
 PlayerView::_BarFrame() const
 {
-	BRect bounds = Bounds();
-	return BRect(bounds.left, bounds.bottom - kBarHeight + 1, bounds.right,
-		bounds.bottom);
+	return _BarFrame(Bounds());
+}
+
+
+BRect
+PlayerView::_BarFrame(const BRect& bounds) const
+{
+	return BRect(bounds.left, bounds.bottom - S(kBaseBarHeight) + 1,
+		bounds.right, bounds.bottom);
 }
 
 
 BRect
 PlayerView::_TrackFrame() const
 {
+	return _TrackFrame(Bounds());
+}
+
+
+BRect
+PlayerView::_TrackFrame(const BRect& bounds) const
+{
 	// where the time goes, between the button and the times
-	BRect bar = _BarFrame();
-	return BRect(bar.left + 56, bar.top + 22, bar.right - 140, bar.top + 30);
+	BRect bar = _BarFrame(bounds);
+	return BRect(bar.left + S(56), bar.top + S(22), bar.right - S(200),
+		bar.top + S(30));
+}
+
+
+BRect
+PlayerView::_SubtitleButtonFrame() const
+{
+	return _SubtitleButtonFrame(Bounds());
+}
+
+
+BRect
+PlayerView::_SubtitleButtonFrame(const BRect& bounds) const
+{
+	BRect bar = _BarFrame(bounds);
+	return BRect(bar.right - S(64), bar.top + S(12), bar.right - S(16),
+		bar.bottom - S(12));
 }
 
 
 void
 PlayerView::Draw(BRect updateRect)
 {
+	if (fDirect)
+		return;
 	SetDrawingMode(B_OP_COPY);
 	SetHighColor(0, 0, 0);
 
@@ -206,8 +378,9 @@ PlayerView::Draw(BRect updateRect)
 			frame.bottom));
 		SetHighColor(fKey);
 		FillRect(frame);
+		_DrawSubtitle(this);
 		if (fControls || fPlayer->IsPaused())
-			_DrawControls();
+			_DrawControls(this);
 		return;
 	}
 
@@ -224,68 +397,76 @@ PlayerView::Draw(BRect updateRect)
 			frame.bottom));
 		// no filtering: on a slow machine it costs more than the decoding
 		DrawBitmap(picture, picture->Bounds(), frame);
+		fPlayer->NoteDrawn();
 	} else
 		FillRect(Bounds());
 	if (fOverlay == NULL)
 		fPlayer->UnlockFrame();
 
+	_DrawSubtitle(this);
 	if (picture == NULL) {
 		DrawCentered(this, B_TRANSLATE("Getting the video ready"), Bounds(),
 			Font(18), kTextDim);
 	}
 	if (fControls || fPlayer->IsPaused() || picture == NULL)
-		_DrawControls();
+		_DrawControls(this);
 }
 
 
 void
-PlayerView::_DrawControls()
+PlayerView::_DrawControls(BView* target)
 {
-	BRect bounds = Bounds();
+	BRect bounds = target->Bounds();
+	bool composite = target != this;
 
 	// the title, at the top
 	BRect top(bounds.left, bounds.top, bounds.right,
-		bounds.top + kTitleHeight - 1);
-	SetDrawingMode(B_OP_ALPHA);
-	SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
-	SetHighColor(0, 0, 0, 170);
-	FillRect(top);
+		bounds.top + S(kBaseTitleHeight) - 1);
+	target->SetDrawingMode(B_OP_ALPHA);
+	target->SetBlendingMode(B_PIXEL_ALPHA,
+		composite ? B_ALPHA_COMPOSITE : B_ALPHA_OVERLAY);
+	target->SetHighColor(0, 0, 0, 170);
+	target->FillRect(top);
 	BString title(fTitle);
 	BFont font = Font(16, true);
-	font.TruncateString(&title, B_TRUNCATE_END, bounds.Width() - 32);
+	font.TruncateString(&title, B_TRUNCATE_END, bounds.Width() - S(32));
 	font_height height;
 	font.GetHeight(&height);
-	DrawText(this, title.String(), BPoint(top.left + 16,
-		top.top + (kTitleHeight + height.ascent - height.descent) / 2),
-		font, kText);
+	DrawText(target, title.String(), BPoint(top.left + S(16),
+		top.top + (S(kBaseTitleHeight) + height.ascent - height.descent) / 2),
+		font, kText, composite);
 
 	// the bar: play or pause, where it is, the times
-	BRect bar = _BarFrame();
-	SetDrawingMode(B_OP_ALPHA);
-	SetHighColor(0, 0, 0, 170);
-	FillRect(bar);
+	BRect bar = _BarFrame(bounds);
+	target->SetDrawingMode(B_OP_ALPHA);
+	target->SetBlendingMode(B_PIXEL_ALPHA,
+		composite ? B_ALPHA_COMPOSITE : B_ALPHA_OVERLAY);
+	target->SetHighColor(0, 0, 0, 170);
+	target->FillRect(bar);
 
-	BRect button(bar.left + 18, bar.top + 16, bar.left + 38, bar.top + 36);
-	SetHighColor(kText);
+	BRect button(bar.left + S(18), bar.top + S(16), bar.left + S(38),
+		bar.top + S(36));
+	target->SetHighColor(kText);
 	if (fPlayer->IsPaused())
-		DrawPlay(this, button, kText);
+		DrawPlay(target, button, kText, composite);
 	else {
-		FillRect(BRect(button.left + 2, button.top, button.left + 7,
-			button.bottom));
-		FillRect(BRect(button.right - 7, button.top, button.right - 2,
-			button.bottom));
+		target->FillRect(BRect(button.left + S(2), button.top,
+			button.left + S(7), button.bottom));
+		target->FillRect(BRect(button.right - S(7), button.top,
+			button.right - S(2), button.bottom));
 	}
 
 	bigtime_t position = fPlayer->Position();
 	bigtime_t duration = fPlayer->Duration();
-	BRect track = _TrackFrame();
-	FillRound(this, track, 4, (rgb_color){ 255, 255, 255, 60 });
+	BRect track = _TrackFrame(bounds);
+	FillRound(target, track, S(4), (rgb_color){ 255, 255, 255, 60 },
+		composite);
 	if (duration > 0) {
 		BRect done = track;
 		done.right = track.left + track.Width()
 			* std::min(1.0, (double)position / duration);
 		if (done.right > done.left)
-			FillRound(this, done, 4, kAccent);
+			FillRound(target, done, S(4), kAccent, composite);
 	}
 
 	BString times = time_text(position);
@@ -293,17 +474,202 @@ PlayerView::_DrawControls()
 		times << " / " << time_text(duration);
 	BFont small = Font(14);
 	small.GetHeight(&height);
-	DrawText(this, times.String(), BPoint(track.right + 16,
+	DrawText(target, times.String(), BPoint(track.right + S(16),
 		track.top + (track.Height() + height.ascent - height.descent) / 2),
-		small, kText);
+		small, kText, composite);
+
+	// the subtitles: off, or the chosen track
+	BRect subtitle = _SubtitleButtonFrame(bounds);
+	bool on = fPlayer->SelectedSubtitle() >= 0
+		&& fPlayer->SubtitleCount() > 0;
+	FillRound(target, subtitle, S(6), on
+		? kAccent : (rgb_color){ 255, 255, 255, 40 }, composite);
+	DrawCentered(target, "CC", subtitle, Font(14, true),
+		on ? kText : kTextDim, composite);
+}
+
+
+void
+PlayerView::_SubtitleLayout(const BString& text,
+	std::vector<BString>& lines, BRect& frame) const
+{
+	lines.clear();
+	frame.Set(0, 0, -1, -1);
+	if (text.IsEmpty())
+		return;
+
+	BFont font = Font(kBaseSubtitleSize, true);
+	float maxWidth = std::max(S(120), Bounds().Width() - S(64));
+	wrap_text(font, maxWidth, text, lines);
+	if (lines.empty())
+		return;
+
+	float width = 0;
+	for (const BString& line : lines)
+		width = std::max(width, font.StringWidth(line.String()));
+
+	font_height height;
+	font.GetHeight(&height);
+	float lineHeight = height.ascent + height.descent + S(8);
+	float total = lines.size() * lineHeight + S(14);
+	float bottom = Bounds().bottom - S(14);
+	if (fControls || fPlayer->IsPaused())
+		bottom -= S(kBaseBarHeight);
+	float top = std::max(Bounds().top + S(14), bottom - total);
+	float center = (Bounds().left + Bounds().right) / 2;
+	frame.Set(center - width / 2 - S(16), top, center + width / 2 + S(16),
+		bottom);
+}
+
+
+void
+PlayerView::_DrawSubtitle(BView* target)
+{
+	if (fSubtitleLines.empty() || !fSubtitleRect.IsValid())
+		return;
+	bool composite = target != this;
+
+	BFont font = Font(kBaseSubtitleSize, true);
+	font_height height;
+	font.GetHeight(&height);
+	float lineHeight = height.ascent + height.descent + S(8);
+	float y = fSubtitleRect.top + S(7) + height.ascent;
+	for (const BString& line : fSubtitleLines) {
+		float width = font.StringWidth(line.String());
+		float x = (target->Bounds().left + target->Bounds().right
+			- width) / 2;
+		BRect background(x - S(12), y - height.ascent - S(3),
+			x + width + S(12), y + height.descent + S(3));
+		FillRound(target, background, S(6),
+			(rgb_color){ 0, 0, 0, 190 }, composite);
+		DrawText(target, line.String(), BPoint(x, y), font, kText,
+			composite);
+		y += lineHeight;
+	}
+}
+
+
+void
+PlayerView::_UpdateSubtitle()
+{
+	BString text = fPlayer->IsOpen()
+		? fPlayer->SubtitleText(fPlayer->Position()) : "";
+	bool withControls = fControls || fPlayer->IsPaused();
+	float width = Bounds().Width();
+	float height = Bounds().Height();
+	if (text == fSubtitleShown && width == fSubtitleWidth
+		&& height == fSubtitleHeight && withControls == fSubtitleControls)
+		return;
+
+	std::vector<BString> lines;
+	BRect frame;
+	_SubtitleLayout(text, lines, frame);
+
+	if (fSubtitleRect.IsValid() && !fSubtitleShown.IsEmpty())
+		Invalidate(fSubtitleRect);
+	if (!text.IsEmpty())
+		Invalidate(frame);
+	fSubtitleShown = text;
+	fSubtitleLines = lines;
+	fSubtitleRect = frame;
+	fSubtitleWidth = width;
+	fSubtitleHeight = height;
+	fSubtitleControls = withControls;
+}
+
+
+void
+PlayerView::_RequestSelectedSubtitle()
+{
+	int32 index = fPlayer->SelectedSubtitle();
+	SubtitleTrackInfo info;
+	if (index < 0 || !fPlayer->SubtitleTrack(index, &info)
+		|| info.loaded || info.language.IsEmpty())
+		return;
+
+	BMessage request(kMsgSubtitleRequest);
+	request.AddString("language", info.language);
+	request.AddBool("automatic", info.automatic);
+	Window()->PostMessage(&request);
+}
+
+
+void
+PlayerView::_ChooseSubtitle(int32 index)
+{
+	fPlayer->SelectSubtitle(index);
+	_RequestSelectedSubtitle();
+	_UpdateSubtitle();
+	Invalidate();
+	_ShowControls();
+}
+
+
+void
+PlayerView::_ShowSubtitleMenu()
+{
+	BPopUpMenu menu(B_TRANSLATE("Subtitles"), false, true);
+
+	BMessage* offMessage = new BMessage(kMsgSubtitlePick);
+	offMessage->AddInt32("track", -1);
+	BMenuItem* off = new BMenuItem(B_TRANSLATE("No subtitles"),
+		offMessage);
+	if (fPlayer->SelectedSubtitle() < 0)
+		off->SetMarked(true);
+	menu.AddItem(off);
+
+	int32 count = fPlayer->SubtitleCount();
+	for (int32 i = 0; i < count; i++) {
+		SubtitleTrackInfo info;
+		if (!fPlayer->SubtitleTrack(i, &info))
+			continue;
+		BString label = info.name;
+		if (label.IsEmpty())
+			label = info.language;
+		if (label.IsEmpty())
+			label = B_TRANSLATE("Subtitles");
+		if (info.automatic)
+			label << " (" << B_TRANSLATE("automatic") << ")";
+
+		BMessage* message = new BMessage(kMsgSubtitlePick);
+		message->AddInt32("track", i);
+		BMenuItem* item = new BMenuItem(label.String(), message);
+		if (i == fPlayer->SelectedSubtitle())
+			item->SetMarked(true);
+		menu.AddItem(item);
+	}
+	if (count == 0) {
+		BMenuItem* none = new BMenuItem(
+			B_TRANSLATE("No subtitles available"), NULL);
+		none->SetEnabled(false);
+		menu.AddItem(none);
+	}
+
+	Style::ScaleMenu(&menu);
+	CinemaWindow* window = dynamic_cast<CinemaWindow*>(Window());
+	if (window != NULL)
+		window->SetDirectPaused(true);
+	BRect button = _SubtitleButtonFrame();
+	BMenuItem* chosen = menu.Go(ConvertToScreen(BPoint(button.left,
+		button.top)), false, false, false);
+	if (window != NULL)
+		window->SetDirectPaused(false);
+	if (chosen != NULL && chosen->Message() != NULL) {
+		int32 track = -1;
+		chosen->Message()->FindInt32("track", &track);
+		_ChooseSubtitle(track);
+	}
 }
 
 
 void
 PlayerView::_ShowControls()
 {
+	bool appeared = !fControls;
 	fControls = true;
 	fControlsUntil = system_time() + kControlsTime;
+	if (appeared)
+		_UpdateSubtitle();
 	Invalidate();
 }
 
@@ -312,6 +678,7 @@ void
 PlayerView::_TogglePause()
 {
 	fPlayer->SetPaused(!fPlayer->IsPaused());
+	_UpdateSubtitle();
 	_ShowControls();
 }
 
@@ -320,6 +687,7 @@ void
 PlayerView::_SeekBy(bigtime_t delta)
 {
 	fPlayer->Seek(fPlayer->Position() + delta);
+	_UpdateSubtitle();
 	_ShowControls();
 }
 
@@ -359,6 +727,14 @@ PlayerView::KeyDown(const char* bytes, int32 count)
 		case 'M':
 			Window()->PostMessage(kMsgPlayInMediaPlayer);
 			break;
+		case 'v':
+		case 'V':
+			fPlayer->ToggleSubtitles();
+			_RequestSelectedSubtitle();
+			_UpdateSubtitle();
+			Invalidate(_SubtitleButtonFrame());
+			_ShowControls();
+			break;
 		default:
 			BView::KeyDown(bytes, count);
 	}
@@ -373,12 +749,19 @@ PlayerView::MouseDown(BPoint where)
 	if (Window()->CurrentMessage() != NULL)
 		Window()->CurrentMessage()->FindInt32("clicks", &clicks);
 
-	BRect track = _TrackFrame().InsetByCopy(0, -10);
+	if ((fControls || fPlayer->IsPaused())
+		&& _SubtitleButtonFrame().Contains(where)) {
+		_ShowSubtitleMenu();
+		return;
+	}
+
+	BRect track = _TrackFrame().InsetByCopy(0, -S(10));
 	if ((fControls || fPlayer->IsPaused()) && track.Contains(where)
 		&& fPlayer->Duration() > 0) {
 		double fraction = (where.x - track.left) / track.Width();
 		fPlayer->Seek((bigtime_t)(fPlayer->Duration()
 			* std::max(0.0, std::min(1.0, fraction))));
+		_UpdateSubtitle();
 		_ShowControls();
 		return;
 	}
@@ -408,11 +791,18 @@ PlayerView::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
 		case kMsgPlayerFrame:
-			if (fOverlay == NULL)
-				Invalidate();
-			else if (!fOverlayShown) {
+			if (fOverlay == NULL) {
+				_UpdateSubtitle();
+				BBitmap* picture = fPlayer->LockFrame();
+				if (picture != NULL) {
+					Invalidate(_PictureFrame(picture));
+					fPlayer->UnlockFrame();
+				} else
+					Invalidate();
+			} else if (!fOverlayShown) {
 				// the first picture: the key color, once
 				fOverlayShown = true;
+				_UpdateSubtitle();
 				Invalidate();
 			} else {
 				// nothing to draw: only taken, so that the next one comes
@@ -429,6 +819,7 @@ PlayerView::MessageReceived(BMessage* message)
 				Invalidate();
 			} else if (fControls || fPlayer->IsPaused())
 				Invalidate(_BarFrame());
+			_UpdateSubtitle();
 			break;
 		default:
 			BView::MessageReceived(message);

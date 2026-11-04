@@ -242,25 +242,25 @@ DetailView::_Update()
 	fBackFrame = BRect();
 	fChannelFrame = BRect();
 
-	if (bounds.Width() < 80 || bounds.Height() < 80)
+	if (bounds.Width() < S(80) || bounds.Height() < S(80))
 		return;
 
-	const float pad = 36;
-	const float gap = 32;
+	const float pad = S(36);
+	const float gap = S(32);
 	BFont titleFont = Font(28, true);
 	BFont channelFont = Font(16);
 	BFont descFont = Font(14);
 	BFont metaFont = Font(13);
 	fLineHeight = line_height(descFont);
 
-	fBackFrame = BRect(pad, pad, pad + 88, pad + 30);
-	float top = fBackFrame.bottom + 20;
+	fBackFrame = BRect(pad, pad, pad + S(88), pad + S(30));
+	float top = fBackFrame.bottom + S(20);
 	float bottom = bounds.bottom - pad;
-	if (bottom - top < 100)
+	if (bottom - top < S(100))
 		return;
 
 	fTextFrame = BRect(pad, top, bounds.right - pad, bottom);
-	bool stacked = bounds.Width() < 780;
+	bool stacked = bounds.Width() < S(780);
 	if (stacked) {
 		float width = bounds.Width() - 2 * pad;
 		float maxHeight = (bottom - top) * 0.42f;
@@ -268,11 +268,11 @@ DetailView::_Update()
 			width = maxHeight * 16.0f / 9.0f;
 		fPosterFrame = BRect(pad, top, pad + width,
 			top + width * 9.0f / 16.0f);
-		fTextFrame = BRect(pad, fPosterFrame.bottom + 16,
+		fTextFrame = BRect(pad, fPosterFrame.bottom + S(16),
 			bounds.right - pad, bottom);
 	} else {
 		float width = (bounds.Width() - 2 * pad - gap) * 0.46f;
-		width = std::max(220.0f, std::min(width, 620.0f));
+		width = std::max(S(220), std::min(width, S(620)));
 		if (width * 9.0f / 16.0f > bottom - top)
 			width = (bottom - top) * 16.0f / 9.0f;
 		fPosterFrame = BRect(pad, top, pad + width,
@@ -282,7 +282,7 @@ DetailView::_Update()
 	}
 
 	float width = fTextFrame.Width();
-	if (width < 80)
+	if (width < S(80))
 		return;
 
 	if (!fItem.title.IsEmpty())
@@ -292,22 +292,23 @@ DetailView::_Update()
 	if (!fItem.channel.IsEmpty()) {
 		float channelWidth = std::min(width,
 			channelFont.StringWidth(fItem.channel.String()));
-		fChannelFrame = BRect(fTextFrame.left, y + titleHeight + 6,
+		fChannelFrame = BRect(fTextFrame.left, y + titleHeight + S(6),
 			fTextFrame.left + channelWidth,
-			y + titleHeight + 6 + line_height(channelFont));
+			y + titleHeight + S(6) + line_height(channelFont));
 	}
 	float metaTop = fChannelFrame.IsValid()
-		? fChannelFrame.bottom + 2 : y + titleHeight + 6;
+		? fChannelFrame.bottom + S(2) : y + titleHeight + S(6);
 	if (!fMeta.IsEmpty()) {
 		fMetaFrame = BRect(fTextFrame.left, metaTop,
 			fTextFrame.right, metaTop + line_height(metaFont));
 	}
 
-	float descTop = (fMetaFrame.IsValid() ? fMetaFrame.bottom : metaTop) + 18;
-	float descBottom = fTextFrame.bottom - 40 - 16;
+	float descTop = (fMetaFrame.IsValid() ? fMetaFrame.bottom : metaTop)
+		+ S(18);
+	float descBottom = fTextFrame.bottom - S(40) - S(16);
 	if (descBottom > descTop) {
-		fDescFrame = BRect(fTextFrame.left, descTop, fTextFrame.right - 14,
-			descBottom);
+		fDescFrame = BRect(fTextFrame.left, descTop,
+			fTextFrame.right - S(14), descBottom);
 		if (!fItem.description.IsEmpty()) {
 			wrap_lines(fItem.description, descFont, fDescFrame.Width(),
 				fLines);
@@ -316,21 +317,22 @@ DetailView::_Update()
 		}
 	}
 
-	float buttonTop = fTextFrame.bottom - 40;
+	float buttonTop = fTextFrame.bottom - S(40);
 	if (buttonTop > fTextFrame.top) {
-		float playWidth = 140;
-		float downloadWidth = 190;
+		float playWidth = S(140);
+		float downloadWidth = S(190);
 		float available = fTextFrame.Width();
-		if (playWidth + 12 + downloadWidth > available) {
-			float half = std::max(80.0f, (available - 12) / 2);
+		if (playWidth + S(12) + downloadWidth > available) {
+			float half = std::max(S(80), (available - S(12)) / 2);
 			playWidth = half;
 			downloadWidth = half;
 		}
 		fPlayFrame = BRect(fTextFrame.left, buttonTop,
 			fTextFrame.left + playWidth, fTextFrame.bottom);
-		fDownloadFrame = BRect(fPlayFrame.right + 12, buttonTop,
+		fDownloadFrame = BRect(fPlayFrame.right + S(12), buttonTop,
 			std::min(fTextFrame.right,
-				fPlayFrame.right + 12 + downloadWidth), fTextFrame.bottom);
+				fPlayFrame.right + S(12) + downloadWidth),
+			fTextFrame.bottom);
 		// live television cannot be downloaded
 		if (fItem.kind == "live")
 			fDownloadFrame = BRect();
@@ -525,7 +527,7 @@ DetailView::_DrawDescriptionLine(int32 index, BPoint at, const BFont& font)
 		DrawText(this, text.String(), BPoint(left, at.y), font, kAccent);
 		SetDrawingMode(B_OP_ALPHA);
 		SetHighColor(kAccent);
-		StrokeLine(BPoint(left, at.y + 2), BPoint(right, at.y + 2));
+		StrokeLine(BPoint(left, at.y + S(2)), BPoint(right, at.y + S(2)));
 		pos = link.end;
 	}
 	if (pos < line.Length()) {
@@ -540,7 +542,7 @@ DetailView::_DrawDescriptionLine(int32 index, BPoint at, const BFont& font)
 void
 DetailView::_DrawPoster()
 {
-	FillRound(this, fPosterFrame, 8, kCard);
+	FillRound(this, fPosterFrame, S(8), kCard);
 	if (fPicture != NULL && fPicture->IsValid()
 		&& fPicture->Bounds().Height() > 0) {
 		BRect source = fPicture->Bounds();
@@ -564,7 +566,7 @@ DetailView::_DrawPoster()
 			fPosterFrame.top + (fPosterFrame.Height() - size) / 2);
 		DrawPlay(this, play, kTextDim);
 	}
-	StrokeRound(this, fPosterFrame, 8, 1, (rgb_color){ 70, 70, 76, 255 });
+	StrokeRound(this, fPosterFrame, S(8), 1, (rgb_color){ 70, 70, 76, 255 });
 }
 
 
@@ -580,11 +582,11 @@ DetailView::_DrawButton(BRect frame, const char* label, bool primary,
 	}
 	if (!enabled)
 		fill = (rgb_color){ 46, 46, 50, 255 };
-	FillRound(this, frame, 8, fill);
+	FillRound(this, frame, S(8), fill);
 	if (!primary) {
 		rgb_color line = enabled ? kTextDim
 			: (rgb_color){ 70, 70, 76, 255 };
-		StrokeRound(this, frame, 8, 1, line);
+		StrokeRound(this, frame, S(8), 1, line);
 	}
 	DrawCentered(this, label, frame, Font(14, true),
 		enabled ? kText : kTextDim);
@@ -597,8 +599,8 @@ DetailView::_DrawPlayButton()
 	BString label(B_TRANSLATE("Play"));
 	BFont font = Font(14, true);
 	float textWidth = font.StringWidth(label.String());
-	float icon = 12;
-	float gap = 8;
+	float icon = S(12);
+	float gap = S(8);
 	float total = icon + gap + textWidth;
 	float left = fPlayFrame.left + (fPlayFrame.Width() - total) / 2;
 	font_height height;
@@ -612,9 +614,9 @@ DetailView::_DrawPlayButton()
 		fill.green = std::min<int>(255, fill.green + 18);
 		fill.blue = std::min<int>(255, fill.blue + 18);
 	}
-	FillRound(this, fPlayFrame, 8, fill);
-	BRect iconFrame(left, baseline - height.ascent + 2, left + icon,
-		baseline + height.descent - 2);
+	FillRound(this, fPlayFrame, S(8), fill);
+	BRect iconFrame(left, baseline - height.ascent + S(2), left + icon,
+		baseline + height.descent - S(2));
 	DrawPlay(this, iconFrame, kText);
 	DrawText(this, label.String(), BPoint(left + icon + gap, baseline),
 		font, kText);
@@ -631,13 +633,13 @@ DetailView::Draw(BRect updateRect)
 	_DrawPoster();
 
 	// the way back, above the picture
-	FillRound(this, fBackFrame, 8, fHover == 1 ? kCard : kBar);
-	StrokeRound(this, fBackFrame, 8, 1, kTextDim);
+	FillRound(this, fBackFrame, S(8), fHover == 1 ? kCard : kBar);
+	StrokeRound(this, fBackFrame, S(8), 1, kTextDim);
 	BFont backFont = Font(13);
 	BString backLabel(B_TRANSLATE("Back"));
 	float backText = backFont.StringWidth(backLabel.String());
-	float arrow = 9;
-	float gap = 8;
+	float arrow = S(9);
+	float gap = S(8);
 	float total = arrow + gap + backText;
 	float left = fBackFrame.left + (fBackFrame.Width() - total) / 2;
 	font_height backHeight;
@@ -647,8 +649,8 @@ DetailView::Draw(BRect updateRect)
 			/ 2;
 	SetDrawingMode(B_OP_ALPHA);
 	SetHighColor(kText);
-	FillTriangle(BPoint(left + arrow, baseline - backHeight.ascent + 2),
-		BPoint(left + arrow, baseline + backHeight.descent - 2),
+	FillTriangle(BPoint(left + arrow, baseline - backHeight.ascent + S(2)),
+		BPoint(left + arrow, baseline + backHeight.descent - S(2)),
 		BPoint(left, baseline));
 	DrawText(this, backLabel.String(), BPoint(left + arrow + gap, baseline),
 		backFont, kText);
@@ -679,8 +681,8 @@ DetailView::Draw(BRect updateRect)
 		if (linked) {
 			SetDrawingMode(B_OP_ALPHA);
 			SetHighColor(hover ? kText : kAccent);
-			StrokeLine(BPoint(fChannelFrame.left, channelY + 2),
-				BPoint(fChannelFrame.right, channelY + 2));
+			StrokeLine(BPoint(fChannelFrame.left, channelY + S(2)),
+				BPoint(fChannelFrame.right, channelY + S(2)));
 		}
 	}
 
@@ -720,12 +722,12 @@ DetailView::Draw(BRect updateRect)
 		float total = fLines.size() * fLineHeight;
 		if (total > fDescFrame.Height()) {
 			float track = fDescFrame.Height();
-			float thumb = std::max(24.0f, track * track / total);
+			float thumb = std::max(S(24), track * track / total);
 			float most = total - track;
 			float top = fDescFrame.top
 				+ (track - thumb) * (fScroll / most);
-			FillRound(this, BRect(fDescFrame.right + 6, top,
-				fDescFrame.right + 10, top + thumb), 2, kTextDim);
+			FillRound(this, BRect(fDescFrame.right + S(6), top,
+				fDescFrame.right + S(10), top + thumb), S(2), kTextDim);
 		}
 	}
 
@@ -736,8 +738,8 @@ DetailView::Draw(BRect updateRect)
 			_CanDownload(), fHover == 3);
 	}
 	if (fItem.progress >= 0) {
-		BRect bar(fDownloadFrame.left + 8, fDownloadFrame.bottom - 6,
-			fDownloadFrame.right - 8, fDownloadFrame.bottom - 3);
+		BRect bar(fDownloadFrame.left + S(8), fDownloadFrame.bottom - S(6),
+			fDownloadFrame.right - S(8), fDownloadFrame.bottom - S(3));
 		SetDrawingMode(B_OP_COPY);
 		SetHighColor(30, 30, 34);
 		FillRect(bar);

@@ -73,6 +73,12 @@ enum {
 	kMsgPlayerSave		= 'plsv',	// where it is, to go on later
 	kMsgPlayerClose		= 'plcl',
 	kMsgPlayInMediaPlayer = 'plmp',	// the same address, in MediaPlayer
+	kMsgSubtitles		= 'plts',	// "id", then for each track
+									// "language", "name", "automatic"
+	kMsgSubtitle		= 'pltx',	// "id", "language", "automatic",
+									// "text"
+	kMsgSubtitleRequest	= 'pltr',	// "language", "automatic": its text
+	kMsgSubtitlePick	= 'pltp',	// "track": chosen in the player
 
 	// the settings
 	kMsgShowSettings	= 'stng',
@@ -90,6 +96,8 @@ enum {
 	kMsgTmdbChecked		= 'tmok',	// "ok"
 	kMsgAnimate			= 'anim',
 	kMsgFullScreen		= 'fuls',	// F: full screen, or back
+	kMsgDirectDraw		= 'pdrd',	// draw the direct full screen
+	kMsgDirectFallback	= 'pdfb',	// no direct connection: back to the view
 	kMsgFocusContent	= 'fcnt',	// leave the tabs, back to the videos
 };
 

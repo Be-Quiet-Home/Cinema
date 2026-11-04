@@ -29,11 +29,11 @@
 using namespace Style;
 
 
-static const float kTileWidth = 210;
-static const float kHeaderHeight = 36;
-static const float kTop = 10;
-static const float kGap = 4;
-static const float kBottom = 14;
+static const float kBaseTileWidth = 210;
+static const float kBaseHeaderHeight = 36;
+static const float kBaseTop = 10;
+static const float kBaseGap = 4;
+static const float kBaseBottom = 14;
 static const float kSeeAllSize = 14;
 
 
@@ -59,17 +59,17 @@ public:
 										BFont font = Font(20, true);
 										BRect link = _LinkFrame();
 										float space = link.IsValid()
-											? link.Width() + 16 : 0;
+											? link.Width() + S(16) : 0;
 										BString title(fTitle);
 										font.TruncateString(&title,
 											B_TRUNCATE_END,
 											Bounds().Width() - space);
 										DrawText(this, title.String(),
-											BPoint(0, 24), font, kText);
+											BPoint(0, S(24)), font, kText);
 
 										if (link.IsValid()) {
 											BFont small = Font(kSeeAllSize);
-											float baseline = 23;
+											float baseline = S(23);
 											DrawText(this,
 												B_TRANSLATE("See all"),
 												BPoint(link.left, baseline),
@@ -79,9 +79,9 @@ public:
 												SetHighColor(kText);
 												StrokeLine(
 													BPoint(link.left,
-														baseline + 2),
+														baseline + S(2)),
 													BPoint(link.right,
-														baseline + 2));
+														baseline + S(2)));
 											}
 										}
 									}
@@ -109,7 +109,7 @@ public:
 											return;
 										fHover = hover;
 										Invalidate(_LinkFrame().
-											InsetByCopy(-1, -2));
+											InsetByCopy(-1, -S(2)));
 										BCursor cursor(hover
 											? B_CURSOR_ID_FOLLOW_LINK
 											: B_CURSOR_ID_SYSTEM_DEFAULT);
@@ -118,12 +118,14 @@ public:
 
 	virtual	BSize				MinSize()
 									{
-										return BSize(100, kHeaderHeight);
+										return BSize(S(100),
+											S(kBaseHeaderHeight));
 									}
 
 	virtual	BSize				PreferredSize()
 									{
-										return BSize(100, kHeaderHeight);
+										return BSize(S(100),
+											S(kBaseHeaderHeight));
 									}
 
 private:
@@ -185,7 +187,7 @@ HomeView::SetShelves(const std::vector<ShelfSpec>& shelves)
 	for (const ShelfSpec& spec : shelves) {
 		ShelfHeader* header = new ShelfHeader(spec.title, spec.seeAll);
 		VideoGrid* row = new VideoGrid;
-		row->SetShelfMode(kTileWidth);
+		row->SetShelfMode(S(kBaseTileWidth));
 		float rowHeight = row->ShelfHeight();
 		row->SetExplicitMinSize(BSize(B_SIZE_UNSET, rowHeight));
 		row->SetExplicitMaxSize(BSize(B_SIZE_UNSET, rowHeight));
@@ -194,10 +196,10 @@ HomeView::SetShelves(const std::vector<ShelfSpec>& shelves)
 		else if (!spec.message.IsEmpty())
 			row->SetMessage(spec.message);
 
-		BGroupView* group = new BGroupView(B_VERTICAL, kGap);
+		BGroupView* group = new BGroupView(B_VERTICAL, S(kBaseGap));
 		group->SetViewColor(kBackground);
 		BLayoutBuilder::Group<>(group)
-			.SetInsets(24, kTop, 24, kBottom)
+			.SetInsets(S(24), S(kBaseTop), S(24), S(kBaseBottom))
 			.Add(header)
 			.Add(row);
 		AddChild(group);
@@ -427,8 +429,8 @@ HomeView::_Relayout()
 		return;
 	fLayingOut = true;
 	float width = std::max(1.0f, Bounds().Width());
-	float shelfHeight = kTop + kHeaderHeight + kGap
-		+ VideoGrid::ShelfHeightFor(kTileWidth) + kBottom;
+	float shelfHeight = S(kBaseTop) + S(kBaseHeaderHeight) + S(kBaseGap)
+		+ VideoGrid::ShelfHeightFor(S(kBaseTileWidth)) + S(kBaseBottom);
 	float y = 0;
 	for (Shelf& shelf : fShelves) {
 		shelf.group->MoveTo(0, y);
@@ -456,7 +458,7 @@ HomeView::_UpdateScrollBar()
 	bar->SetRange(0, range);
 	bar->SetProportion(fContentHeight > 0
 		? std::min(1.0f, visible / fContentHeight) : 1);
-	bar->SetSteps(40, visible * 0.9f);
+	bar->SetSteps(S(40), visible * 0.9f);
 }
 
 
@@ -478,7 +480,7 @@ HomeView::Draw(BRect updateRect)
 	if (fShelves.empty() && !fMessage.IsEmpty()) {
 		BRect bounds = Bounds();
 		DrawCentered(this, fMessage.String(), BRect(bounds.left,
-			bounds.top + bounds.Height() / 2 - 40, bounds.right,
+			bounds.top + bounds.Height() / 2 - S(40), bounds.right,
 			bounds.top + bounds.Height() / 2), Font(18), kTextDim);
 	}
 

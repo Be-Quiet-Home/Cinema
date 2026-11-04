@@ -13,6 +13,9 @@
 #    "channel": "UC..."}
 #   {"type": "details",  "provider": "youtube", "id": "...", "kind": "video"}
 #   {"type": "find",     "id": "...", "provider": "youtube", "kind": "video"}
+#   {"type": "subtitles","id": "...", "provider": "youtube", "kind": "video"}
+#   {"type": "subtitle", "id": "...", "provider": "youtube", "language": "it",
+#    "automatic": false}
 #   {"type": "download", "id": "...", "provider": "youtube", "folder": "/..."}
 #
 # Any of them may carry "height": the highest picture wanted, 0 for what
@@ -26,6 +29,10 @@
 #   {"type": "nothing", "tag": 1}
 #   {"type": "found", "id": "...", "url": "..."}
 #   {"type": "lost", "id": "..."}
+#   {"type": "subtitles", "id": "...", "tracks": [{"language", "name",
+#    "automatic"}, ...]}
+#   {"type": "subtitle", "id": "...", "language": "...", "automatic": false,
+#    "text": "WEBVTT..."}
 #   {"type": "progress", "id": "...", "percent": 42}
 #   {"type": "saved", "id": "...", "path": "/..."}
 #   {"type": "failed", "id": "..."}
@@ -55,6 +62,49 @@ import urllib.parse
 import urllib.request
 
 
+def unpacked_yt_dlp(archive):
+	"""Where the single-file release is kept unpacked and compiled, for
+	this version of it, and whether it is there yet. From the zip archive
+	Python compiles every module again at each start: 9 s on the AC100,
+	against 2.5 s for the compiled copy."""
+	folder = sys.argv[1] if len(sys.argv) > 1 else ""
+	if not folder:
+		return None, False
+	status = os.stat(archive)
+	name = "yt-dlp-%d-%d" % (int(status.st_mtime), status.st_size)
+	path = os.path.join(folder, name)
+	return path, os.path.isfile(os.path.join(path, "complete"))
+
+
+def unpack_yt_dlp(archive, path):
+	"""Unpacks and compiles the release in the background, a minute after
+	the start so as not to slow it, in a process of its own; then drops
+	the copies of older versions."""
+	def work():
+		time.sleep(60)
+		temporary = path + ".part"
+		try:
+			import zipfile
+			shutil.rmtree(temporary, ignore_errors=True)
+			with zipfile.ZipFile(archive) as release:
+				release.extractall(temporary)
+			subprocess.run([sys.executable, "-m", "compileall", "-q",
+				temporary], stdout=subprocess.DEVNULL,
+				stderr=subprocess.DEVNULL, check=True)
+			open(os.path.join(temporary, "complete"), "w").close()
+			shutil.rmtree(path, ignore_errors=True)
+			os.rename(temporary, path)
+		except Exception:
+			shutil.rmtree(temporary, ignore_errors=True)
+			return
+		folder = os.path.dirname(path)
+		for name in os.listdir(folder):
+			old = os.path.join(folder, name)
+			if name.startswith("yt-dlp-") and old != path:
+				shutil.rmtree(old, ignore_errors=True)
+	threading.Thread(target=work, daemon=True).start()
+
+
 def load_yt_dlp():
 	try:
 		import yt_dlp
@@ -65,8 +115,21 @@ def load_yt_dlp():
 	for directory in os.environ.get("PATH", "").split(os.pathsep):
 		candidate = os.path.join(directory, "yt-dlp")
 		if os.path.isfile(candidate):
+			try:
+				unpacked, ready = unpacked_yt_dlp(candidate)
+			except OSError:
+				unpacked, ready = None, False
+			if ready:
+				sys.path.insert(0, unpacked)
+				try:
+					import yt_dlp
+					return yt_dlp
+				except ImportError:
+					sys.path.remove(unpacked)
 			sys.path.insert(0, candidate)
 			import yt_dlp
+			if unpacked:
+				unpack_yt_dlp(candidate, unpacked)
 			return yt_dlp
 	raise ImportError("yt-dlp not found")
 
@@ -86,6 +149,13 @@ LANGUAGE = sys.argv[2] if len(sys.argv) > 2 else "en"
 
 DEFAULT_PROVIDER = "youtube"
 PROVIDERS = {}
+# what yt-dlp said of the last videos: the page of a video, playing it and
+# its subtitles would take one extraction each otherwise (11 s on the
+# AC100). Not for long: the addresses of the streams expire.
+INFO_CACHE = {}
+INFO_LOCK = threading.Lock()
+INFO_CACHE_TIME = 30 * 60
+INFO_CACHE_SIZE = 8
 
 
 def answer(message):
@@ -100,6 +170,36 @@ def as_int(value, fallback):
 		return int(value)
 	except (TypeError, ValueError):
 		return fallback
+
+
+def subtitle_time(milliseconds):
+	"""A time of WebVTT, from the milliseconds of YouTube's json3."""
+	milliseconds = max(0, as_int(milliseconds, 0))
+	return "%02d:%02d:%02d.%03d" % (milliseconds // 3600000,
+		milliseconds // 60000 % 60, milliseconds // 1000 % 60,
+		milliseconds % 1000)
+
+
+def json3_to_vtt(text):
+	"""YouTube's json3 captions, which are small, as WebVTT."""
+	try:
+		data = json.loads(text)
+	except ValueError:
+		return ""
+	lines = ["WEBVTT", ""]
+	for event in data.get("events") or []:
+		content = "".join(str(segment.get("utf8") or "")
+			for segment in event.get("segs") or [])
+		content = re.sub(r"\s+", " ", content).strip()
+		if not content:
+			continue
+		start = as_int(event.get("tStartMs"), 0)
+		duration = as_int(event.get("dDurationMs"), 0) or 2000
+		lines.append("%s --> %s" % (subtitle_time(start),
+			subtitle_time(start + duration)))
+		lines.append(content)
+		lines.append("")
+	return "\n".join(lines)
 
 
 def clean(text):
@@ -287,6 +387,15 @@ class Provider:
 	def download(self, media_id, folder, progress):
 		raise NotImplementedError
 
+	def subtitles(self, media_id, kind):
+		"""The tracks of the subtitles of a video, as {language, name,
+		automatic}, or an empty list."""
+		return []
+
+	def subtitle(self, media_id, kind, language, automatic):
+		"""The text of one track, as WebVTT, SRT or ASS, or None."""
+		return None
+
 
 class YouTubeProvider(Provider):
 	id = "youtube"
@@ -359,25 +468,49 @@ class YouTubeProvider(Provider):
 		video["poster"] = self.picture(info)
 		return video
 
-	def details(self, media_id, kind="video"):
+	def video_info(self, media_id, playable):
+		"""What yt-dlp says of a video, from INFO_CACHE when it is there.
+		With the format Cinema plays, so that info["url"] is its address;
+		without it too when playable is False and no format fits, for the
+		page and the subtitles of such a video."""
+		now = time.time()
+		with INFO_LOCK:
+			found = INFO_CACHE.get(media_id)
+			if found is not None and now - found[0] < INFO_CACHE_TIME \
+					and (found[2] or not playable):
+				return found[1]
+
 		url = "https://www.youtube.com/watch?v=" + media_id
 		clients = [
 			{"youtube": {"player_client": ["android"]}},
 			{"youtube": {}},
 		]
-		for arguments in clients:
-			options = dict(self.OPTIONS, extractor_args=arguments)
-			if not arguments["youtube"]:
-				options["js_runtimes"] = {"quickjs": {}}
-			try:
-				with yt_dlp.YoutubeDL(options) as ydl:
-					info = ydl.extract_info(url, download=False)
-			except Exception:
-				continue
-			video = self.full_item(info) if info else None
-			if video is not None:
-				return video
+		for formatted in ((True,) if playable else (True, False)):
+			for arguments in clients:
+				options = dict(self.OPTIONS, extractor_args=arguments)
+				if formatted:
+					options["format"] = self.FORMAT
+				if not arguments["youtube"]:
+					options["js_runtimes"] = {"quickjs": {}}
+				try:
+					with yt_dlp.YoutubeDL(options) as ydl:
+						info = ydl.extract_info(url, download=False)
+				except Exception:
+					continue
+				if not info or (formatted and not info.get("url")):
+					continue
+				with INFO_LOCK:
+					INFO_CACHE[media_id] = (now, info, formatted)
+					for old in sorted(INFO_CACHE,
+							key=lambda key: INFO_CACHE[key][0])[
+								:max(0, len(INFO_CACHE) - INFO_CACHE_SIZE)]:
+						del INFO_CACHE[old]
+				return info
 		return None
+
+	def details(self, media_id, kind="video"):
+		info = self.video_info(media_id, False)
+		return self.full_item(info) if info else None
 
 	def videos_of(self, url, count, channel_name="", channel_id=""):
 		options = dict(self.OPTIONS, extract_flat="in_playlist",
@@ -442,22 +575,72 @@ class YouTubeProvider(Provider):
 			found = self.find_separate(url, wanted_height())
 			if found:
 				return found
-		clients = [
-			{"youtube": {"player_client": ["android"]}},
-			{"youtube": {}},
-		]
-		for arguments in clients:
-			options = dict(self.OPTIONS, format=self.FORMAT,
-				extractor_args=arguments)
-			if not arguments["youtube"]:
-				options["js_runtimes"] = {"quickjs": {}}
+		info = self.video_info(media_id, True)
+		return info.get("url") if info else None
+
+	def subtitles(self, media_id, kind="video"):
+		info = self.video_info(media_id, False)
+		if not info:
+			return []
+		tracks = []
+		seen = set()
+		for automatic, source in (
+				(False, info.get("subtitles") or {}),
+				(True, info.get("automatic_captions") or {})):
+			for language, formats in source.items():
+				if not language or language == "live_chat" or language in seen:
+					continue
+				if not any(f.get("url") for f in formats or []):
+					continue
+				name = ""
+				for f in formats:
+					if f.get("name"):
+						name = f["name"]
+						break
+				tracks.append({"language": language, "name": clean(name),
+					"automatic": automatic})
+				seen.add(language)
+		return tracks
+
+	def subtitle(self, media_id, kind, language, automatic):
+		info = self.video_info(media_id, False)
+		if not info:
+			return None
+		source = info.get("automatic_captions" if automatic
+			else "subtitles") or {}
+		formats = source.get(language)
+		if not formats:
+			base = language.lower().split("-")[0]
+			for key, value in source.items():
+				if key.lower() == language.lower() \
+						or key.lower().split("-")[0] == base:
+					language = key
+					formats = value
+					break
+		if not formats:
+			return None
+
+		def score(f):
+			return 0 if f.get("ext") == "vtt" else \
+				1 if f.get("ext") == "json3" else 9
+
+		for f in sorted(formats, key=score):
+			url = f.get("url")
+			extension = f.get("ext")
+			if not url or extension not in ("vtt", "json3"):
+				continue
+			headers = {"User-Agent": USER_AGENT}
+			headers.update(f.get("http_headers") or {})
 			try:
-				with yt_dlp.YoutubeDL(options) as ydl:
-					info = ydl.extract_info(url, download=False)
-				if info.get("url"):
-					return info["url"]
+				request = urllib.request.Request(url, headers=headers)
+				with urllib.request.urlopen(request, timeout=30) as response:
+					text = response.read().decode("utf-8", "replace")
 			except Exception:
-				pass
+				continue
+			if extension == "json3":
+				text = json3_to_vtt(text)
+			if text.strip():
+				return text
 		return None
 
 	def download(self, media_id, folder, progress=None):
@@ -1831,6 +2014,23 @@ def job_find(provider, media_id, kind):
 		answer({"type": "lost", "id": media_id})
 
 
+def job_subtitles(provider, media_id, kind):
+	try:
+		tracks = provider.subtitles(media_id, kind)
+	except Exception:
+		tracks = []
+	answer({"type": "subtitles", "id": media_id, "tracks": tracks})
+
+
+def job_subtitle(provider, media_id, kind, language, automatic):
+	try:
+		text = provider.subtitle(media_id, kind, language, automatic)
+	except Exception:
+		text = None
+	answer({"type": "subtitle", "id": media_id, "language": language,
+		"automatic": automatic, "text": text or ""})
+
+
 def job_download(provider, media_id, folder):
 	last = [-1, 0.0]
 
@@ -1914,6 +2114,13 @@ def work(request):
 	elif kind == "find":
 		thread = (job_find, (provider, request.get("id", ""),
 			request.get("kind", "video")))
+	elif kind == "subtitles":
+		thread = (job_subtitles, (provider, request.get("id", ""),
+			request.get("kind", "video")))
+	elif kind == "subtitle":
+		thread = (job_subtitle, (provider, request.get("id", ""),
+			request.get("kind", "video"), request.get("language", ""),
+			bool(request.get("automatic"))))
 	elif kind == "download":
 		thread = (job_download, (provider, request.get("id", ""),
 			request.get("folder", "")))

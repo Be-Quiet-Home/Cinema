@@ -14,6 +14,8 @@
 #include <atomic>
 #include <vector>
 
+#include "Subtitles.h"
+
 
 class BBitmap;
 class BMediaFile;
@@ -67,6 +69,18 @@ public:
 			void				SetVolume(float volume);
 			float				Volume() const { return fVolume; }
 
+			int32				SubtitleCount() const;
+			bool				SubtitleTrack(int32 index,
+									SubtitleTrackInfo* info) const;
+			int32				SelectedSubtitle() const;
+			void				SelectSubtitle(int32 index);
+			void				ToggleSubtitles();
+			BString				SubtitleText(bigtime_t time) const;
+			int32				AddSubtitleTrack(const char* language,
+									const char* name, bool automatic);
+			void				LoadSubtitleText(const char* language,
+									bool automatic, const char* text);
+
 			BBitmap*			LockFrame();
 									// the picture to show, NULL if none yet;
 									// UnlockFrame() afterwards in any case
@@ -75,8 +89,15 @@ public:
 									// the picture the screen shows by
 									// itself, when the overlay was free:
 									// LockFrame() is not needed then
+			void				DisableOverlay();
+			void				NoteDrawn();
+									// the view drew a picture of its own
+									// (not the overlay): counted for the
+									// statistics of CINEMA_PLAYER_DEBUG
 
 private:
+			void				_Start(const char* address,
+									bigtime_t startAt);
 	static	status_t			_OpenEntry(void* data);
 			void				_Open();
 	static	status_t			_VideoEntry(void* data);
@@ -120,12 +141,21 @@ private:
 			bool				fRelay;			// a stream of the relay
 			bigtime_t			fRelayDuration;
 			std::atomic<bigtime_t> fFirstTime;	// of the stream, or -1
+			// the time of the pictures, counted from where the video starts or
+			// was sought to: the ffmpeg add-on gives start_time in the time
+			// base of the stream, not in microseconds (its packets carry the
+			// raw pts and dts), so header.start_time cannot be trusted
+			bigtime_t			fFrameDuration = 0;	// 0 if the rate is unknown
+			bigtime_t			fFrameBase = 0;
+			int64				fFrameCount = 0;	// with fVideoLock
 
 			bool				fLive;			// played with FFmpeg
+			std::atomic<bool>	fNoOverlay;
 
 			AVFormatContext*	fLiveFormat;
 			AVCodecContext*		fLiveVideo;
 			AVCodecContext*		fLiveAudio;
+			void*				fLiveHwOpaque;
 			SwrContext*			fLiveResampler;
 			SwsContext*			fLiveScaler;
 			int					fLiveVideoIndex;
@@ -138,6 +168,8 @@ private:
 			int64				fLiveSoundEnd;	// stream time of the sound queued
 			std::vector<uint8>	fLivePcm;
 			std::atomic<bool>	fLiveStopRead;	// the reader of the stream stops
+
+			Subtitles			fSubtitles;
 
 			BMediaFile*			fFile;
 			BMediaTrack*		fVideoTrack;
@@ -180,6 +212,24 @@ private:
 			std::atomic<bool>	fEndSent;
 			std::atomic<bool>	fFramePending;	// a kMsgPlayerFrame on its way
 			float				fVolume;
+
+			// statistics, every 5 seconds with CINEMA_PLAYER_DEBUG
+			void				_Stats();
+	static	void				_CpuTimes(bigtime_t& team, bigtime_t& system,
+									int32& cpus);
+									// the CPU time of Cinema and of all the
+									// processors, and how many there are
+			bool				fStatsOn = false;
+			bigtime_t			fStatStart = 0;
+			bigtime_t			fStatTeamCpu = 0;
+			bigtime_t			fStatSystemCpu = 0;
+			std::atomic<int32>	fStatDecoded{0};
+			std::atomic<int32>	fStatShown{0};
+			std::atomic<int32>	fStatLate{0};
+			std::atomic<int32>	fStatMerged{0};
+			std::atomic<int32>	fStatDrawn{0};
+			bigtime_t			fStatDecodeTime = 0;
+			bigtime_t			fStatCopyTime = 0;
 
 			thread_id			fOpenThread;
 			thread_id			fVideoThread;

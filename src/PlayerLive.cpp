@@ -19,7 +19,10 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/channel_layout.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/mem.h>
 #include <libavutil/opt.h>
+#include <libavutil/pixdesc.h>
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 }
@@ -30,6 +33,7 @@ extern "C" {
 
 #include <Autolock.h>
 #include <Bitmap.h>
+#include <OS.h>
 #include <SoundPlayer.h>
 
 #include <algorithm>
@@ -39,6 +43,7 @@ extern "C" {
 
 #include "LiveAddress.h"
 #include "Messages.h"
+#include "VideoLimits.h"
 
 
 #if defined(__arm__) && !defined(__aarch64__)
@@ -71,15 +76,79 @@ Player::_LiveInterrupt(void* data)
 }
 
 
-static AVCodecContext*
-open_decoder(AVFormatContext* format, int index, bool video)
+static enum AVPixelFormat
+get_hw_format(AVCodecContext* context, const enum AVPixelFormat* formats)
 {
-	if (index < 0)
-		return NULL;
-	AVCodecParameters* parameters = format->streams[index]->codecpar;
-	const AVCodec* codec = avcodec_find_decoder(parameters->codec_id);
-	if (codec == NULL)
-		return NULL;
+	const enum AVPixelFormat wanted =
+		*(const enum AVPixelFormat*)context->opaque;
+	for (const enum AVPixelFormat* format = formats;
+		format != NULL && *format != AV_PIX_FMT_NONE; format++) {
+		if (*format == wanted)
+			return *format;
+	}
+	return AV_PIX_FMT_NONE;
+}
+
+
+/*!	The hardware the decoder may use, if FFmpeg was built with one and
+	the machine has it. CINEMA_HWACCEL=0 turns it off, a name such as
+	vaapi or vdpau asks for that one only.
+*/
+static bool
+try_hardware(AVCodecContext* decoder, const AVCodec* codec, void** opaque)
+{
+	const char* requested = getenv("CINEMA_HWACCEL");
+	if (requested != NULL && strcmp(requested, "0") == 0)
+		return false;
+	enum AVHWDeviceType only = AV_HWDEVICE_TYPE_NONE;
+	if (requested != NULL && requested[0] != '\0'
+		&& strcmp(requested, "1") != 0)
+		only = av_hwdevice_find_type_by_name(requested);
+
+	enum AVHWDeviceType type = AV_HWDEVICE_TYPE_NONE;
+	while ((type = av_hwdevice_iterate_types(type))
+		!= AV_HWDEVICE_TYPE_NONE) {
+		if (only != AV_HWDEVICE_TYPE_NONE && type != only)
+			continue;
+		for (int i = 0; ; i++) {
+			const AVCodecHWConfig* config = avcodec_get_hw_config(codec, i);
+			if (config == NULL)
+				break;
+			if (config->device_type != type
+				|| (config->methods
+					& AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX) == 0)
+				continue;
+			AVBufferRef* device = NULL;
+			if (av_hwdevice_ctx_create(&device, type, NULL, NULL, 0)
+				< 0) {
+				av_buffer_unref(&device);
+				continue;
+			}
+			AVPixelFormat* wanted = (AVPixelFormat*)av_malloc(
+				sizeof(*wanted));
+			if (wanted == NULL) {
+				av_buffer_unref(&device);
+				return false;
+			}
+			*wanted = config->pix_fmt;
+			decoder->hw_device_ctx = device;
+			decoder->opaque = wanted;
+			decoder->get_format = get_hw_format;
+			*opaque = wanted;
+			if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
+				fprintf(stderr, "live: hardware %s\n",
+					av_hwdevice_get_type_name(type));
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+
+static AVCodecContext*
+make_decoder(AVCodecParameters* parameters, const AVCodec* codec, bool video)
+{
 	AVCodecContext* decoder = avcodec_alloc_context3(codec);
 	if (decoder == NULL)
 		return NULL;
@@ -90,10 +159,38 @@ open_decoder(AVFormatContext* format, int index, bool video)
 		if (kSlowProcessor)
 			decoder->flags2 |= AV_CODEC_FLAG2_FAST;
 	}
+	return decoder;
+}
+
+
+static AVCodecContext*
+open_decoder(AVFormatContext* format, int index, bool video, void** opaque)
+{
+	if (index < 0)
+		return NULL;
+	AVCodecParameters* parameters = format->streams[index]->codecpar;
+	const AVCodec* codec = avcodec_find_decoder(parameters->codec_id);
+	if (codec == NULL)
+		return NULL;
+	AVCodecContext* decoder = make_decoder(parameters, codec, video);
+	if (decoder == NULL)
+		return NULL;
+	if (video && opaque != NULL && try_hardware(decoder, codec, opaque)) {
+		if (avcodec_open2(decoder, codec, NULL) >= 0)
+			return decoder;
+		avcodec_free_context(&decoder);
+		av_free(*opaque);
+		*opaque = NULL;
+		decoder = make_decoder(parameters, codec, video);
+		if (decoder == NULL)
+			return NULL;
+	}
 	if (avcodec_open2(decoder, codec, NULL) < 0) {
 		avcodec_free_context(&decoder);
 		return NULL;
 	}
+	if (video && getenv("CINEMA_PLAYER_DEBUG") != NULL && *opaque == NULL)
+		fprintf(stderr, "live: hardware none\n");
 	return decoder;
 }
 
@@ -110,40 +207,83 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 {
 	if (width <= 0 || height <= 0)
 		return false;
+
+	float scale = 1.0f;
+	int32 limit = VideoHeightLimit();
+	if (height > limit)
+		scale = (float)limit / height;
+	BScreen screen(B_MAIN_SCREEN_ID);
+	if (screen.IsValid()) {
+		BRect frame = screen.Frame();
+		float screenScale = (frame.Width() + 1) / width;
+		if (screenScale < scale)
+			scale = screenScale;
+		screenScale = (frame.Height() + 1) / height;
+		if (screenScale < scale)
+			scale = screenScale;
+	}
+	if (scale < 1.0f) {
+		width = std::max((int32)2,
+			((int32)(width * scale + 0.5f)) & ~1);
+		height = std::max((int32)2, (int32)(height * scale + 0.5f));
+	}
+
 	BAutolock locker(fFrameLock);
 
-	int32 sizes[3][2] = { { width, height } };
-	int32 count = 1;
-	if (width > 1024 || height > 600) {
-		float scale = std::min(1024.0f / width, 600.0f / height);
-		sizes[count][0] = (int32)(width * scale) & ~1;
-		sizes[count][1] = (int32)(height * scale);
-		count++;
-	}
-	if (width >= 640) {
-		sizes[count][0] = (width / 2) & ~1;
-		sizes[count][1] = height / 2;
-		count++;
-	}
-	for (int32 i = 0; i < count; i++) {
-		BRect bounds(0, 0, sizes[i][0] - 1, sizes[i][1] - 1);
-		BBitmap* overlay = new BBitmap(bounds, B_BITMAP_WILL_OVERLAY
-			| B_BITMAP_RESERVE_OVERLAY_CHANNEL, B_YCbCr422);
-		if (overlay->InitCheck() != B_OK) {
-			delete overlay;
-			continue;
+	if (!fNoOverlay) {
+		int32 sizes[3][2] = { { width, height } };
+		int32 count = 1;
+		if (width > 1024 || height > 600) {
+			float scale = std::min(1024.0f / width, 600.0f / height);
+			sizes[count][0] = (int32)(width * scale) & ~1;
+			sizes[count][1] = (int32)(height * scale);
+			count++;
 		}
-		fOverlay = overlay;
-		fFront = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, B_YCbCr422);
-		fBack = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK, B_YCbCr422);
-		fLivePixels = AV_PIX_FMT_YUYV422;
-		return fFront->InitCheck() == B_OK && fBack->InitCheck() == B_OK;
+		if (width >= 640) {
+			sizes[count][0] = (width / 2) & ~1;
+			sizes[count][1] = height / 2;
+			count++;
+		}
+		// only YCbCr422: FFmpeg's YUYV422 is the same packed layout, while
+		// Haiku's B_YCbCr420 is not FFmpeg's planar YUV420P
+		for (int32 i = 0; i < count; i++) {
+			int32 width = sizes[i][0] & ~1;
+			int32 height = sizes[i][1];
+			if (width < 2 || height < 2)
+				continue;
+			BRect bounds(0, 0, width - 1, height - 1);
+			BBitmap* overlay = new BBitmap(bounds, B_BITMAP_WILL_OVERLAY
+				| B_BITMAP_RESERVE_OVERLAY_CHANNEL, B_YCbCr422);
+			if (overlay->InitCheck() != B_OK) {
+				delete overlay;
+				continue;
+			}
+			BBitmap* front = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK,
+				B_YCbCr422);
+			BBitmap* back = new BBitmap(bounds, B_BITMAP_NO_SERVER_LINK,
+				B_YCbCr422);
+			if (front->InitCheck() != B_OK || back->InitCheck() != B_OK) {
+				delete front;
+				delete back;
+				delete overlay;
+				continue;
+			}
+			fOverlay = overlay;
+			fFront = front;
+			fBack = back;
+			fLivePixels = AV_PIX_FMT_YUYV422;
+			if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+				fprintf(stderr, "live: %dx%d 422 overlay\n", width, height);
+			return true;
+		}
 	}
 
 	BRect bounds(0, 0, width - 1, height - 1);
 	fFront = new BBitmap(bounds, 0, B_RGB32);
 	fBack = new BBitmap(bounds, 0, B_RGB32);
 	fLivePixels = AV_PIX_FMT_BGRA;
+	if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+		fprintf(stderr, "live: %dx%d bgra\n", width, height);
 	return fFront->InitCheck() == B_OK && fBack->InitCheck() == B_OK;
 }
 
@@ -210,10 +350,11 @@ Player::_OpenLive()
 		format->streams[i]->discard = (int)i == fLiveVideoIndex
 			|| (int)i == fLiveAudioIndex ? AVDISCARD_DEFAULT : AVDISCARD_ALL;
 	}
-	fLiveVideo = open_decoder(format, fLiveVideoIndex, true);
+	fLiveVideo = open_decoder(format, fLiveVideoIndex, true,
+		&fLiveHwOpaque);
 	if (fLiveVideo == NULL)
 		fLiveVideoIndex = -1;
-	fLiveAudio = open_decoder(format, fLiveAudioIndex, false);
+	fLiveAudio = open_decoder(format, fLiveAudioIndex, false, NULL);
 	if (fLiveAudio == NULL)
 		fLiveAudioIndex = -1;
 	fLiveLate = fLiveOnTime = 0;
@@ -223,6 +364,8 @@ Player::_OpenLive()
 	if (fLiveVideo != NULL && !_SetUpBitmaps(fLiveVideo->width & ~1,
 			fLiveVideo->height)) {
 		avcodec_free_context(&fLiveVideo);
+		av_free(fLiveHwOpaque);
+		fLiveHwOpaque = NULL;
 		fLiveVideoIndex = -1;
 	}
 
@@ -320,6 +463,8 @@ Player::_CloseLive()
 		avcodec_free_context(&fLiveAudio);
 	if (fLiveVideo != NULL)
 		avcodec_free_context(&fLiveVideo);
+	av_free(fLiveHwOpaque);
+	fLiveHwOpaque = NULL;
 	if (fLiveFormat != NULL)
 		avformat_close_input(&fLiveFormat);
 	fLiveVideoIndex = fLiveAudioIndex = -1;
@@ -337,8 +482,10 @@ Player::_LiveVideoStream(int32 maxHeight)
 	AVFormatContext* format = fLiveFormat;
 	int best = av_find_best_stream(format, AVMEDIA_TYPE_VIDEO, -1, -1, NULL,
 		0);
-	if (maxHeight <= 0 || best < 0)
+	if (best < 0)
 		return best;
+	maxHeight = maxHeight > 0 ? LimitVideoHeight(maxHeight)
+		: VideoHeightLimit();
 
 	int chosen = -1;
 	int chosenHeight = 0;
@@ -452,10 +599,11 @@ Player::_LiveRender(AVFrame* frame)
 		return true;
 	int width = fBack->Bounds().IntegerWidth() + 1;
 	int height = fBack->Bounds().IntegerHeight() + 1;
+	int flags = frame->width == width && frame->height == height
+		? SWS_POINT : SWS_FAST_BILINEAR;
 	fLiveScaler = sws_getCachedContext(fLiveScaler, frame->width,
 		frame->height, (AVPixelFormat)frame->format, width, height,
-		(AVPixelFormat)fLivePixels,
-		kSlowProcessor ? SWS_FAST_BILINEAR : SWS_BILINEAR, NULL, NULL, NULL);
+		(AVPixelFormat)fLivePixels, flags, NULL, NULL, NULL);
 	if (fLiveScaler == NULL)
 		return false;
 	uint8_t* planes[4] = { (uint8_t*)fBack->Bits(), NULL, NULL, NULL };
@@ -558,10 +706,43 @@ Player::_LiveLoop()
 	const int video = fLiveVideoIndex;
 	const int audio = fLiveAudioIndex;
 
+	uint64 pixels = fLiveVideo != NULL
+		? (uint64)fLiveVideo->width * fLiveVideo->height : 0;
+	bool large = pixels > 1280ULL * 720;
+	bool huge = pixels > 1920ULL * 1080;
+	uint64 memory = 0;
+	system_info info;
+	if (get_system_info(&info) == B_OK)
+		memory = (uint64)info.max_pages * B_PAGE_SIZE;
+	bool lowMemory = memory > 0 && memory < 1024ULL * 1024 * 1024;
+	size_t maxDecodedFrames = kMaxDecodedFrames;
+	int64 maxQueuedVideo = kMaxQueuedVideo;
+	size_t maxReadPackets = kMaxReadPackets;
+	if (large) {
+		maxDecodedFrames = 8;
+		maxQueuedVideo = 4000000;
+		maxReadPackets = 1000;
+	}
+	if (huge) {
+		maxDecodedFrames = 6;
+		maxQueuedVideo = 2500000;
+		maxReadPackets = 700;
+	}
+	if (lowMemory) {
+		maxDecodedFrames = std::min(maxDecodedFrames, (size_t)4);
+		maxQueuedVideo = std::min(maxQueuedVideo, (int64)2500000);
+		maxReadPackets = std::min(maxReadPackets, (size_t)600);
+	}
+
 	// CINEMA_LIVE_DEBUG=1: what happens, every five seconds
 	const bool debug = getenv("CINEMA_LIVE_DEBUG") != NULL;
 	int decoded = 0, shown = 0, dropped = 0, lateCount = 0, audioFrames = 0;
 	bigtime_t nextReport = system_time() + 5000000;
+	bigtime_t lastCpuAt = system_time(), lastTeamCpu = 0, lastSystemCpu = 0;
+	{
+		int32 cpus;
+		_CpuTimes(lastTeamCpu, lastSystemCpu, cpus);
+	}
 	if (debug) {
 		fprintf(stderr, "live: video %d (%dx%d), audio %d of %u streams\n",
 			video, fLiveVideo != NULL ? fLiveVideo->width : 0,
@@ -604,13 +785,16 @@ Player::_LiveLoop()
 				for (int guard = 0; guard < 250 && !fQuit; guard++) {
 					if (fPaused) {
 						guard--;
-						snooze(20000);
+						snooze_until(system_time() + 20000,
+							B_SYSTEM_TIMEBASE);
 						continue;
 					}
 					int64 delay = at - _LiveClock();
 					if (delay <= 0)
 						break;
-					snooze(std::min(delay, (int64)20000));
+					bigtime_t sleep = (bigtime_t)std::min(delay,
+						(int64)50000);
+					snooze_until(system_time() + sleep, B_SYSTEM_TIMEBASE);
 				}
 				wait = false;
 				now = _LiveClock();
@@ -643,14 +827,14 @@ Player::_LiveLoop()
 
 	// decodes the pictures near the clock, or any once the queue is long
 	auto pumpVideo = [&](bool all) -> bool {
-		while (!packets.empty() && frames.size() < kMaxDecodedFrames
+		while (!packets.empty() && frames.size() < maxDecodedFrames
 			&& !fQuit) {
 			AVPacket* next = packets.front();
 			if (!all) {
 				int64 at = dueAt(packetMicros(next));
 				bool near = at == AV_NOPTS_VALUE
 					|| at <= _LiveClock() + kDecodeAhead;
-				if (!near && queuedSpan() < kMaxQueuedVideo)
+				if (!near && queuedSpan() < maxQueuedVideo)
 					break;
 			}
 			packets.pop_front();
@@ -667,9 +851,35 @@ Player::_LiveLoop()
 					fClockBase = 0;
 					fClockStart = system_time();
 				}
+				AVFrame* decodedFrame = frame;
+				AVFrame* hardwareFrame = NULL;
+				const AVPixFmtDescriptor* description =
+					av_pix_fmt_desc_get((AVPixelFormat)frame->format);
+				if (description != NULL
+					&& (description->flags & AV_PIX_FMT_FLAG_HWACCEL)) {
+					hardwareFrame = av_frame_alloc();
+					if (hardwareFrame != NULL
+						&& av_hwframe_transfer_data(hardwareFrame,
+							frame, 0) == 0) {
+						av_frame_copy_props(hardwareFrame, frame);
+						hardwareFrame->best_effort_timestamp =
+							frame->best_effort_timestamp;
+						hardwareFrame->pts = frame->pts;
+						decodedFrame = hardwareFrame;
+					} else {
+						av_frame_free(&hardwareFrame);
+						decodedFrame = NULL;
+					}
+				}
 				decoded++;
-				if (AVFrame* copy = av_frame_clone(frame))
-					frames.push_back(copy);
+				if (decodedFrame != NULL) {
+					AVFrame* copy = decodedFrame == frame
+						? av_frame_clone(frame) : hardwareFrame;
+					if (copy != NULL)
+						frames.push_back(copy);
+					else
+						av_frame_free(&hardwareFrame);
+				}
 				av_frame_unref(frame);
 			}
 			if (!showFrames(false))
@@ -691,7 +901,8 @@ Player::_LiveLoop()
 			if (room == 0) {
 				if (video >= 0 && (!pumpVideo(false) || !showFrames(false)))
 					return false;
-				snooze(5000);
+				snooze_until(system_time() + 5000,
+					B_SYSTEM_TIMEBASE);
 				continue;
 			}
 			size_t bytes = std::min(room, fLivePcm.size() - offset);
@@ -714,10 +925,11 @@ Player::_LiveLoop()
 			bool full;
 			{
 				std::lock_guard<std::mutex> locker(readLock);
-				full = read.size() >= kMaxReadPackets;
+				full = read.size() >= maxReadPackets;
 			}
 			if (full) {
-				snooze(20000);
+				snooze_until(system_time() + 20000,
+					B_SYSTEM_TIMEBASE);
 				continue;
 			}
 			if (av_read_frame(format, got) < 0)
@@ -738,7 +950,8 @@ Player::_LiveLoop()
 
 	while (!fQuit && !failed) {
 		if (fPaused) {
-			snooze(40000);
+			snooze_until(system_time() + 40000,
+				B_SYSTEM_TIMEBASE);
 			continue;
 		}
 		AVPacket* next = NULL;
@@ -755,7 +968,7 @@ Player::_LiveLoop()
 			// nothing read yet: the pictures that are due meanwhile
 			if (video >= 0 && (!pumpVideo(false) || !showFrames(false)))
 				failed = true;
-			snooze(5000);
+			snooze_until(system_time() + 5000, B_SYSTEM_TIMEBASE);
 			continue;
 		}
 		if (next != NULL) {
@@ -801,6 +1014,16 @@ Player::_LiveLoop()
 			failed = true;
 
 		if (debug && system_time() > nextReport) {
+			// how busy Cinema and the whole system were since the last time
+			bigtime_t now = system_time(), team, system;
+			int32 cpus;
+			_CpuTimes(team, system, cpus);
+			double capacity = (now - lastCpuAt) * (double)cpus;
+			double teamLoad = 100.0 * (team - lastTeamCpu) / capacity;
+			double systemLoad = 100.0 * (system - lastSystemCpu) / capacity;
+			lastCpuAt = now;
+			lastTeamCpu = team;
+			lastSystemCpu = system;
 			size_t fill;
 			{
 				BAutolock ring(fRingLock);
@@ -815,19 +1038,21 @@ Player::_LiveLoop()
 				: dueAt(_LiveFrameMicros(video, frames.front()));
 			fprintf(stderr, "live: decoded %d shown %d dropped %d late %d "
 				"audio %d skip %d | clock %.2f next %.2f | packets %zu "
-				"(%.1fs) frames %zu read %zu sound %.2fs\n", decoded, shown, dropped,
+				"(%.1fs) frames %zu read %zu sound %.2fs | %s cinema %.0f%% "
+				"system %.0f%%\n", decoded, shown, dropped,
 				lateCount, audioFrames, fLiveSkipLevel, _LiveClock() / 1e6,
 				head / 1e6, packets.size(), queuedSpan() / 1e6, frames.size(),
 				readCount,
 				fFrameSize > 0 && fSound.frame_rate > 0
-					? fill / (double)fFrameSize / fSound.frame_rate : 0.0);
+					? fill / (double)fFrameSize / fSound.frame_rate : 0.0,
+				fOverlay != NULL ? "overlay" : "bgra", teamLoad, systemLoad);
 			decoded = shown = dropped = lateCount = audioFrames = 0;
 			nextReport += 5000000;
 		}
 
 		// without sound nothing else paces the reading
-		if (!failed && video >= 0 && frames.size() >= kMaxDecodedFrames
-			&& queuedSpan() >= kMaxQueuedVideo && !showFrames(true))
+		if (!failed && video >= 0 && frames.size() >= maxDecodedFrames
+			&& queuedSpan() >= maxQueuedVideo && !showFrames(true))
 			failed = true;
 	}
 
@@ -851,7 +1076,7 @@ Player::_LiveLoop()
 			if (fRingFill == 0 || fSoundPlayer == NULL)
 				break;
 		}
-		snooze(20000);
+		snooze_until(system_time() + 20000, B_SYSTEM_TIMEBASE);
 	}
 	if (!fQuit && !fEndSent.exchange(true))
 		fTarget.SendMessage(started || !failed ? kMsgPlayerEnded

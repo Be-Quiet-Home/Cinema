@@ -9,6 +9,7 @@
 #include <Path.h>
 #include <String.h>
 
+#include "LiveAddress.h"
 #include "CinemaWindow.h"
 #include "Messages.h"
 #include "Provider.h"
@@ -38,8 +39,11 @@ public:
 				continue;
 			}
 			BString address(argv[i]);
+			// a live address too, which plays with FFmpeg: a file such as
+			// cinema-live:?url=%2Fboot%2Fhome%2Fvideo.mp4 as well
 			if (address.IStartsWith("http://")
-				|| address.IStartsWith("https://")) {
+				|| address.IStartsWith("https://")
+				|| LiveAddress::Is(argv[i])) {
 				_PlayAddress(argv[i], argv[i]);
 				continue;
 			}

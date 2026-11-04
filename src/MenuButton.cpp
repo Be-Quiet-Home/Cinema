@@ -24,7 +24,7 @@
 using namespace Style;
 
 
-static const float kSize = 32;
+static const float kBaseSize = 32;
 
 
 MenuButton::MenuButton()
@@ -41,14 +41,14 @@ MenuButton::MenuButton()
 BSize
 MenuButton::MinSize()
 {
-	return BSize(kSize, kSize);
+	return BSize(S(kBaseSize), S(kBaseSize));
 }
 
 
 BSize
 MenuButton::MaxSize()
 {
-	return BSize(kSize, kSize);
+	return BSize(S(kBaseSize), S(kBaseSize));
 }
 
 
@@ -60,14 +60,14 @@ MenuButton::Draw(BRect updateRect)
 	SetHighColor(kBar);
 	FillRect(bounds);
 	if (fHover)
-		FillRound(this, bounds.InsetByCopy(2, 2), 6, kCard);
+		FillRound(this, bounds.InsetByCopy(S(2), S(2)), S(6), kCard);
 	SetDrawingMode(B_OP_COPY);
 	SetHighColor(fHover ? kText : kTextDim);
-	float left = bounds.left + 9;
-	float right = bounds.right - 9;
+	float left = bounds.left + S(9);
+	float right = bounds.right - S(9);
 	float middle = bounds.top + bounds.Height() / 2;
-	for (float y : { middle - 6, middle, middle + 6 })
-		FillRect(BRect(left, y - 1, right, y));
+	for (float y : { middle - S(6), middle, middle + S(6) })
+		FillRect(BRect(left, y - S(1), right, y));
 }
 
 
@@ -83,6 +83,7 @@ MenuButton::MouseDown(BPoint where)
 	menu->AddItem(new BMenuItem(B_TRANSLATE("About Cinema"),
 		new BMessage(kMsgShowAbout)));
 	menu->SetTargetForItems(Window());
+	ScaleMenu(menu);
 	menu->Go(ConvertToScreen(BPoint(Bounds().right, Bounds().bottom)), true,
 		false, true);
 }

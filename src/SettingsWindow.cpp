@@ -22,11 +22,14 @@
 #include <PopUpMenu.h>
 #include <ScrollView.h>
 #include <StringView.h>
+#include <TabView.h>
 #include <TextControl.h>
 #include <Url.h>
 
 #include "Messages.h"
+#include "Style.h"
 #include "TvLists.h"
+#include "VideoLimits.h"
 
 #include <algorithm>
 #include <utility>
@@ -61,7 +64,8 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 	const std::vector<Provider>& providers,
 	const std::vector<BString>& folders)
 	:
-	BWindow(BRect(0, 0, 480, 420), B_TRANSLATE("Cinema settings"),
+	BWindow(BRect(0, 0, Style::S(480), Style::S(300)),
+		B_TRANSLATE("Cinema settings"),
 		B_TITLED_WINDOW, B_NOT_ZOOMABLE | B_AUTO_UPDATE_SIZE_LIMITS
 			| B_CLOSE_ON_ESCAPE),
 	fTarget(target),
@@ -78,28 +82,14 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 		new BMessage(kMsgGetKey));
 	fKeyStatus = new BStringView("status", B_TRANSLATE("With a key, the "
 		"library gets posters, plots and casts. It is free."));
-	fKeyStatus->SetExplicitMinSize(BSize(300, B_SIZE_UNSET));
-
-	BBox* library = new BBox("library");
-	library->SetLabel(B_TRANSLATE("Library"));
-	BLayoutBuilder::Group<>(library, B_VERTICAL, B_USE_SMALL_SPACING)
-		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_BIG_SPACING,
-			B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING)
-		.AddGroup(B_HORIZONTAL)
-			.Add(fKey)
-			.Add(fCheck)
-		.End()
-		.AddGroup(B_HORIZONTAL)
-			.Add(fKeyStatus, 10)
-			.Add(getKey)
-		.End();
+	fKeyStatus->SetExplicitMinSize(BSize(Style::S(300), B_SIZE_UNSET));
 
 	// the folders of the library
 	fFolders = new BListView("folders");
 	fFolders->SetSelectionMessage(new BMessage(kMsgFolderSelected));
 	BScrollView* scroll = new BScrollView("folders scroll", fFolders, 0,
 		false, true);
-	scroll->SetExplicitMinSize(BSize(B_SIZE_UNSET, 90));
+	scroll->SetExplicitMinSize(BSize(B_SIZE_UNSET, Style::S(90)));
 	BButton* add = new BButton("add", B_TRANSLATE("Add" B_UTF8_ELLIPSIS),
 		new BMessage(kMsgAdd));
 	fRemove = new BButton("remove", B_TRANSLATE("Remove"),
@@ -123,7 +113,7 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 	fTvLists->SetSelectionMessage(new BMessage(kMsgTvSelected));
 	BScrollView* tvScroll = new BScrollView("tv scroll", fTvLists, 0,
 		false, true);
-	tvScroll->SetExplicitMinSize(BSize(B_SIZE_UNSET, 60));
+	tvScroll->SetExplicitMinSize(BSize(B_SIZE_UNSET, Style::S(60)));
 	fTvAddress = new BTextControl("tv address", B_TRANSLATE("M3U list:"), "",
 		new BMessage(kMsgTvAdd));
 	fTvAddress->SetModificationMessage(new BMessage(kMsgTvAddress));
@@ -158,28 +148,13 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 		message->AddString("name", country.first);
 		countryMenu->AddItem(new BMenuItem(country.first.String(), message));
 	}
+	Style::ScaleMenu(countryMenu);
 	fTvCountry = new BMenuField("tv country",
 		B_TRANSLATE("Free channels of:"), countryMenu);
 
 	BStringView* tvNote = new BStringView("tv note",
 		B_TRANSLATE("The address of a list of channels, or drop an .m3u file "
 			"on Cinema."));
-
-	BBox* tv = new BBox("tv");
-	tv->SetLabel(B_TRANSLATE("TV channels"));
-	BLayoutBuilder::Group<>(tv, B_VERTICAL, B_USE_SMALL_SPACING)
-		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_BIG_SPACING,
-			B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING)
-		.Add(tvScroll, 10)
-		.Add(fTvCountry)
-		.AddGroup(B_HORIZONTAL)
-			.Add(fTvAddress, 10)
-			.Add(fTvAdd)
-		.End()
-		.AddGroup(B_HORIZONTAL)
-			.Add(tvNote, 10)
-			.Add(fTvRemove)
-		.End();
 
 	// how the videos play
 	fPlayInCinema = new BCheckBox("cinema", B_TRANSLATE("Play the videos in "
@@ -193,7 +168,10 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 	// how big the pictures of YouTube and PeerTube are
 	BPopUpMenu* qualities = new BPopUpMenu("qualities");
 	static const int32 kHeights[] = { 0, 360, 480, 720, 1080 };
+	int32 limit = VideoHeightLimit();
 	for (int32 height : kHeights) {
+		if (height > limit)
+			continue;
 		BString label;
 		if (height == 0)
 			label = B_TRANSLATE("Automatic");
@@ -207,16 +185,16 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 	}
 	if (qualities->FindMarked() == NULL)
 		qualities->ItemAt(0)->SetMarked(true);
+	Style::ScaleMenu(qualities);
 	fQuality = new BMenuField("quality", B_TRANSLATE("Video quality:"),
 		qualities);
 	BStringView* qualityNote = new BStringView("quality note",
 		B_TRANSLATE("Above 360p, YouTube takes longer to start."));
 
 	BBox* playback = new BBox("playback");
-	playback->SetLabel(B_TRANSLATE("Playback"));
+	playback->SetBorder(B_NO_BORDER);
 	BLayoutBuilder::Group<>(playback, B_VERTICAL, B_USE_SMALL_SPACING)
-		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_BIG_SPACING,
-			B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING)
+		.SetInsets(0)
 		.Add(fPlayInCinema)
 		.Add(fResume)
 		.Add(fQuality)
@@ -235,6 +213,7 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 	}
 	if (sources->FindMarked() == NULL && sources->CountItems() > 0)
 		sources->ItemAt(0)->SetMarked(true);
+	Style::ScaleMenu(sources);
 	fSource = new BMenuField("source", B_TRANSLATE("Search first in:"),
 		sources);
 
@@ -245,13 +224,58 @@ SettingsWindow::SettingsWindow(const BMessenger& target,
 			B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING)
 		.Add(fSource);
 
-	BLayoutBuilder::Group<>(this, B_VERTICAL, B_USE_DEFAULT_SPACING)
+	// three tabs, so that the window fits a small screen such as the
+	// AC100's 1024x600: the library, the TV channels, how the videos play
+	BView* libraryTab = new BView(B_TRANSLATE("Library"), 0);
+	BLayoutBuilder::Group<>(libraryTab, B_VERTICAL, B_USE_DEFAULT_SPACING)
 		.SetInsets(B_USE_WINDOW_SPACING)
-		.Add(library)
-		.Add(foldersBox, 10)
-		.Add(tv, 10)
+		.AddGroup(B_HORIZONTAL)
+			.Add(fKey)
+			.Add(fCheck)
+		.End()
+		.AddGroup(B_HORIZONTAL)
+			.Add(fKeyStatus, 10)
+			.Add(getKey)
+		.End()
+		.Add(foldersBox, 10);
+
+	BView* tvTab = new BView(B_TRANSLATE("TV channels"), 0);
+	BLayoutBuilder::Group<>(tvTab, B_VERTICAL, B_USE_SMALL_SPACING)
+		.SetInsets(B_USE_WINDOW_SPACING)
+		.Add(tvScroll, 10)
+		.Add(fTvCountry)
+		.AddGroup(B_HORIZONTAL)
+			.Add(fTvAddress, 10)
+			.Add(fTvAdd)
+		.End()
+		.AddGroup(B_HORIZONTAL)
+			.Add(tvNote, 10)
+			.Add(fTvRemove)
+		.End();
+
+	BView* playbackTab = new BView(B_TRANSLATE("Playback"), 0);
+	BLayoutBuilder::Group<>(playbackTab, B_VERTICAL, B_USE_DEFAULT_SPACING)
+		.SetInsets(B_USE_WINDOW_SPACING)
 		.Add(playback)
-		.Add(search);
+		.Add(search)
+		.AddGlue();
+
+	BTabView* tabs = new BTabView("tabs", B_WIDTH_FROM_LABEL);
+	tabs->SetBorder(B_NO_BORDER);
+	// the tabs not shown are out of the window: scaled one by one
+	BView* pages[] = { libraryTab, tvTab, playbackTab };
+	for (BView* page : pages) {
+		page->SetViewUIColor(B_PANEL_BACKGROUND_COLOR);
+		Style::ScaleView(page);
+		tabs->AddTab(page);
+	}
+
+	BLayoutBuilder::Group<>(this, B_VERTICAL, 0)
+		.SetInsets(0, B_USE_SMALL_SPACING, 0, 0)
+		.Add(tabs);
+
+	for (int32 i = 0; i < CountChildren(); i++)
+		Style::ScaleView(ChildAt(i));
 
 	BMessage list;
 	for (const BString& folder : folders)
@@ -440,7 +464,8 @@ SettingsWindow::MessageReceived(BMessage* message)
 			_Changed();
 			break;
 		case kMsgQuality:
-			fSettings.videoHeight = message->GetInt32("height", 0);
+			fSettings.videoHeight = LimitVideoHeight(
+				message->GetInt32("height", 0));
 			_Changed();
 			break;
 

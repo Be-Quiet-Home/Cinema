@@ -42,6 +42,13 @@ public:
 									const char* kind);
 			void				Find(const char* id,
 									const char* provider = NULL);
+			void				Subtitles(const char* id,
+									const char* provider = NULL,
+									const char* kind = NULL);
+			void				Subtitle(const char* id, const char* language,
+									bool automatic,
+									const char* provider = NULL,
+									const char* kind = NULL);
 			void				Download(const char* id, const char* folder,
 									const char* provider = NULL);
 			void				Cancel(const char* id);

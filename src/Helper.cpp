@@ -17,6 +17,7 @@
 
 #include "Json.h"
 #include "Messages.h"
+#include "VideoLimits.h"
 
 
 Helper::Helper(BMessenger target)
@@ -118,7 +119,7 @@ void
 Helper::SetHeight(int32 height)
 {
 	BAutolock locker(fLock);
-	fHeight = height;
+	fHeight = LimitVideoHeight(height);
 }
 
 
@@ -181,6 +182,33 @@ Helper::Find(const char* id, const char* provider)
 	request.Set("id", id);
 	request.Set("kind", "video");
 	request.Set("height", (int)fHeight);
+	_Send(request);
+}
+
+
+void
+Helper::Subtitles(const char* id, const char* provider, const char* kind)
+{
+	Json request = Json::MakeObject();
+	request.Set("type", "subtitles");
+	request.Set("provider", _Provider(provider).String());
+	request.Set("id", id);
+	request.Set("kind", kind != NULL && kind[0] != '\0' ? kind : "video");
+	_Send(request);
+}
+
+
+void
+Helper::Subtitle(const char* id, const char* language, bool automatic,
+	const char* provider, const char* kind)
+{
+	Json request = Json::MakeObject();
+	request.Set("type", "subtitle");
+	request.Set("provider", _Provider(provider).String());
+	request.Set("id", id);
+	request.Set("kind", kind != NULL && kind[0] != '\0' ? kind : "video");
+	request.Set("language", language);
+	request.Set("automatic", automatic);
 	_Send(request);
 }
 
@@ -361,6 +389,38 @@ Helper::_Handle(const BString& line)
 		BMessage lost(kMsgLost);
 		lost.AddString("id", answer.GetString("id", "").c_str());
 		fTarget.SendMessage(&lost);
+		return;
+	}
+
+	if (type == "subtitles") {
+		BMessage subtitles(kMsgSubtitles);
+		subtitles.AddString("id", answer.GetString("id", "").c_str());
+		const Json* tracks = answer.Find("tracks");
+		if (tracks != NULL && tracks->IsArray()) {
+			for (const Json& track : tracks->Elements()) {
+				BMessage one;
+				one.AddString("language",
+					track.GetString("language", "").c_str());
+				one.AddString("name",
+					track.GetString("name", "").c_str());
+				one.AddBool("automatic",
+					track.GetBool("automatic", false));
+				subtitles.AddMessage("track", &one);
+			}
+		}
+		fTarget.SendMessage(&subtitles);
+		return;
+	}
+
+	if (type == "subtitle") {
+		BMessage subtitle(kMsgSubtitle);
+		subtitle.AddString("id", answer.GetString("id", "").c_str());
+		subtitle.AddString("language",
+			answer.GetString("language", "").c_str());
+		subtitle.AddBool("automatic",
+			answer.GetBool("automatic", false));
+		subtitle.AddString("text", answer.GetString("text", "").c_str());
+		fTarget.SendMessage(&subtitle);
 		return;
 	}
 

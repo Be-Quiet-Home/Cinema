@@ -6,6 +6,8 @@
 #define CINEMA_WINDOW_H
 
 
+#include <DirectWindow.h>
+#include <Locker.h>
 #include <Message.h>
 #include <Messenger.h>
 #include <String.h>
@@ -19,11 +21,14 @@
 #include "Categories.h"
 #include "Settings.h"
 #include "MediaItem.h"
+#include "Pictures.h"
 #include "Provider.h"
 
 
+class BBitmap;
 class BCardLayout;
 class BMenuField;
+class BView;
 class BMessageRunner;
 class Player;
 class PlayerView;
@@ -37,7 +42,7 @@ class VideoGrid;
 class Worker;
 
 
-class CinemaWindow : public BWindow {
+class CinemaWindow : public BDirectWindow {
 public:
 								CinemaWindow();
 	virtual						~CinemaWindow();
@@ -45,7 +50,10 @@ public:
 	virtual	void				DispatchMessage(BMessage* message,
 									BHandler* handler);
 	virtual	void				MessageReceived(BMessage* message);
+	virtual	void				DirectConnected(direct_buffer_info* info);
 	virtual	bool				QuitRequested();
+
+			void				SetDirectPaused(bool paused);
 
 private:
 	struct Stream {
@@ -71,6 +79,9 @@ private:
 			void				_OpenPlayer(const char* address,
 									const char* title, const char* id);
 			void				_ClosePlayer(bool save = true);
+			void				_RequestSubtitle(const char* language,
+									bool automatic);
+			void				_RequestSelectedSubtitle();
 			void				_SavePosition();
 			void				_ShowSettings();
 			void				_SendFolders();
@@ -96,7 +107,8 @@ private:
 			std::vector<MediaItem> _Videos(BMessage* message);
 			void				_Thumbnails(
 								const std::vector<MediaItem>& videos,
-								int32 generation);
+								int32 generation,
+								float largest = Pictures::kTile);
 			bool				_ShowingDownloads() const;
 			void				_ShowDetails(BMessage* message);
 			void				_Details(BMessage* message);
@@ -113,6 +125,13 @@ private:
 			void				_Play(const char* url, const char* title,
 									const char* id = NULL);
 			void				_SetFullScreen(bool fullScreen);
+			void				_DirectSync();
+			void				_DirectDraw();
+			void				_DirectDrawLocked();
+			void				_DirectCreateLayerLocked();
+			void				_DirectFillLocked(uint32 pixel);
+			void				_DirectBlitLocked(BBitmap* picture);
+			void				_DirectCompositeLocked();
 
 			std::vector<Category> fCategories;
 			std::vector<Provider> fProviders;	// as the helper says
@@ -163,6 +182,22 @@ private:
 			BString				fWanted;		// chosen: worth finding
 			BMessageRunner*		fPrefetchRunner;
 			bool				fFullScreen;
+			bool				fDirectActive;
+			bool				fDirectFailed;
+			bigtime_t			fDirectStart;
+			bool				fDirectFallbackAsked;
+			bool				fDirectPaused;
+			BLocker				fDirectLock;
+			bool				fDirectConnected;
+			void*				fDirectBits;
+			int32				fDirectRowBytes;
+			uint32				fDirectBpp;
+			color_space			fDirectFormat;
+			clipping_rect		fDirectBounds;
+			std::vector<clipping_rect> fDirectClips;
+			BBitmap*			fDirectUi;
+			BView*				fDirectUiView;
+			BMessageRunner*	fDirectRunner;
 			BView*				fTopBar;	// the tabs and the search
 			BString				fChannelName;	// shown in a tab of its own
 			BString				fChannelId;
@@ -172,6 +207,8 @@ private:
 			std::map<BString, BString> fChannelProviders;
 			std::map<BString, BString> fDownloaded;
 									// the files in the folder, by id
+			std::set<BString>	fSubtitlesAsked;
+									// the subtitle tracks already asked
 			std::map<BString, BMessage> fDownloading;
 									// kMsgDownload, with "percent"
 			BRect				fWindowFrame;	// to go back to
