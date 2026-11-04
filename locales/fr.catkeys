@@ -1,95 +1,102 @@
-1	french	application/x-vnd.atomozero-Cinema	3071824546
+1	french	application/x-vnd.atomozero-Cinema	3335016301
 YouTube could not be reached: is the network on?	Window		Impossible de joindre YouTube : le réseau est-il actif ?
-TV series	Window		Séries
 Video quality:	Settings		Qualité vidéo :
-Downloaded	Detail		Downloaded
-Search first in:	Settings		Chercher d'abord dans :
+Downloaded	Detail		Téléchargée
 full documentary	Categories		documentaire complet
+Search first in:	Settings		Chercher d'abord dans :
 Add to favorites	Grid		Ajouter aux favoris
-Add this channel to the tabs	Categories		Ajouter cette chaîne aux onglets
 OK	Window		OK
-Show the latest videos	Grid		Afficher les dernières vidéos
-The key works.	Settings		La clé fonctionne.
-Music	Categories		Musique
-Play	Grid		Lire
+Add this channel to the tabs	Categories		Ajouter cette chaîne aux onglets
 Video downloaded	Window		Vidéo téléchargée
-Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema : des vidéos pour Haiku et RenkuOS, depuis YouTube, l'Internet Archive, PeerTube, BitTorrent et vos propres dossiers.
-Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema a besoin de yt-dlp et python3, et de cinema-helper.py à côté
-Remove	Settings		Retirer
-Download	Detail		Download
+Play	Grid		Lire
 Getting the video ready	Grid		Préparation de la vidéo
-Downloaded	Window		Téléchargés
-Add	Settings		Ajouter
+Downloading…	Detail		Téléchargement…
 Settings…	Window		Réglages…
-Downloading…	Detail		Downloading…
-Remove from the tabs	Categories		Retirer des onglets
 Add to the tabs	Grid		Ajouter aux onglets
-Choose…	Settings		Choisir…
-news today	Categories		actualités du jour
-Get a key…	Settings		Obtenir une clé…
-%peers% sources	Window		%peers% sources
+No subtitles	Player		Aucun sous-titre
 Library	Settings		Bibliothèque
 Cinema settings	Settings		Réglages de Cinema
-M3U list:	Settings		Liste M3U :
 BitTorrent downloads need aria2c, which is not installed.	Window		Les téléchargements BitTorrent nécessitent aria2c, qui n'est pas installé.
-%views% views	Detail		%views% views
-The address of a list of channels, or drop an .m3u file on Cinema.	Settings		L'adresse d'une liste de chaînes, ou déposez un fichier .m3u sur Cinema.
-Back	Detail		Back
-Science	Categories		Science
-Classic cartoons	Categories		Dessins animés classiques
+Back	Detail		Retour
 Documentaries	Categories		Documentaires
-Play	Detail		Play
-Free channels of:	Settings		Chaînes gratuites de :
-TMDB does not accept this key.	Settings		TMDB n'accepte pas cette clé.
 Play the videos in Cinema, not in MediaPlayer	Settings		Lire les vidéos dans Cinema, pas dans MediaPlayer
-Details	Grid		Details
+TMDB does not accept this key.	Settings		TMDB n'accepte pas cette clé.
 technology review	Categories		test technologie
 Continue watching	Window		Reprendre
-%done% of %total%	Window		%done% sur %total%
 Getting the video ready	Player		Préparation de la vidéo
 %eta% left	Window		%eta% restant
-Already downloaded	Grid		Déjà téléchargée
-Go on from where a video was left	Settings		Reprendre les vidéos là où elles ont été laissées
-Add…	Settings		Ajouter…
 The video could not be moved to the Trash: %error%	Window		Impossible de mettre la vidéo à la corbeille : %error%
-Search	Settings		Recherche
+Add…	Settings		Ajouter…
 News	Categories		Actualités
-Type what to look for at the top right	Window		Tapez en haut à droite ce que vous cherchez
 TV	Window		TV
-Cinema	System name		Cinema
-Folders of the library	Settings		Dossiers de la bibliothèque
 TV %country%	Settings		TV %country%
 TV channels	Settings		Chaînes TV
-No videos found	Window		Aucune vidéo trouvée
 Technology	Categories		Technologie
-See all	Home		Tout voir
 TMDB key:	Settings		Clé TMDB :
-Getting the details…	Detail		Getting the details…
-Above 360p, YouTube takes longer to start.	Settings		Au-delà de 360p, YouTube met plus de temps à démarrer.
+Getting the details…	Detail		Récupération des détails…
 With a key, the library gets posters, plots and casts. It is free.	Settings		Avec une clé, la bibliothèque obtient affiches, synopsis et distributions. Elle est gratuite.
-Check	Settings		Vérifier
-Playback	Settings		Lecture
+Above 360p, YouTube takes longer to start.	Settings		Au-delà de 360p, YouTube met plus de temps à démarrer.
 Downloading…	Grid		Téléchargement…
 Stop the download	Grid		Arrêter le téléchargement
 Search	Window		Rechercher
-science explained	Categories		science expliquée
 # or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# ou nom = @iptv channel:<adresse d'une liste M3U> pour les chaînes TV
-Download	Grid		Télécharger
 official music video	Categories		clip officiel
-Movies	Window		Films
 The video could not be downloaded	Window		Impossible de télécharger la vidéo
-Looking for the videos…	Window		Recherche des vidéos…
-# One tab of the top bar per line: name = what to search on YouTube	Categories		# Un onglet de la barre du haut par ligne : nom = ce qu'il faut chercher sur YouTube
 Classic films	Categories		Films classiques
-Automatic	Settings		Automatique
-No videos downloaded yet: right click a video, or press D	Window		Aucune vidéo téléchargée : clic droit sur une vidéo, ou appuyez sur D
 # or name = channel:<id> for the latest videos of a channel	Categories		# ou nom = channel:<id> pour les dernières vidéos d'une chaîne
 MediaPlayer could not be started: %error%	Window		Impossible de lancer MediaPlayer : %error%
 Move to Trash	Grid		Mettre à la corbeille
 Remove from favorites	Grid		Retirer des favoris
-Favorites	Window		Favoris
 Downloaded	Categories		Téléchargées
+This video can't be played here, try another one.	Window		Cette vidéo ne peut pas être lue ici, essayez-en une autre.
+TV series	Window		Séries
+No subtitles available	Player		Aucun sous-titre disponible
+Music	Categories		Musique
+The key works.	Settings		La clé fonctionne.
+Show the latest videos	Grid		Afficher les dernières vidéos
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema : des vidéos pour Haiku et RenkuOS, depuis YouTube, l'Internet Archive, PeerTube, BitTorrent et vos propres dossiers.
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema a besoin de yt-dlp et python3, et de cinema-helper.py à côté
+Download	Detail		Télécharger
+Remove	Settings		Retirer
+Downloaded	Window		Téléchargées
+Add	Settings		Ajouter
+Remove from the tabs	Categories		Retirer des onglets
+Choose…	Settings		Choisir…
+news today	Categories		actualités du jour
+Move to Trash	Detail		Mettre à la corbeille
+Get a key…	Settings		Obtenir une clé…
+%peers% sources	Window		%peers% sources
+M3U list:	Settings		Liste M3U :
+%views% views	Detail		%views% vues
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		L'adresse d'une liste de chaînes, ou déposez un fichier .m3u sur Cinema.
+Science	Categories		Science
+Classic cartoons	Categories		Dessins animés classiques
+Play	Detail		Lire
+Free channels of:	Settings		Chaînes gratuites de :
+Details	Grid		Détails
+%done% of %total%	Window		%done% sur %total%
+forced	Subtitles		forcés
+Go on from where a video was left	Settings		Reprendre les vidéos là où elles ont été laissées
+Already downloaded	Grid		Déjà téléchargée
+Search	Settings		Recherche
+Type what to look for at the top right	Window		Tapez en haut à droite ce que vous cherchez
+Cinema	System name		Cinema
+Folders of the library	Settings		Dossiers de la bibliothèque
+No videos found	Window		Aucune vidéo trouvée
+See all	Home		Tout voir
+Check	Settings		Vérifier
+Playback	Settings		Lecture
+Subtitles	Subtitles		Sous-titres
+science explained	Categories		science expliquée
+Download	Grid		Télécharger
+Movies	Window		Films
+Looking for the videos…	Window		Recherche des vidéos…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# Un onglet de la barre du haut par ligne : nom = ce qu'il faut chercher sur YouTube
+automatic	Player		automatiques
+Automatic	Settings		Automatique
+No videos downloaded yet: right click a video, or press D	Window		Aucune vidéo téléchargée : clic droit sur une vidéo, ou appuyez sur D
+Favorites	Window		Favoris
 Home	Categories		Accueil
 Checking…	Settings		Vérification…
-This video can't be played here, try another one.	Window		Cette vidéo ne peut pas être lue ici, essayez-en une autre.
 About Cinema	Window		À propos de Cinema
+Subtitles	Player		Sous-titres

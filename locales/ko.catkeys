@@ -1,95 +1,102 @@
-1	korean	application/x-vnd.atomozero-Cinema	3071824546
+1	korean	application/x-vnd.atomozero-Cinema	3335016301
 YouTube could not be reached: is the network on?	Window		YouTube에 연결할 수 없습니다. 네트워크가 켜져 있나요?
-TV series	Window		TV 시리즈
 Video quality:	Settings		동영상 화질:
 Downloaded	Detail		다운로드됨
-Search first in:	Settings		먼저 검색할 곳:
 full documentary	Categories		다큐멘터리 전편
+Search first in:	Settings		먼저 검색할 곳:
 Add to favorites	Grid		즐겨찾기에 추가
-Add this channel to the tabs	Categories		이 채널을 탭에 추가
 OK	Window		확인
-Show the latest videos	Grid		최신 동영상 보기
-The key works.	Settings		키가 작동합니다.
-Music	Categories		음악
-Play	Grid		재생
+Add this channel to the tabs	Categories		이 채널을 탭에 추가
 Video downloaded	Window		동영상 다운로드 완료
-Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: YouTube, Internet Archive, PeerTube, BitTorrent 및 내 폴더의 동영상을 보는 Haiku와 RenkuOS용 앱.
-Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema를 사용하려면 yt-dlp와 python3, 그리고 같은 위치의 cinema-helper.py가 필요합니다
-Remove	Settings		제거
-Download	Detail		다운로드
+Play	Grid		재생
 Getting the video ready	Grid		동영상 준비 중
-Downloaded	Window		다운로드한 동영상
-Add	Settings		추가
-Settings…	Window		설정…
 Downloading…	Detail		다운로드 중…
-Remove from the tabs	Categories		탭에서 제거
+Settings…	Window		설정…
 Add to the tabs	Grid		탭에 추가
-Choose…	Settings		선택…
-news today	Categories		오늘의 뉴스
-Get a key…	Settings		키 받기…
-%peers% sources	Window		소스 %peers%개
+No subtitles	Player		자막 없음
 Library	Settings		라이브러리
 Cinema settings	Settings		Cinema 설정
-M3U list:	Settings		M3U 목록:
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent 다운로드에는 aria2c가 필요하지만 설치되어 있지 않습니다.
-%views% views	Detail		조회수 %views%회
-The address of a list of channels, or drop an .m3u file on Cinema.	Settings		채널 목록의 주소를 입력하거나 .m3u 파일을 Cinema에 끌어다 놓으세요.
 Back	Detail		뒤로
-Science	Categories		과학
-Classic cartoons	Categories		고전 만화
 Documentaries	Categories		다큐멘터리
-Play	Detail		재생
-Free channels of:	Settings		무료 채널 국가:
-TMDB does not accept this key.	Settings		TMDB가 이 키를 받아들이지 않습니다.
 Play the videos in Cinema, not in MediaPlayer	Settings		MediaPlayer가 아닌 Cinema에서 동영상 재생
-Details	Grid		세부 정보
+TMDB does not accept this key.	Settings		TMDB가 이 키를 받아들이지 않습니다.
 technology review	Categories		기술 리뷰
 Continue watching	Window		이어서 보기
-%done% of %total%	Window		%total% 중 %done%
 Getting the video ready	Player		동영상 준비 중
 %eta% left	Window		%eta% 남음
-Already downloaded	Grid		이미 다운로드됨
-Go on from where a video was left	Settings		멈춘 곳부터 동영상 이어서 보기
-Add…	Settings		추가…
 The video could not be moved to the Trash: %error%	Window		동영상을 휴지통으로 옮길 수 없습니다: %error%
-Search	Settings		검색
+Add…	Settings		추가…
 News	Categories		뉴스
-Type what to look for at the top right	Window		오른쪽 위에 찾을 내용을 입력하세요
 TV	Window		TV
-Cinema	System name		Cinema
-Folders of the library	Settings		라이브러리 폴더
-TV %country%	Settings		TV %country%
+TV %country%	Settings		%country% TV
 TV channels	Settings		TV 채널
-No videos found	Window		동영상을 찾을 수 없습니다
 Technology	Categories		기술
-See all	Home		모두 보기
 TMDB key:	Settings		TMDB 키:
 Getting the details…	Detail		세부 정보를 가져오는 중…
-Above 360p, YouTube takes longer to start.	Settings		360p보다 높으면 YouTube 시작이 더 오래 걸립니다.
 With a key, the library gets posters, plots and casts. It is free.	Settings		키가 있으면 라이브러리에 포스터, 줄거리, 출연진이 표시됩니다. 무료입니다.
-Check	Settings		확인
-Playback	Settings		재생
+Above 360p, YouTube takes longer to start.	Settings		360p보다 높으면 YouTube 시작이 더 오래 걸립니다.
 Downloading…	Grid		다운로드 중…
 Stop the download	Grid		다운로드 중지
 Search	Window		검색
-science explained	Categories		과학 설명
 # or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# 또는 이름 = @iptv channel:<M3U 목록 주소> (TV 채널)
-Download	Grid		다운로드
 official music video	Categories		공식 뮤직비디오
-Movies	Window		영화
 The video could not be downloaded	Window		동영상을 다운로드할 수 없습니다
-Looking for the videos…	Window		동영상을 찾는 중…
-# One tab of the top bar per line: name = what to search on YouTube	Categories		# 한 줄에 상단 막대의 탭 하나: 이름 = YouTube에서 검색할 내용
 Classic films	Categories		고전 영화
-Automatic	Settings		자동
-No videos downloaded yet: right click a video, or press D	Window		다운로드한 동영상이 없습니다. 동영상을 오른쪽 클릭하거나 D를 누르세요
 # or name = channel:<id> for the latest videos of a channel	Categories		# 또는 이름 = channel:<id> 로 채널의 최신 동영상
 MediaPlayer could not be started: %error%	Window		MediaPlayer를 시작할 수 없습니다: %error%
 Move to Trash	Grid		휴지통으로 이동
 Remove from favorites	Grid		즐겨찾기에서 제거
+Downloaded	Categories		다운로드한 동영상
+This video can't be played here, try another one.	Window		이 동영상은 여기서 재생할 수 없습니다. 다른 동영상을 시도해 보세요.
+TV series	Window		TV 시리즈
+No subtitles available	Player		사용 가능한 자막 없음
+Music	Categories		음악
+The key works.	Settings		키가 작동합니다.
+Show the latest videos	Grid		최신 동영상 보기
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: YouTube, Internet Archive, PeerTube, BitTorrent 및 내 폴더의 동영상을 보는 Haiku와 RenkuOS용 앱.
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema를 사용하려면 yt-dlp와 python3, 그리고 같은 위치의 cinema-helper.py가 필요합니다
+Download	Detail		다운로드
+Remove	Settings		제거
+Downloaded	Window		다운로드한 동영상
+Add	Settings		추가
+Remove from the tabs	Categories		탭에서 제거
+Choose…	Settings		선택…
+news today	Categories		오늘의 뉴스
+Move to Trash	Detail		휴지통으로 이동
+Get a key…	Settings		키 받기…
+%peers% sources	Window		소스 %peers%개
+M3U list:	Settings		M3U 목록:
+%views% views	Detail		조회수 %views%회
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		채널 목록의 주소를 입력하거나 .m3u 파일을 Cinema에 끌어다 놓으세요.
+Science	Categories		과학
+Classic cartoons	Categories		고전 만화
+Play	Detail		재생
+Free channels of:	Settings		무료 채널 국가:
+Details	Grid		세부 정보
+%done% of %total%	Window		%total% 중 %done%
+forced	Subtitles		강제
+Go on from where a video was left	Settings		멈춘 곳부터 동영상 이어서 보기
+Already downloaded	Grid		이미 다운로드됨
+Search	Settings		검색
+Type what to look for at the top right	Window		오른쪽 위에 찾을 내용을 입력하세요
+Cinema	System name		Cinema
+Folders of the library	Settings		라이브러리 폴더
+No videos found	Window		동영상을 찾을 수 없습니다
+See all	Home		모두 보기
+Check	Settings		확인
+Playback	Settings		재생
+Subtitles	Subtitles		자막
+science explained	Categories		과학 설명
+Download	Grid		다운로드
+Movies	Window		영화
+Looking for the videos…	Window		동영상을 찾는 중…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# 한 줄에 상단 막대의 탭 하나: 이름 = YouTube에서 검색할 내용
+automatic	Player		자동 생성
+Automatic	Settings		자동
+No videos downloaded yet: right click a video, or press D	Window		다운로드한 동영상이 없습니다. 동영상을 오른쪽 클릭하거나 D를 누르세요
 Favorites	Window		즐겨찾기
-Downloaded	Categories		다운로드
 Home	Categories		홈
 Checking…	Settings		확인 중…
-This video can't be played here, try another one.	Window		이 동영상은 여기서 재생할 수 없습니다. 다른 동영상을 시도해 보세요.
 About Cinema	Window		Cinema 정보
+Subtitles	Player		자막

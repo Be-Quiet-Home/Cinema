@@ -1,95 +1,102 @@
-1	japanese	application/x-vnd.atomozero-Cinema	3071824546
+1	japanese	application/x-vnd.atomozero-Cinema	3335016301
 YouTube could not be reached: is the network on?	Window		YouTube に接続できません。ネットワークはオンになっていますか?
-TV series	Window		テレビシリーズ
 Video quality:	Settings		動画の画質:
 Downloaded	Detail		ダウンロード済み
-Search first in:	Settings		最初に検索する場所:
 full documentary	Categories		ドキュメンタリー 全編
+Search first in:	Settings		最初に検索する場所:
 Add to favorites	Grid		お気に入りに追加
-Add this channel to the tabs	Categories		このチャンネルをタブに追加
 OK	Window		OK
-Show the latest videos	Grid		最新の動画を表示
-The key works.	Settings		キーは有効です。
-Music	Categories		音楽
-Play	Grid		再生
+Add this channel to the tabs	Categories		このチャンネルをタブに追加
 Video downloaded	Window		動画をダウンロードしました
-Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: YouTube、Internet Archive、PeerTube、BitTorrent、そして自分のフォルダーの動画を見る Haiku と RenkuOS 用のアプリ。
-Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema には yt-dlp と python3、そして同じ場所に cinema-helper.py が必要です
-Remove	Settings		削除
-Download	Detail		ダウンロード
+Play	Grid		再生
 Getting the video ready	Grid		動画を準備中
-Downloaded	Window		ダウンロード済み
-Add	Settings		追加
-Settings…	Window		設定…
 Downloading…	Detail		ダウンロード中…
-Remove from the tabs	Categories		タブから削除
+Settings…	Window		設定…
 Add to the tabs	Grid		タブに追加
-Choose…	Settings		選択…
-news today	Categories		今日のニュース
-Get a key…	Settings		キーを取得…
-%peers% sources	Window		ソース %peers% 件
+No subtitles	Player		字幕なし
 Library	Settings		ライブラリ
 Cinema settings	Settings		Cinema の設定
-M3U list:	Settings		M3U リスト:
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent でのダウンロードには aria2c が必要ですが、インストールされていません。
-%views% views	Detail		%views% 回視聴
-The address of a list of channels, or drop an .m3u file on Cinema.	Settings		チャンネルリストのアドレス、または .m3u ファイルを Cinema にドロップします。
 Back	Detail		戻る
-Science	Categories		科学
-Classic cartoons	Categories		名作アニメ
 Documentaries	Categories		ドキュメンタリー
-Play	Detail		再生
-Free channels of:	Settings		無料チャンネルの国:
-TMDB does not accept this key.	Settings		TMDB はこのキーを受け付けません。
 Play the videos in Cinema, not in MediaPlayer	Settings		MediaPlayer ではなく Cinema で動画を再生
-Details	Grid		詳細
+TMDB does not accept this key.	Settings		TMDB はこのキーを受け付けません。
 technology review	Categories		テクノロジー レビュー
 Continue watching	Window		続きを見る
-%done% of %total%	Window		%done% / %total%
 Getting the video ready	Player		動画を準備中
 %eta% left	Window		残り %eta%
-Already downloaded	Grid		すでにダウンロード済み
-Go on from where a video was left	Settings		動画を止めたところから再開
-Add…	Settings		追加…
 The video could not be moved to the Trash: %error%	Window		動画をゴミ箱に移動できませんでした: %error%
-Search	Settings		検索
+Add…	Settings		追加…
 News	Categories		ニュース
-Type what to look for at the top right	Window		右上に探したいものを入力してください
 TV	Window		テレビ
-Cinema	System name		Cinema
-Folders of the library	Settings		ライブラリのフォルダー
-TV %country%	Settings		テレビ %country%
+TV %country%	Settings		%country%のテレビ
 TV channels	Settings		テレビチャンネル
-No videos found	Window		動画が見つかりません
 Technology	Categories		テクノロジー
-See all	Home		すべて表示
 TMDB key:	Settings		TMDB キー:
 Getting the details…	Detail		詳細を取得中…
-Above 360p, YouTube takes longer to start.	Settings		360pを超えると、YouTubeの再生開始に時間がかかります。
 With a key, the library gets posters, plots and casts. It is free.	Settings		キーがあると、ライブラリにポスター、あらすじ、キャストが表示されます。無料です。
-Check	Settings		確認
-Playback	Settings		再生
+Above 360p, YouTube takes longer to start.	Settings		360pを超えると、YouTubeの再生開始に時間がかかります。
 Downloading…	Grid		ダウンロード中…
 Stop the download	Grid		ダウンロードを停止
 Search	Window		検索
-science explained	Categories		科学 解説
 # or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# または 名前 = @iptv channel:<M3U リストのアドレス> でテレビチャンネル
-Download	Grid		ダウンロード
 official music video	Categories		公式ミュージックビデオ
-Movies	Window		映画
 The video could not be downloaded	Window		動画をダウンロードできませんでした
-Looking for the videos…	Window		動画を検索中…
-# One tab of the top bar per line: name = what to search on YouTube	Categories		# 上部バーのタブを1行に1つ: 名前 = YouTube で検索する内容
 Classic films	Categories		名作映画
-Automatic	Settings		自動
-No videos downloaded yet: right click a video, or press D	Window		ダウンロードした動画はまだありません: 動画を右クリックするか、D を押してください
 # or name = channel:<id> for the latest videos of a channel	Categories		# または 名前 = channel:<id> でチャンネルの最新動画
 MediaPlayer could not be started: %error%	Window		MediaPlayer を起動できません: %error%
 Move to Trash	Grid		ゴミ箱に移動
 Remove from favorites	Grid		お気に入りから削除
-Favorites	Window		お気に入り
 Downloaded	Categories		ダウンロード済み
+This video can't be played here, try another one.	Window		この動画はここでは再生できません。別の動画をお試しください。
+TV series	Window		テレビシリーズ
+No subtitles available	Player		利用できる字幕がありません
+Music	Categories		音楽
+The key works.	Settings		キーは有効です。
+Show the latest videos	Grid		最新の動画を表示
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: YouTube、Internet Archive、PeerTube、BitTorrent、そして自分のフォルダーの動画を見る Haiku と RenkuOS 用のアプリ。
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema には yt-dlp と python3、そして同じ場所に cinema-helper.py が必要です
+Download	Detail		ダウンロード
+Remove	Settings		削除
+Downloaded	Window		ダウンロード済み
+Add	Settings		追加
+Remove from the tabs	Categories		タブから削除
+Choose…	Settings		選択…
+news today	Categories		今日のニュース
+Move to Trash	Detail		ゴミ箱に移動
+Get a key…	Settings		キーを取得…
+%peers% sources	Window		ソース %peers% 件
+M3U list:	Settings		M3U リスト:
+%views% views	Detail		%views% 回視聴
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		チャンネルリストのアドレス、または .m3u ファイルを Cinema にドロップします。
+Science	Categories		科学
+Classic cartoons	Categories		名作アニメ
+Play	Detail		再生
+Free channels of:	Settings		無料チャンネルの国:
+Details	Grid		詳細
+%done% of %total%	Window		%done% / %total%
+forced	Subtitles		強制
+Go on from where a video was left	Settings		動画を止めたところから再開
+Already downloaded	Grid		すでにダウンロード済み
+Search	Settings		検索
+Type what to look for at the top right	Window		右上に探したいものを入力してください
+Cinema	System name		Cinema
+Folders of the library	Settings		ライブラリのフォルダー
+No videos found	Window		動画が見つかりません
+See all	Home		すべて表示
+Check	Settings		確認
+Playback	Settings		再生
+Subtitles	Subtitles		字幕
+science explained	Categories		科学 解説
+Download	Grid		ダウンロード
+Movies	Window		映画
+Looking for the videos…	Window		動画を検索中…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# 上部バーのタブを1行に1つ: 名前 = YouTube で検索する内容
+automatic	Player		自動生成
+Automatic	Settings		自動
+No videos downloaded yet: right click a video, or press D	Window		ダウンロードした動画はまだありません: 動画を右クリックするか、D を押してください
+Favorites	Window		お気に入り
 Home	Categories		ホーム
 Checking…	Settings		確認中…
-This video can't be played here, try another one.	Window		この動画はここでは再生できません。別の動画をお試しください。
 About Cinema	Window		Cinema について
+Subtitles	Player		字幕

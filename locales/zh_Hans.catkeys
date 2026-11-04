@@ -1,95 +1,102 @@
-1	chinese	application/x-vnd.atomozero-Cinema	3071824546
+1	chinese	application/x-vnd.atomozero-Cinema	3335016301
 YouTube could not be reached: is the network on?	Window		无法连接到 YouTube：网络是否已开启？
-TV series	Window		电视剧
 Video quality:	Settings		视频画质：
 Downloaded	Detail		已下载
-Search first in:	Settings		优先搜索：
 full documentary	Categories		完整纪录片
+Search first in:	Settings		优先搜索：
 Add to favorites	Grid		添加到收藏
-Add this channel to the tabs	Categories		将此频道添加到标签页
 OK	Window		确定
-Show the latest videos	Grid		显示最新视频
-The key works.	Settings		密钥有效。
-Music	Categories		音乐
-Play	Grid		播放
+Add this channel to the tabs	Categories		将此频道添加到标签页
 Video downloaded	Window		视频已下载
-Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema：适用于 Haiku 和 RenkuOS 的视频应用，来自 YouTube、Internet Archive、PeerTube、BitTorrent 以及你自己的文件夹。
-Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema 需要 yt-dlp 和 python3，并且 cinema-helper.py 需在同一位置
-Remove	Settings		移除
-Download	Detail		下载
+Play	Grid		播放
 Getting the video ready	Grid		正在准备视频
-Downloaded	Window		已下载的视频
-Add	Settings		添加
-Settings…	Window		设置…
 Downloading…	Detail		正在下载…
-Remove from the tabs	Categories		从标签页中移除
+Settings…	Window		设置…
 Add to the tabs	Grid		添加到标签页
-Choose…	Settings		选择…
-news today	Categories		今日新闻
-Get a key…	Settings		获取密钥…
-%peers% sources	Window		%peers% 个来源
+No subtitles	Player		无字幕
 Library	Settings		媒体库
 Cinema settings	Settings		Cinema 设置
-M3U list:	Settings		M3U 列表：
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent 下载需要 aria2c，但尚未安装。
-%views% views	Detail		%views% 次观看
-The address of a list of channels, or drop an .m3u file on Cinema.	Settings		频道列表的地址，或将 .m3u 文件拖放到 Cinema 上。
 Back	Detail		返回
-Science	Categories		科学
-Classic cartoons	Categories		经典动画
 Documentaries	Categories		纪录片
-Play	Detail		播放
-Free channels of:	Settings		免费频道所在国家：
-TMDB does not accept this key.	Settings		TMDB 不接受此密钥。
 Play the videos in Cinema, not in MediaPlayer	Settings		在 Cinema 中播放视频，而不是在 MediaPlayer 中
-Details	Grid		详细信息
+TMDB does not accept this key.	Settings		TMDB 不接受此密钥。
 technology review	Categories		科技评测
 Continue watching	Window		继续观看
-%done% of %total%	Window		%done% / %total%
 Getting the video ready	Player		正在准备视频
 %eta% left	Window		剩余 %eta%
-Already downloaded	Grid		已经下载
-Go on from where a video was left	Settings		从上次停下的地方继续播放视频
-Add…	Settings		添加…
 The video could not be moved to the Trash: %error%	Window		无法将视频移到废纸篓：%error%
-Search	Settings		搜索
+Add…	Settings		添加…
 News	Categories		新闻
-Type what to look for at the top right	Window		在右上角输入要搜索的内容
 TV	Window		电视
-Cinema	System name		Cinema
-Folders of the library	Settings		媒体库文件夹
-TV %country%	Settings		电视 %country%
+TV %country%	Settings		%country%电视
 TV channels	Settings		电视频道
-No videos found	Window		未找到视频
 Technology	Categories		科技
-See all	Home		查看全部
 TMDB key:	Settings		TMDB 密钥：
 Getting the details…	Detail		正在获取详细信息…
-Above 360p, YouTube takes longer to start.	Settings		高于 360p 时，YouTube 开始播放需要更久。
 With a key, the library gets posters, plots and casts. It is free.	Settings		有了密钥，媒体库会获取海报、剧情简介和演员表。它是免费的。
-Check	Settings		检查
-Playback	Settings		播放
+Above 360p, YouTube takes longer to start.	Settings		高于 360p 时，YouTube 开始播放需要更久。
 Downloading…	Grid		正在下载…
 Stop the download	Grid		停止下载
 Search	Window		搜索
-science explained	Categories		科学解说
 # or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# 或 名称 = @iptv channel:<M3U 列表地址> 用于电视频道
-Download	Grid		下载
 official music video	Categories		官方音乐视频
-Movies	Window		电影
 The video could not be downloaded	Window		无法下载该视频
-Looking for the videos…	Window		正在查找视频…
-# One tab of the top bar per line: name = what to search on YouTube	Categories		# 每行一个顶部栏标签：名称 = 要在 YouTube 上搜索的内容
 Classic films	Categories		经典电影
-Automatic	Settings		自动
-No videos downloaded yet: right click a video, or press D	Window		还没有下载的视频：右键点击视频，或按 D
 # or name = channel:<id> for the latest videos of a channel	Categories		# 或 名称 = channel:<id> 显示某个频道的最新视频
 MediaPlayer could not be started: %error%	Window		无法启动 MediaPlayer：%error%
 Move to Trash	Grid		移到废纸篓
 Remove from favorites	Grid		从收藏中移除
-Favorites	Window		收藏
 Downloaded	Categories		已下载
+This video can't be played here, try another one.	Window		此视频无法在这里播放，请换一个试试。
+TV series	Window		电视剧
+No subtitles available	Player		没有可用的字幕
+Music	Categories		音乐
+The key works.	Settings		密钥有效。
+Show the latest videos	Grid		显示最新视频
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema：适用于 Haiku 和 RenkuOS 的视频应用，来自 YouTube、Internet Archive、PeerTube、BitTorrent 以及你自己的文件夹。
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema 需要 yt-dlp 和 python3，并且 cinema-helper.py 需在同一位置
+Download	Detail		下载
+Remove	Settings		移除
+Downloaded	Window		已下载
+Add	Settings		添加
+Remove from the tabs	Categories		从标签页中移除
+Choose…	Settings		选择…
+news today	Categories		今日新闻
+Move to Trash	Detail		移到废纸篓
+Get a key…	Settings		获取密钥…
+%peers% sources	Window		%peers% 个来源
+M3U list:	Settings		M3U 列表：
+%views% views	Detail		%views% 次观看
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		频道列表的地址，或将 .m3u 文件拖放到 Cinema 上。
+Science	Categories		科学
+Classic cartoons	Categories		经典动画
+Play	Detail		播放
+Free channels of:	Settings		免费频道所在国家：
+Details	Grid		详细信息
+%done% of %total%	Window		%done% / %total%
+forced	Subtitles		强制
+Go on from where a video was left	Settings		从上次停下的地方继续播放视频
+Already downloaded	Grid		已经下载
+Search	Settings		搜索
+Type what to look for at the top right	Window		在右上角输入要搜索的内容
+Cinema	System name		Cinema
+Folders of the library	Settings		媒体库文件夹
+No videos found	Window		未找到视频
+See all	Home		查看全部
+Check	Settings		检查
+Playback	Settings		播放
+Subtitles	Subtitles		字幕
+science explained	Categories		科学解说
+Download	Grid		下载
+Movies	Window		电影
+Looking for the videos…	Window		正在查找视频…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# 每行一个顶部栏标签：名称 = 要在 YouTube 上搜索的内容
+automatic	Player		自动生成
+Automatic	Settings		自动
+No videos downloaded yet: right click a video, or press D	Window		还没有下载的视频：右键点击视频，或按 D
+Favorites	Window		收藏
 Home	Categories		主页
 Checking…	Settings		正在检查…
-This video can't be played here, try another one.	Window		此视频无法在这里播放，请换一个试试。
 About Cinema	Window		关于 Cinema
+Subtitles	Player		字幕

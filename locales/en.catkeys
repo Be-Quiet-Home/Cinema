@@ -1,95 +1,102 @@
-1	English	application/x-vnd.atomozero-Cinema	3071824546
+1	english	application/x-vnd.atomozero-Cinema	3335016301
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
-TV series	Window		TV series
 Video quality:	Settings		Video quality:
 Downloaded	Detail		Downloaded
-Search first in:	Settings		Search first in:
 full documentary	Categories		full documentary
+Search first in:	Settings		Search first in:
 Add to favorites	Grid		Add to favorites
-Add this channel to the tabs	Categories		Add this channel to the tabs
 OK	Window		OK
-Show the latest videos	Grid		Show the latest videos
-The key works.	Settings		The key works.
-Music	Categories		Music
-Play	Grid		Play
+Add this channel to the tabs	Categories		Add this channel to the tabs
 Video downloaded	Window		Video downloaded
-Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.
-Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema needs yt-dlp and python3, and cinema-helper.py next to it
-Remove	Settings		Remove
-Download	Detail		Download
+Play	Grid		Play
 Getting the video ready	Grid		Getting the video ready
-Downloaded	Window		Downloaded
-Add	Settings		Add
-Settings…	Window		Settings…
 Downloading…	Detail		Downloading…
-Remove from the tabs	Categories		Remove from the tabs
+Settings…	Window		Settings…
 Add to the tabs	Grid		Add to the tabs
-Choose…	Settings		Choose…
-news today	Categories		news today
-Get a key…	Settings		Get a key…
-%peers% sources	Window		%peers% sources
+No subtitles	Player		No subtitles
 Library	Settings		Library
 Cinema settings	Settings		Cinema settings
-M3U list:	Settings		M3U list:
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent downloads need aria2c, which is not installed.
-%views% views	Detail		%views% views
-The address of a list of channels, or drop an .m3u file on Cinema.	Settings		The address of a list of channels, or drop an .m3u file on Cinema.
 Back	Detail		Back
-Science	Categories		Science
-Classic cartoons	Categories		Classic cartoons
 Documentaries	Categories		Documentaries
-Play	Detail		Play
-Free channels of:	Settings		Free channels of:
-TMDB does not accept this key.	Settings		TMDB does not accept this key.
 Play the videos in Cinema, not in MediaPlayer	Settings		Play the videos in Cinema, not in MediaPlayer
-Details	Grid		Details
+TMDB does not accept this key.	Settings		TMDB does not accept this key.
 technology review	Categories		technology review
 Continue watching	Window		Continue watching
-%done% of %total%	Window		%done% of %total%
 Getting the video ready	Player		Getting the video ready
 %eta% left	Window		%eta% left
-Already downloaded	Grid		Already downloaded
-Go on from where a video was left	Settings		Go on from where a video was left
-Add…	Settings		Add…
 The video could not be moved to the Trash: %error%	Window		The video could not be moved to the Trash: %error%
-Search	Settings		Search
+Add…	Settings		Add…
 News	Categories		News
-Type what to look for at the top right	Window		Type what to look for at the top right
 TV	Window		TV
-Cinema	System name		Cinema
-Folders of the library	Settings		Folders of the library
 TV %country%	Settings		TV %country%
 TV channels	Settings		TV channels
-No videos found	Window		No videos found
 Technology	Categories		Technology
-See all	Home		See all
 TMDB key:	Settings		TMDB key:
 Getting the details…	Detail		Getting the details…
-Above 360p, YouTube takes longer to start.	Settings		Above 360p, YouTube takes longer to start.
 With a key, the library gets posters, plots and casts. It is free.	Settings		With a key, the library gets posters, plots and casts. It is free.
-Check	Settings		Check
-Playback	Settings		Playback
+Above 360p, YouTube takes longer to start.	Settings		Above 360p, YouTube takes longer to start.
 Downloading…	Grid		Downloading…
 Stop the download	Grid		Stop the download
 Search	Window		Search
-science explained	Categories		science explained
 # or name = @iptv channel:<address of an M3U list> for TV channels	Categories		# or name = @iptv channel:<address of an M3U list> for TV channels
-Download	Grid		Download
 official music video	Categories		official music video
-Movies	Window		Movies
 The video could not be downloaded	Window		The video could not be downloaded
-Looking for the videos…	Window		Looking for the videos…
-# One tab of the top bar per line: name = what to search on YouTube	Categories		# One tab of the top bar per line: name = what to search on YouTube
 Classic films	Categories		Classic films
-Automatic	Settings		Automatic
-No videos downloaded yet: right click a video, or press D	Window		No videos downloaded yet: right click a video, or press D
 # or name = channel:<id> for the latest videos of a channel	Categories		# or name = channel:<id> for the latest videos of a channel
 MediaPlayer could not be started: %error%	Window		MediaPlayer could not be started: %error%
 Move to Trash	Grid		Move to Trash
 Remove from favorites	Grid		Remove from favorites
-Favorites	Window		Favorites
 Downloaded	Categories		Downloaded
+This video can't be played here, try another one.	Window		This video can't be played here, try another one.
+TV series	Window		TV series
+No subtitles available	Player		No subtitles available
+Music	Categories		Music
+The key works.	Settings		The key works.
+Show the latest videos	Grid		Show the latest videos
+Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.
+Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema needs yt-dlp and python3, and cinema-helper.py next to it
+Download	Detail		Download
+Remove	Settings		Remove
+Downloaded	Window		Downloaded
+Add	Settings		Add
+Remove from the tabs	Categories		Remove from the tabs
+Choose…	Settings		Choose…
+news today	Categories		news today
+Move to Trash	Detail		Move to Trash
+Get a key…	Settings		Get a key…
+%peers% sources	Window		%peers% sources
+M3U list:	Settings		M3U list:
+%views% views	Detail		%views% views
+The address of a list of channels, or drop an .m3u file on Cinema.	Settings		The address of a list of channels, or drop an .m3u file on Cinema.
+Science	Categories		Science
+Classic cartoons	Categories		Classic cartoons
+Play	Detail		Play
+Free channels of:	Settings		Free channels of:
+Details	Grid		Details
+%done% of %total%	Window		%done% of %total%
+forced	Subtitles		forced
+Go on from where a video was left	Settings		Go on from where a video was left
+Already downloaded	Grid		Already downloaded
+Search	Settings		Search
+Type what to look for at the top right	Window		Type what to look for at the top right
+Cinema	System name		Cinema
+Folders of the library	Settings		Folders of the library
+No videos found	Window		No videos found
+See all	Home		See all
+Check	Settings		Check
+Playback	Settings		Playback
+Subtitles	Subtitles		Subtitles
+science explained	Categories		science explained
+Download	Grid		Download
+Movies	Window		Movies
+Looking for the videos…	Window		Looking for the videos…
+# One tab of the top bar per line: name = what to search on YouTube	Categories		# One tab of the top bar per line: name = what to search on YouTube
+automatic	Player		automatic
+Automatic	Settings		Automatic
+No videos downloaded yet: right click a video, or press D	Window		No videos downloaded yet: right click a video, or press D
+Favorites	Window		Favorites
 Home	Categories		Home
 Checking…	Settings		Checking…
-This video can't be played here, try another one.	Window		This video can't be played here, try another one.
 About Cinema	Window		About Cinema
+Subtitles	Player		Subtitles
