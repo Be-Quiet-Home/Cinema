@@ -1188,7 +1188,10 @@ CinemaWindow::MessageReceived(BMessage* message)
 				message->GetBool("automatic", false));
 			break;
 		case kMsgPlayerFrame:
-			PostMessage(kMsgPlayerFrame, fPlayerView);
+			// to the view at once, in this thread: PostMessage() to a handler
+			// takes the lock of the list of loopers, which the application
+			// holds while it closes the windows, waiting for this one
+			fPlayerView->MessageReceived(message);
 			if (fDirectActive && !fDirectPaused)
 				_DirectDraw();
 			break;
