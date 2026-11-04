@@ -41,6 +41,9 @@ AC100.
   arrows go back and on by 10 seconds and change the volume, Esc closes,
   M plays the video in MediaPlayer instead. On the whole screen (**F**) the
   tabs go away too.
+- **Subtitles**: the tracks of YouTube, the subtitle files next to a video
+  and the text tracks inside it. The **CC** button chooses one, **V** turns
+  them on and off.
 - **Settings** (the **≡** menu, or Alt+,): the key of TMDB, the folders of
   the library, the TV lists, whether videos play in Cinema or in MediaPlayer
   and from where they were left, the video quality, and where a search goes
@@ -90,13 +93,11 @@ The [releases](https://github.com/atomozero/Cinema/releases) have packages for
 x86_64 and 32-bit ARM:
 
 ```sh
-pkgman install cinema-1.1.0-1-x86_64.hpkg
+pkgman install cinema-1.2.0-1-x86_64.hpkg
 ```
 
-On x86_64 this brings Python and the yt-dlp module from HaikuPorts too.
-Release 1.1.0 is older than live TV, favorites, the settings and the video
-quality, which are on `main` for now: build it (below) to have them before the
-next release.
+On x86_64 this brings Python, the yt-dlp module and FFmpeg 6 from HaikuPorts
+too.
 
 On ARM, where HaikuPorts has no yt-dlp package, put the single-file release of
 yt-dlp in the `PATH`:

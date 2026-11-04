@@ -5,7 +5,7 @@
 # build-hpkg.sh: builds Cinema and makes its package, on Haiku or RenkuOS.
 # The package goes to the current folder.
 set -e
-VERSION="1.1.0"
+VERSION="1.2.0"
 REVISION="1"
 ARCH=$(getarch)
 TOP=$(cd "$(dirname "$0")/.." && pwd)
@@ -23,7 +23,10 @@ make
 REQUIRES=""
 case $ARCH in
 	x86_64)	REQUIRES="yt_dlp_python3.14 ffmpeg6" ;;
-	arm)	REQUIRES="ffmpeg" ;;
+	# the libraries themselves on ARM: the ffmpeg package built for it
+	# does not provide its own name
+	arm)	REQUIRES="lib:libavformat lib:libavcodec lib:libswscale \
+			lib:libswresample lib:libavutil" ;;
 esac
 
 STAGE=$WORKDIR/stage
