@@ -6,7 +6,7 @@
 # The package goes to the current folder.
 set -e
 VERSION="1.2.1"
-REVISION="1"
+REVISION="2"
 ARCH=$(getarch)
 TOP=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$(pwd)
