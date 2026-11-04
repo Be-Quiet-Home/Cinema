@@ -401,7 +401,7 @@ Player::_OpenLive()
 				delete fSoundPlayer;
 				fSoundPlayer = NULL;
 			} else {
-				fSoundPlayer->SetVolume(fVolume);
+				_ApplyVolume();
 				fLatency = fSoundPlayer->Latency();
 			}
 		}

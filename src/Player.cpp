@@ -6,6 +6,7 @@
 
 #include "Player.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -310,7 +311,7 @@ Player::_Open()
 				delete fSoundPlayer;
 				fSoundPlayer = NULL;
 			} else {
-				fSoundPlayer->SetVolume(fVolume);
+				_ApplyVolume();
 				fLatency = fSoundPlayer->Latency();
 			}
 			fDuration = std::max(fDuration, fAudioTrack->Duration());
@@ -462,9 +463,26 @@ Player::DisableOverlay()
 void
 Player::SetVolume(float volume)
 {
-	fVolume = std::max(0.0f, std::min(1.0f, volume));
-	if (fSoundPlayer != NULL)
-		fSoundPlayer->SetVolume(fVolume);
+	// in tenths, so that the steps of the keys stay even
+	volume = roundf(std::max(0.0f, std::min(1.0f, volume)) * 10) / 10;
+	fVolume = volume;
+	_ApplyVolume();
+}
+
+
+/*!	The volume is a level the ear hears in even steps: 3 dB a tenth, from
+	0 dB at 1 down to -27 dB at 0.1, and silence at 0. As a plain gain, the
+	steps of 10% of the arrow keys could hardly be heard.
+*/
+void
+Player::_ApplyVolume()
+{
+	if (fSoundPlayer == NULL)
+		return;
+	if (fVolume < 0.05f)
+		fSoundPlayer->SetVolume(0);
+	else
+		fSoundPlayer->SetVolumeDB(-30.0f * (1.0f - fVolume));
 }
 
 

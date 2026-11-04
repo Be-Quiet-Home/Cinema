@@ -217,6 +217,7 @@ private:
 			int64				fSentFrames = 0;
 			std::atomic<bigtime_t> fPerformanceStart{0};	// 0 if unknown
 			void				_NoteFill(size_t requested, size_t content);
+			void				_ApplyVolume();
 			bigtime_t			fClockStart;
 			bigtime_t			fPausedClock;
 

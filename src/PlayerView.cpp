@@ -7,6 +7,7 @@
 #include "PlayerView.h"
 
 #include <algorithm>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -427,9 +428,32 @@ PlayerView::_DrawControls(BView* target)
 		composite ? B_ALPHA_COMPOSITE : B_ALPHA_OVERLAY);
 	target->SetHighColor(0, 0, 0, 170);
 	target->FillRect(top);
+	// the volume, at the right of the title: the arrow keys up and down
+	BFont small = Font(14);
+	font_height smallHeight;
+	small.GetHeight(&smallHeight);
+	BString percent;
+	percent.SetToFormat("%d%%", (int)roundf(fPlayer->Volume() * 100));
+	float percentWidth = small.StringWidth("100%");
+	BRect level(top.right - S(16) - percentWidth - S(8) - S(80),
+		top.top + S(kBaseTitleHeight) / 2 - S(3),
+		top.right - S(16) - percentWidth - S(8),
+		top.top + S(kBaseTitleHeight) / 2 + S(3));
+	FillRound(target, level, S(3), (rgb_color){ 255, 255, 255, 60 },
+		composite);
+	if (fPlayer->Volume() > 0) {
+		BRect done = level;
+		done.right = level.left + level.Width() * fPlayer->Volume();
+		FillRound(target, done, S(3), kAccent, composite);
+	}
+	DrawText(target, percent.String(), BPoint(level.right + S(8),
+		top.top + (S(kBaseTitleHeight) + smallHeight.ascent
+			- smallHeight.descent) / 2), small, kText, composite);
+
 	BString title(fTitle);
 	BFont font = Font(16, true);
-	font.TruncateString(&title, B_TRUNCATE_END, bounds.Width() - S(32));
+	font.TruncateString(&title, B_TRUNCATE_END,
+		level.left - top.left - S(32));
 	font_height height;
 	font.GetHeight(&height);
 	DrawText(target, title.String(), BPoint(top.left + S(16),
@@ -472,7 +496,6 @@ PlayerView::_DrawControls(BView* target)
 	BString times = time_text(position);
 	if (duration > 0)
 		times << " / " << time_text(duration);
-	BFont small = Font(14);
 	small.GetHeight(&height);
 	DrawText(target, times.String(), BPoint(track.right + S(16),
 		track.top + (track.Height() + height.ascent - height.descent) / 2),
