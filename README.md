@@ -93,7 +93,7 @@ The [releases](https://github.com/atomozero/Cinema/releases) have packages for
 x86_64 and 32-bit ARM:
 
 ```sh
-pkgman install cinema-1.2.0-1-x86_64.hpkg
+pkgman install cinema-1.2.1-1-x86_64.hpkg
 ```
 
 On x86_64 this brings Python, the yt-dlp module and FFmpeg 6 from HaikuPorts
