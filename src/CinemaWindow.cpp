@@ -757,6 +757,14 @@ CinemaWindow::_ShowDetails(BMessage* message)
 	item.downloaded = message->GetBool("downloaded", false);
 	item.progress = message->GetInt32("progress", -1);
 	item.picture = NULL;
+	item.favorite = Favorites::Has(item.id.String());
+	// its file, for the Trash and to play it without the network
+	auto file = fDownloaded.find(item.id);
+	if (item.path.IsEmpty() && file != fDownloaded.end()
+		&& BEntry(file->second.String()).Exists()) {
+		item.path = file->second;
+		item.downloaded = true;
+	}
 	if (item.id.IsEmpty())
 		return;
 
@@ -1951,7 +1959,12 @@ CinemaWindow::_DownloadFailed(BMessage* message)
 void
 CinemaWindow::_Trash(BMessage* message)
 {
-	status_t status = Downloads::MoveToTrash(message->GetString("path", ""));
+	BString id = message->GetString("id", "");
+	BString path = message->GetString("path", "");
+	auto file = fDownloaded.find(id);
+	if (path.IsEmpty() && file != fDownloaded.end())
+		path = file->second;
+	status_t status = Downloads::MoveToTrash(path.String());
 	if (status != B_OK) {
 		BString text(B_TRANSLATE("The video could not be moved to the Trash: "
 			"%error%"));
@@ -1960,10 +1973,13 @@ CinemaWindow::_Trash(BMessage* message)
 		return;
 	}
 	fHomeLoaded = false;
+	fDetail->SetDownloaded(id.String(), false);
+	fGrid->SetDownloaded(id.String(), false);
+	fHome->SetDownloaded(id.String(), false);
 	if (_ShowingDownloads())
 		_ShowDownloads();
 	else {
-		fDownloaded.erase(message->GetString("id", ""));
+		fDownloaded.erase(id);
 		if (fCard == 2 && !fDetailsShown)
 			_ShowHome();
 	}
@@ -2117,6 +2133,7 @@ CinemaWindow::_ToggleFavorite(BMessage* message)
 	bool favorite = Favorites::Toggle(*message);
 	fGrid->SetFavorite(id.String(), favorite);
 	fHome->SetFavorite(id.String(), favorite);
+	fDetail->SetFavorite(id.String(), favorite);
 	fHomeLoaded = false;
 
 	int32 index = -1;

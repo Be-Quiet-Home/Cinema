@@ -44,6 +44,7 @@ public:
 			void				SetDownloaded(const char* id,
 									bool downloaded);
 			void				SetLoading(bool loading);
+			void				SetFavorite(const char* id, bool favorite);
 
 			const MediaItem&	Item() const { return fItem; }
 
@@ -55,6 +56,10 @@ private:
 			void				_Download();
 			void				_Channel();
 			void				_Back();
+			void				_ToggleFavorite();
+			void				_Trash();
+			bool				_CanTrash() const;
+			void				_DrawStar();
 			void				_DrawPoster();
 			void				_DrawButton(BRect frame, const char* label,
 									bool primary, bool enabled, bool hover);
@@ -93,6 +98,8 @@ private:
 			BRect				fPlayFrame;
 			BRect				fDownloadFrame;
 			BRect				fBackFrame;
+			BRect				fStarFrame;		// a favorite or not
+			BRect				fTrashFrame;	// downloaded videos only
 			BRect				fChannelFrame;
 			int32				fHover;
 			bool				fLoading;

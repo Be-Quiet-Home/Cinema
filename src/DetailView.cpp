@@ -9,6 +9,7 @@
 #include <ctype.h>
 
 #include <algorithm>
+#include <math.h>
 #include <cmath>
 
 #include <Bitmap.h>
@@ -211,7 +212,21 @@ DetailView::SetDownloaded(const char* id, bool downloaded)
 		return;
 	fItem.downloaded = downloaded;
 	fItem.progress = -1;
-	Invalidate(fDownloadFrame);
+	if (!downloaded)
+		fItem.path = "";
+	// the button of the Trash comes or goes
+	_Update();
+	Invalidate();
+}
+
+
+void
+DetailView::SetFavorite(const char* id, bool favorite)
+{
+	if (fItem.id != id || fItem.favorite == favorite)
+		return;
+	fItem.favorite = favorite;
+	Invalidate(fStarFrame);
 }
 
 
@@ -240,6 +255,8 @@ DetailView::_Update()
 	fPlayFrame = BRect();
 	fDownloadFrame = BRect();
 	fBackFrame = BRect();
+	fStarFrame = BRect();
+	fTrashFrame = BRect();
 	fChannelFrame = BRect();
 
 	if (bounds.Width() < S(80) || bounds.Height() < S(80))
@@ -254,6 +271,9 @@ DetailView::_Update()
 	fLineHeight = line_height(descFont);
 
 	fBackFrame = BRect(pad, pad, pad + S(88), pad + S(30));
+	// the star, next to the way back
+	fStarFrame = BRect(fBackFrame.right + S(10), fBackFrame.top,
+		fBackFrame.right + S(10) + fBackFrame.Height(), fBackFrame.bottom);
 	float top = fBackFrame.bottom + S(20);
 	float bottom = bounds.bottom - pad;
 	if (bottom - top < S(100))
@@ -321,11 +341,18 @@ DetailView::_Update()
 	if (buttonTop > fTextFrame.top) {
 		float playWidth = S(140);
 		float downloadWidth = S(190);
+		bool trash = _CanTrash();
+		float trashWidth = trash ? Font(14, true).StringWidth(
+			B_TRANSLATE("Move to Trash")) + S(36) : 0;
 		float available = fTextFrame.Width();
-		if (playWidth + S(12) + downloadWidth > available) {
-			float half = std::max(S(80), (available - S(12)) / 2);
-			playWidth = half;
-			downloadWidth = half;
+		int32 count = trash ? 3 : 2;
+		if (playWidth + downloadWidth + trashWidth + S(12) * (count - 1)
+				> available) {
+			float share = std::max(S(80),
+				(available - S(12) * (count - 1)) / count);
+			playWidth = downloadWidth = share;
+			if (trash)
+				trashWidth = share;
 		}
 		fPlayFrame = BRect(fTextFrame.left, buttonTop,
 			fTextFrame.left + playWidth, fTextFrame.bottom);
@@ -333,6 +360,12 @@ DetailView::_Update()
 			std::min(fTextFrame.right,
 				fPlayFrame.right + S(12) + downloadWidth),
 			fTextFrame.bottom);
+		if (trash) {
+			fTrashFrame = BRect(fDownloadFrame.right + S(12), buttonTop,
+				std::min(fTextFrame.right,
+					fDownloadFrame.right + S(12) + trashWidth),
+				fTextFrame.bottom);
+		}
 		// live television cannot be downloaded
 		if (fItem.kind == "live")
 			fDownloadFrame = BRect();
@@ -395,6 +428,13 @@ DetailView::_DownloadLabel() const
 		return label;
 	}
 	return B_TRANSLATE("Download");
+}
+
+
+bool
+DetailView::_CanTrash() const
+{
+	return (fItem.downloaded || !fItem.path.IsEmpty()) && fItem.kind != "live";
 }
 
 
@@ -654,6 +694,7 @@ DetailView::Draw(BRect updateRect)
 		BPoint(left, baseline));
 	DrawText(this, backLabel.String(), BPoint(left + arrow + gap, baseline),
 		backFont, kText);
+	_DrawStar();
 
 	// the title
 	BFont titleFont = Font(28, true);
@@ -737,6 +778,10 @@ DetailView::Draw(BRect updateRect)
 		_DrawButton(fDownloadFrame, _DownloadLabel().String(), false,
 			_CanDownload(), fHover == 3);
 	}
+	if (fTrashFrame.IsValid()) {
+		_DrawButton(fTrashFrame, B_TRANSLATE("Move to Trash"), false, true,
+			fHover == 6);
+	}
 	if (fItem.progress >= 0) {
 		BRect bar(fDownloadFrame.left + S(8), fDownloadFrame.bottom - S(6),
 			fDownloadFrame.right - S(8), fDownloadFrame.bottom - S(3));
@@ -762,6 +807,10 @@ DetailView::_ButtonAt(BPoint where) const
 		return 3;
 	if (fChannelFrame.Contains(where) && !fItem.channelId.IsEmpty())
 		return 4;
+	if (fStarFrame.Contains(where))
+		return 5;
+	if (fTrashFrame.Contains(where))
+		return 6;
 	return 0;
 }
 
@@ -781,6 +830,12 @@ DetailView::_InvalidateButton(int32 which)
 			break;
 		case 4:
 			Invalidate(fChannelFrame.InsetByCopy(-1, -3));
+			break;
+		case 5:
+			Invalidate(fStarFrame);
+			break;
+		case 6:
+			Invalidate(fTrashFrame);
 			break;
 	}
 }
@@ -832,6 +887,12 @@ DetailView::MouseDown(BPoint where)
 		case 4:
 			_Channel();
 			break;
+		case 5:
+			_ToggleFavorite();
+			break;
+		case 6:
+			_Trash();
+			break;
 	}
 }
 
@@ -873,6 +934,14 @@ DetailView::KeyDown(const char* bytes, int32 count)
 		case 'c':
 		case 'C':
 			_Channel();
+			break;
+		case 's':
+		case 'S':
+			_ToggleFavorite();
+			break;
+		case B_DELETE:
+			if (_CanTrash())
+				_Trash();
 			break;
 		case 'f':
 		case 'F':
@@ -940,6 +1009,75 @@ DetailView::_Channel()
 	channel.AddString("channel", fItem.channel);
 	channel.AddString("channel id", fItem.channelId);
 	fTarget.SendMessage(&channel);
+}
+
+
+/*!	The star, filled when the video is among the favorites. */
+void
+DetailView::_DrawStar()
+{
+	if (!fStarFrame.IsValid())
+		return;
+	FillRound(this, fStarFrame, S(8), fHover == 5 ? kCard : kBar);
+	StrokeRound(this, fStarFrame, S(8), 1, kTextDim);
+	BPoint center(fStarFrame.left + fStarFrame.Width() / 2,
+		fStarFrame.top + fStarFrame.Height() / 2 + S(1));
+	float outer = fStarFrame.Height() * 0.34f;
+	float inner = outer * 0.42f;
+	BPoint points[10];
+	for (int32 i = 0; i < 10; i++) {
+		float radius = i % 2 == 0 ? outer : inner;
+		float angle = -M_PI / 2 + i * M_PI / 5;
+		points[i] = BPoint(center.x + radius * cosf(angle),
+			center.y + radius * sinf(angle));
+	}
+	SetDrawingMode(B_OP_ALPHA);
+	if (fItem.favorite) {
+		SetHighColor(kAccent);
+		FillPolygon(points, 10);
+	} else {
+		SetHighColor(kText);
+		SetPenSize(S(1.5f));
+		StrokePolygon(points, 10);
+		SetPenSize(1);
+	}
+}
+
+
+void
+DetailView::_ToggleFavorite()
+{
+	if (fItem.id.IsEmpty())
+		return;
+	// the fields Favorites::Toggle() keeps, as the grid sends them
+	BMessage favorite(kMsgToggleFavorite);
+	favorite.AddString("id", fItem.id);
+	favorite.AddString("provider", fItem.provider);
+	favorite.AddString("kind", fItem.kind);
+	favorite.AddString("title", fItem.title);
+	favorite.AddString("description", fItem.description);
+	favorite.AddString("channel", fItem.channel);
+	favorite.AddString("channel id", fItem.channelId);
+	favorite.AddInt32("duration", fItem.duration);
+	favorite.AddInt32("year", fItem.year);
+	favorite.AddString("poster", fItem.poster);
+	favorite.AddString("thumbnail", fItem.thumbnail);
+	if (!fItem.path.IsEmpty())
+		favorite.AddString("path", fItem.path);
+	fTarget.SendMessage(&favorite);
+}
+
+
+void
+DetailView::_Trash()
+{
+	if (!_CanTrash())
+		return;
+	BMessage trash(kMsgTrash);
+	trash.AddString("id", fItem.id);
+	// the window knows where a video downloaded from a list is
+	trash.AddString("path", fItem.path);
+	fTarget.SendMessage(&trash);
 }
 
 
