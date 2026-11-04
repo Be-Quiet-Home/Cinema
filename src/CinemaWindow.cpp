@@ -1176,6 +1176,23 @@ CinemaWindow::MessageReceived(BMessage* message)
 			BString id = message->GetString("id", "");
 			if (!fPlayerShown || id != fPlayingId)
 				break;
+			if (message->GetBool("failed", false)) {
+				// not got: asked again a little later, twice at most, and
+				// again whenever it is chosen after that
+				const char* language = message->GetString("language", "");
+				bool automatic = message->GetBool("automatic", false);
+				BString key(fPlayingId);
+				key << "\n" << language << "\n" << (automatic ? "1" : "0");
+				fSubtitlesAsked.erase(key);
+				if (fSubtitleRetries[key]++ < 2) {
+					BMessage retry(kMsgSubtitleRequest);
+					retry.AddString("language", language);
+					retry.AddBool("automatic", automatic);
+					BMessageRunner::StartSending(BMessenger(this), &retry,
+						3000000, 1);
+				}
+				break;
+			}
 			fPlayer->LoadSubtitleText(
 				message->GetString("language", ""),
 				message->GetBool("automatic", false),
@@ -2240,6 +2257,7 @@ CinemaWindow::_OpenPlayer(const char* address, const char* title,
 	fPlayerView->RefreshSubtitles();
 
 	fSubtitlesAsked.clear();
+	fSubtitleRetries.clear();
 	if (!fPlayingId.IsEmpty() && address[0] != '/'
 		&& fPlayingKind != "live" && !LiveAddress::Is(address)) {
 		fHelper->Subtitles(fPlayingId.String(),
@@ -2275,6 +2293,7 @@ CinemaWindow::_ClosePlayer(bool save)
 	fPlayerView->ClearOverlay();
 	fPlayer->Close();
 	fSubtitlesAsked.clear();
+	fSubtitleRetries.clear();
 	fPlayerShown = false;
 	if (fFullScreen)
 		_DirectSync();

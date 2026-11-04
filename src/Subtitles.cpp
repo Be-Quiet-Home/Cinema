@@ -379,17 +379,21 @@ clean_text(const char* text)
 static BString
 ass_text(const char* line)
 {
+	// FFmpeg 5 and later: "ReadOrder,Layer,Style,Name,MarginL,MarginR,
+	// MarginV,Effect,Text"; older ones a whole "Dialogue: Layer,Start,End,
+	// Style,Name,MarginL,MarginR,MarginV,Effect,Text". The text, last, may
+	// hold commas and colons of its own.
 	BString value(line != NULL ? line : "");
-	int32 colon = value.FindFirst(':');
-	if (colon >= 0)
-		value = value.String() + colon + 1;
+	int32 count = 9;
+	if (value.StartsWith("Dialogue:")) {
+		value.Remove(0, strlen("Dialogue:"));
+		count = 10;
+	}
 	std::vector<BString> fields;
-	split(value, ',', 10, fields);
-	if (fields.size() >= 10)
-		return clean_text(fields[9].String());
-	if (!fields.empty())
-		return clean_text(fields.back().String());
-	return "";
+	split(value, ',', count, fields);
+	if ((int32)fields.size() == count)
+		return clean_text(fields[count - 1].String());
+	return clean_text(value.String());
 }
 
 
@@ -1117,6 +1121,12 @@ Subtitles::_Embedded(const char* video)
 					subtitle.end_display_time, 1000);
 				bigtime_t end = start + (bigtime_t)shown * 1000;
 				BString text = subtitle_text(subtitle);
+				static int32 cuesShown = 0;
+				if (getenv("CINEMA_PLAYER_DEBUG") != NULL && cuesShown < 5) {
+					cuesShown++;
+					fprintf(stderr, "subtitles: %.3f \"%s\"\n", start / 1e6,
+						text.String());
+				}
 				if (!text.IsEmpty()) {
 					std::vector<Cue> cue = { { start, end, text } };
 					_AddCues(found->track, cue);

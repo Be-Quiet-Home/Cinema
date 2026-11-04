@@ -208,6 +208,7 @@ private:
 			std::map<BString, BString> fDownloaded;
 									// the files in the folder, by id
 			std::set<BString>	fSubtitlesAsked;
+			std::map<BString, int32> fSubtitleRetries;	// failed fetches
 									// the subtitle tracks already asked
 			std::map<BString, BMessage> fDownloading;
 									// kMsgDownload, with "percent"

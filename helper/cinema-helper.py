@@ -2057,8 +2057,10 @@ def job_subtitle(provider, media_id, kind, language, automatic):
 		text = provider.subtitle(media_id, kind, language, automatic)
 	except Exception:
 		text = None
+	# a failed fetch is said so, rather than an empty track Cinema would
+	# keep for the whole video
 	answer({"type": "subtitle", "id": media_id, "language": language,
-		"automatic": automatic, "text": text or ""})
+		"automatic": automatic, "text": text or "", "failed": not text})
 
 
 def job_download(provider, media_id, folder):

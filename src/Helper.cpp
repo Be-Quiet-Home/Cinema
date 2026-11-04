@@ -420,6 +420,7 @@ Helper::_Handle(const BString& line)
 		subtitle.AddBool("automatic",
 			answer.GetBool("automatic", false));
 		subtitle.AddString("text", answer.GetString("text", "").c_str());
+		subtitle.AddBool("failed", answer.GetBool("failed", false));
 		fTarget.SendMessage(&subtitle);
 		return;
 	}
