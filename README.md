@@ -93,7 +93,7 @@ The [releases](https://github.com/atomozero/Cinema/releases) have packages for
 x86_64 and for 32-bit ARM (ARMv7 with VFPv3-D16, such as the AC100):
 
 ```sh
-pkgman install cinema-1.2.2-1-x86_64.hpkg
+pkgman install cinema-1.3.0-1-x86_64.hpkg
 ```
 
 On x86_64, pkgman brings Python, the yt-dlp module and FFmpeg 6 from
