@@ -1311,9 +1311,25 @@ CinemaWindow::MessageReceived(BMessage* message)
 		}
 		case kMsgPlayerError:
 		{
-			// what the Media Kit cannot open here, MediaPlayer may
 			BString address = fPlayingAddress;
 			BString title = fPlayingTitle;
+			BString id = fPlayingId;
+			auto stream = fStreams.find(id);
+			if (stream != fStreams.end() && stream->second.url == address
+				&& fRetried != id) {
+				// an address found before, which YouTube may not send any
+				// more, on another network say: found again, once
+				fStreams.erase(stream);
+				fRetried = id;
+				_ClosePlayer(false);
+				fWaiting = id;
+				fWaitingTitle = title;
+				fGrid->SetBusy(title.String());
+				fHome->SetBusy(id.String(), title.String());
+				_Find(id);
+				break;
+			}
+			// what the Media Kit cannot open here, MediaPlayer may
 			_ClosePlayer(false);
 			_PlayInMediaPlayer(address.String(), title.String());
 			break;
@@ -1346,6 +1362,7 @@ CinemaWindow::MessageReceived(BMessage* message)
 		{
 			BString id = message->GetString("id", "");
 			BString title = message->GetString("title", "");
+			fRetried = "";
 			const char* provider = message->GetString("provider", NULL);
 			if (provider != NULL && provider[0] != '\0')
 				fItemProviders[id] = provider;

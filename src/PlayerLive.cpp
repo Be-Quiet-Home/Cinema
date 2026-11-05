@@ -326,7 +326,8 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 bool
 Player::_OpenLive()
 {
-	// live TV from its address, or a file, a stream of YouTube or the relay
+	// live TV from its address, or a file, a stream of YouTube or the relay.
+	// False when the Media Kit may try it instead.
 	LiveAddress live;
 	if (fLive) {
 		if (!LiveAddress::Parse(fAddress.String(), live)) {
@@ -350,8 +351,11 @@ Player::_OpenLive()
 	// twice: opening reads a segment of every size of the stream, and one
 	// of the many connections may fail for a moment
 	AVFormatContext* format = NULL;
-	for (int attempt = 0; attempt < 2 && format == NULL && !fQuit;
-			attempt++) {
+	// the server said no: an address that expired, or was given to another
+	// network, which the Media Kit would not open either
+	bool refused = false;
+	for (int attempt = 0; attempt < 2 && format == NULL && !fQuit
+			&& !refused; attempt++) {
 		format = avformat_alloc_context();
 		if (format == NULL)
 			break;
@@ -373,6 +377,11 @@ Player::_OpenLive()
 			av_strerror(status, text, sizeof(text));
 			fprintf(stderr, "player: ffmpeg open: %s\n", text);
 		}
+		refused = status == AVERROR_HTTP_FORBIDDEN
+			|| status == AVERROR_HTTP_NOT_FOUND
+			|| status == AVERROR_HTTP_UNAUTHORIZED
+			|| status == AVERROR_HTTP_BAD_REQUEST
+			|| status == AVERROR_HTTP_OTHER_4XX;
 		// the context is gone with a failure
 		if (status < 0)
 			format = NULL;
@@ -386,8 +395,11 @@ Player::_OpenLive()
 		if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
 			fprintf(stderr, "player: ffmpeg could not open %s%s\n",
 				live.url.String(), fQuit ? " (closing)" : "");
-		if (!fQuit && fLive)
+		if (!fQuit && (fLive || refused)) {
 			_Failed();
+			// nothing more to try
+			return true;
+		}
 		return false;
 	}
 	fLiveFormat = format;

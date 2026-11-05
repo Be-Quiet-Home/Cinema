@@ -179,6 +179,7 @@ private:
 			std::set<BString>	fFinding;		// asked to the helper
 			BString				fWaiting;		// clicked, not found yet
 			BString				fWaitingTitle;
+			BString				fRetried;	// found again after a failure
 			BString				fWanted;		// chosen: worth finding
 			BMessageRunner*		fPrefetchRunner;
 			bool				fFullScreen;

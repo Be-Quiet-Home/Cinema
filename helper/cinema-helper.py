@@ -322,12 +322,40 @@ def kept_stream(media_id):
 	try:
 		with open(path, encoding="utf-8") as file:
 			kept = json.load(file)
-		if kept.get("id") == media_id \
+		url = kept.get("url")
+		if kept.get("id") == media_id and url \
 				and kept.get("expire", 0) - time.time() > 30 * 60:
-			return kept.get("url")
+			if stream_works(url):
+				return url
+			# another network, say: YouTube gives addresses for one IP
+			forget_stream(media_id)
 	except (OSError, ValueError, TypeError):
 		pass
 	return None
+
+
+def stream_works(url):
+	"""Whether YouTube still sends the file of an address: its first byte,
+	in less than a second, where finding the video again takes several."""
+	request = urllib.request.Request(url, headers={"Range": "bytes=0-0"})
+	try:
+		with urllib.request.urlopen(request, timeout=8) as response:
+			return response.status in (200, 206)
+	except Exception:
+		return False
+
+
+def forget_stream(media_id):
+	"""An address that does not play any more: off the disk and the memory,
+	so that the video is found again."""
+	path = stream_path(media_id)
+	try:
+		if path:
+			os.remove(path)
+	except OSError:
+		pass
+	with INFO_LOCK:
+		INFO_CACHE.pop(media_id, None)
 
 
 def keep_stream(media_id, url):
