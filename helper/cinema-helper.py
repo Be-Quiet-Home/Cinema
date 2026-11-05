@@ -317,6 +317,14 @@ def wanted_height():
 	return HEIGHT[0] or (360 if SLOW_MACHINE else 720)
 
 
+def download_height():
+	"""The height of a download: as for playing, but 480p on a slow
+	machine, which plays a 480p file smoothly with FFmpeg and the overlay
+	(the AC100) while finding the two streams of YouTube to play them at
+	once takes it a minute and a half."""
+	return HEIGHT[0] or (480 if SLOW_MACHINE else 720)
+
+
 def http_json(url, query=None):
 	if query:
 		url += "?" + urllib.parse.urlencode(query)
@@ -711,10 +719,10 @@ class YouTubeProvider(Provider):
 			outtmpl=os.path.join(folder,
 				"%(title).150B [%(id)s].%(ext)s"),
 			extractor_args={"youtube": {"player_client": ["android"]}})
-		if wanted_height() > 360 and shutil.which("ffmpeg"):
+		if download_height() > 360 and shutil.which("ffmpeg"):
 			# above 360p, the picture and the sound that ffmpeg puts
 			# together; the single file if they cannot be had
-			better = dict(options, format=self.separate(wanted_height())
+			better = dict(options, format=self.separate(download_height())
 				+ "/" + self.FORMAT, merge_output_format="mp4",
 				js_runtimes=self.JS_RUNTIMES)
 			del better["extractor_args"]
