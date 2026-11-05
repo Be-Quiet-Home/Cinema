@@ -83,6 +83,7 @@ enum {
 	kMsgSubtitlePick	= 'pltp',	// "track": chosen in the player
 	kMsgSubtitleChosen	= 'pltc',	// a track or none chosen: kept for
 										// the next videos
+	kMsgPlayerFavorite	= 'plfv',	// the star of the video playing
 
 	// the settings
 	kMsgShowSettings	= 'stng',

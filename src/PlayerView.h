@@ -23,8 +23,9 @@ class Player;
 
 	Space or Enter pauses, the arrows go back and on by 10 seconds (a minute
 	with Shift) and change the volume, M plays it in MediaPlayer instead, V
-	chooses the subtitles; a click on the bar goes there, on CC chooses them,
-	a click elsewhere pauses. The window closes it, with Esc.
+	chooses the subtitles, S gives the video a star; a click on the bar goes
+	there, on CC chooses the subtitles, on the star next to it gives or
+	takes the star, a click elsewhere pauses. The window closes it, with Esc.
 */
 class PlayerView : public BView {
 public:
@@ -51,6 +52,9 @@ public:
 			void				DrawOverlay(BView* target);
 			bool				HasOverlayContent() const;
 			void				SetDirect(bool direct);
+			void				SetFavorite(int32 favorite);
+									// 1 with a star, 0 without, -1 none
+									// to give (live TV, an address)
 
 private:
 			BRect				_PictureFrame(const BBitmap* picture) const;
@@ -61,6 +65,8 @@ private:
 			BRect				_TrackFrame(const BRect& bounds) const;
 			BRect				_SubtitleButtonFrame() const;
 			BRect				_SubtitleButtonFrame(const BRect& bounds) const;
+			BRect				_FavoriteButtonFrame() const;
+			BRect				_FavoriteButtonFrame(const BRect& bounds) const;
 			void				_ShowControls();
 			void				_TogglePause();
 			void				_SeekBy(bigtime_t delta);
@@ -94,6 +100,7 @@ private:
 			float				fSubtitleWidth;
 			float				fSubtitleHeight;
 			bool				fSubtitleControls;
+			int32				fFavorite = -1;
 };
 
 

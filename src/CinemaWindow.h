@@ -152,6 +152,7 @@ private:
 			BString				fPlayingId;
 			BString				fPlayingAddress;
 			BString				fPlayingTitle;
+			MediaItem			fPlayingItem;	// as asked to play
 			BString				fPlayingKind;	// "episode": the next follows
 			BString				fNextKind;		// of the video about to play
 			BMessageRunner*		fPlayerSaver;

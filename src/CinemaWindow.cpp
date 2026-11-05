@@ -1166,6 +1166,27 @@ CinemaWindow::MessageReceived(BMessage* message)
 			_SendFolders();
 			break;
 		}
+		case kMsgPlayerFavorite:
+		{
+			if (fPlayingItem.id != fPlayingId || fPlayingId.IsEmpty())
+				break;
+			// the fields Favorites::Toggle() keeps, as the grid sends them
+			const MediaItem& item = fPlayingItem;
+			BMessage favorite(kMsgToggleFavorite);
+			favorite.AddString("id", item.id);
+			favorite.AddString("provider", item.provider);
+			favorite.AddString("kind", item.kind);
+			favorite.AddString("title", item.title);
+			favorite.AddString("description", item.description);
+			favorite.AddString("channel", item.channel);
+			favorite.AddString("channel id", item.channelId);
+			favorite.AddInt32("duration", item.duration);
+			favorite.AddInt32("year", item.year);
+			favorite.AddString("poster", item.poster);
+			favorite.AddString("thumbnail", item.thumbnail);
+			_ToggleFavorite(&favorite);
+			break;
+		}
 		case kMsgToggleFavorite:
 			_ToggleFavorite(message);
 			break;
@@ -1416,6 +1437,12 @@ CinemaWindow::MessageReceived(BMessage* message)
 			recent.downloaded = path != NULL;
 			History::Remember(recent, fWorker->Cache());
 			fHomeLoaded = false;
+			// for the star of the player
+			fPlayingItem = recent;
+			fPlayingItem.description = message->GetString("description", "");
+			fPlayingItem.year = message->GetInt32("year", 0);
+			fPlayingItem.poster = message->GetString("poster", "");
+			fPlayingItem.thumbnail = message->GetString("thumbnail", "");
 
 			if (path != NULL) {
 				// downloaded: no need for the network
@@ -2281,6 +2308,8 @@ CinemaWindow::_ToggleFavorite(BMessage* message)
 	fGrid->SetFavorite(id.String(), favorite);
 	fHome->SetFavorite(id.String(), favorite);
 	fDetail->SetFavorite(id.String(), favorite);
+	if (fPlayerShown && id == fPlayingId)
+		fPlayerView->SetFavorite(favorite ? 1 : 0);
 	fHomeLoaded = false;
 
 	int32 index = -1;
@@ -2416,6 +2445,13 @@ CinemaWindow::_OpenPlayer(const char* address, const char* title,
 	fPlayerShown = true;
 	_UpdateTopBar();
 	fPlayerView->Start(title);
+	// a star to give to what has a page of its own: not to live TV, nor
+	// to an address played as it is
+	if (fPlayingItem.id == fPlayingId && !fPlayingId.IsEmpty()
+		&& fPlayingKind != "live" && !LiveAddress::Is(address))
+		fPlayerView->SetFavorite(Favorites::Has(id) ? 1 : 0);
+	else
+		fPlayerView->SetFavorite(-1);
 	fPlayerView->MakeFocus(true);
 	// the overlay of the video before goes before its bitmap
 	fPlayerView->ClearOverlay();

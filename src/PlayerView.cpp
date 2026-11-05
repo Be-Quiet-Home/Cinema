@@ -339,8 +339,9 @@ BRect
 PlayerView::_TrackFrame(const BRect& bounds) const
 {
 	// where the time goes, between the button and the times
+	// the times, the star and CC at the right
 	BRect bar = _BarFrame(bounds);
-	return BRect(bar.left + S(56), bar.top + S(22), bar.right - S(200),
+	return BRect(bar.left + S(56), bar.top + S(22), bar.right - S(256),
 		bar.top + S(30));
 }
 
@@ -358,6 +359,34 @@ PlayerView::_SubtitleButtonFrame(const BRect& bounds) const
 	BRect bar = _BarFrame(bounds);
 	return BRect(bar.right - S(64), bar.top + S(12), bar.right - S(16),
 		bar.bottom - S(12));
+}
+
+
+BRect
+PlayerView::_FavoriteButtonFrame() const
+{
+	return _FavoriteButtonFrame(Bounds());
+}
+
+
+/*!	At the left of CC. */
+BRect
+PlayerView::_FavoriteButtonFrame(const BRect& bounds) const
+{
+	BRect frame = _SubtitleButtonFrame(bounds);
+	frame.OffsetBy(-S(56), 0);
+	return frame;
+}
+
+
+void
+PlayerView::SetFavorite(int32 favorite)
+{
+	if (favorite == fFavorite)
+		return;
+	fFavorite = favorite;
+	if (Window() != NULL)
+		Invalidate(_FavoriteButtonFrame());
 }
 
 
@@ -519,6 +548,36 @@ PlayerView::_DrawControls(BView* target)
 		? kAccent : (rgb_color){ 255, 255, 255, 40 }, composite);
 	DrawCentered(target, "CC", subtitle, Font(14, true),
 		on ? kText : kTextDim, composite);
+
+	// the star of the video, as on its page
+	if (fFavorite >= 0) {
+		BRect star = _FavoriteButtonFrame(bounds);
+		FillRound(target, star, S(6), (rgb_color){ 255, 255, 255, 40 },
+			composite);
+		BPoint center(star.left + star.Width() / 2,
+			star.top + star.Height() / 2 + S(1));
+		float outer = star.Height() * 0.36f;
+		float inner = outer * 0.42f;
+		BPoint points[10];
+		for (int32 i = 0; i < 10; i++) {
+			float radius = i % 2 == 0 ? outer : inner;
+			float angle = -M_PI / 2 + i * M_PI / 5;
+			points[i] = BPoint(center.x + radius * cosf(angle),
+				center.y + radius * sinf(angle));
+		}
+		target->SetDrawingMode(B_OP_ALPHA);
+		target->SetBlendingMode(B_PIXEL_ALPHA,
+			composite ? B_ALPHA_COMPOSITE : B_ALPHA_OVERLAY);
+		if (fFavorite > 0) {
+			target->SetHighColor(kAccent);
+			target->FillPolygon(points, 10);
+		} else {
+			target->SetHighColor(kText);
+			target->SetPenSize(S(1.5f));
+			target->StrokePolygon(points, 10);
+			target->SetPenSize(1);
+		}
+	}
 }
 
 
@@ -763,6 +822,13 @@ PlayerView::KeyDown(const char* bytes, int32 count)
 		case 'M':
 			Window()->PostMessage(kMsgPlayInMediaPlayer);
 			break;
+		case 's':
+		case 'S':
+			if (fFavorite >= 0) {
+				Window()->PostMessage(kMsgPlayerFavorite);
+				_ShowControls();
+			}
+			break;
 		case 'v':
 		case 'V':
 			fPlayer->ToggleSubtitles();
@@ -789,6 +855,12 @@ PlayerView::MouseDown(BPoint where)
 	if ((fControls || fPlayer->IsPaused())
 		&& _SubtitleButtonFrame().Contains(where)) {
 		_ShowSubtitleMenu();
+		return;
+	}
+	if ((fControls || fPlayer->IsPaused()) && fFavorite >= 0
+		&& _FavoriteButtonFrame().Contains(where)) {
+		Window()->PostMessage(kMsgPlayerFavorite);
+		_ShowControls();
 		return;
 	}
 
