@@ -9,6 +9,7 @@
 #include <ctype.h>
 
 #include <algorithm>
+#include <stdio.h>
 #include <math.h>
 #include <cmath>
 
@@ -1075,6 +1076,7 @@ DetailView::_Trash()
 		return;
 	BMessage trash(kMsgTrash);
 	trash.AddString("id", fItem.id);
+	trash.AddString("title", fItem.title);
 	// the window knows where a video downloaded from a list is
 	trash.AddString("path", fItem.path);
 	fTarget.SendMessage(&trash);

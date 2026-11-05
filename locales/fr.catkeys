@@ -1,4 +1,4 @@
-1	french	application/x-vnd.atomozero-Cinema	3335016301
+1	french	application/x-vnd.atomozero-Cinema	3879561304
 YouTube could not be reached: is the network on?	Window		Impossible de joindre YouTube : le réseau est-il actif ?
 Video quality:	Settings		Qualité vidéo :
 Downloaded	Detail		Téléchargée
@@ -17,12 +17,14 @@ No subtitles	Player		Aucun sous-titre
 Library	Settings		Bibliothèque
 Cinema settings	Settings		Réglages de Cinema
 BitTorrent downloads need aria2c, which is not installed.	Window		Les téléchargements BitTorrent nécessitent aria2c, qui n'est pas installé.
+Cancel	Window		Annuler
 Back	Detail		Retour
 Documentaries	Categories		Documentaires
 Play the videos in Cinema, not in MediaPlayer	Settings		Lire les vidéos dans Cinema, pas dans MediaPlayer
 TMDB does not accept this key.	Settings		TMDB n'accepte pas cette clé.
 technology review	Categories		test technologie
 Continue watching	Window		Reprendre
+Move to Trash	Window		Mettre à la corbeille
 Getting the video ready	Player		Préparation de la vidéo
 %eta% left	Window		%eta% restant
 The video could not be moved to the Trash: %error%	Window		Impossible de mettre la vidéo à la corbeille : %error%
@@ -51,9 +53,10 @@ Downloaded	Categories		Téléchargées
 This video can't be played here, try another one.	Window		Cette vidéo ne peut pas être lue ici, essayez-en une autre.
 TV series	Window		Séries
 No subtitles available	Player		Aucun sous-titre disponible
+Move \"%title%\" to the Trash?	Window		Mettre « %title% » à la corbeille ?
+Show the latest videos	Grid		Afficher les dernières vidéos
 Music	Categories		Musique
 The key works.	Settings		La clé fonctionne.
-Show the latest videos	Grid		Afficher les dernières vidéos
 Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema : des vidéos pour Haiku et RenkuOS, depuis YouTube, l'Internet Archive, PeerTube, BitTorrent et vos propres dossiers.
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema a besoin de yt-dlp et python3, et de cinema-helper.py à côté
 Download	Detail		Télécharger

@@ -1,4 +1,4 @@
-1	japanese	application/x-vnd.atomozero-Cinema	3335016301
+1	japanese	application/x-vnd.atomozero-Cinema	3879561304
 YouTube could not be reached: is the network on?	Window		YouTube に接続できません。ネットワークはオンになっていますか?
 Video quality:	Settings		動画の画質:
 Downloaded	Detail		ダウンロード済み
@@ -17,12 +17,14 @@ No subtitles	Player		字幕なし
 Library	Settings		ライブラリ
 Cinema settings	Settings		Cinema の設定
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent でのダウンロードには aria2c が必要ですが、インストールされていません。
+Cancel	Window		キャンセル
 Back	Detail		戻る
 Documentaries	Categories		ドキュメンタリー
 Play the videos in Cinema, not in MediaPlayer	Settings		MediaPlayer ではなく Cinema で動画を再生
 TMDB does not accept this key.	Settings		TMDB はこのキーを受け付けません。
 technology review	Categories		テクノロジー レビュー
 Continue watching	Window		続きを見る
+Move to Trash	Window		ゴミ箱に移動
 Getting the video ready	Player		動画を準備中
 %eta% left	Window		残り %eta%
 The video could not be moved to the Trash: %error%	Window		動画をゴミ箱に移動できませんでした: %error%
@@ -51,9 +53,10 @@ Downloaded	Categories		ダウンロード済み
 This video can't be played here, try another one.	Window		この動画はここでは再生できません。別の動画をお試しください。
 TV series	Window		テレビシリーズ
 No subtitles available	Player		利用できる字幕がありません
+Move \"%title%\" to the Trash?	Window		「%title%」をゴミ箱に移動しますか?
+Show the latest videos	Grid		最新の動画を表示
 Music	Categories		音楽
 The key works.	Settings		キーは有効です。
-Show the latest videos	Grid		最新の動画を表示
 Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: YouTube、Internet Archive、PeerTube、BitTorrent、そして自分のフォルダーの動画を見る Haiku と RenkuOS 用のアプリ。
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema には yt-dlp と python3、そして同じ場所に cinema-helper.py が必要です
 Download	Detail		ダウンロード

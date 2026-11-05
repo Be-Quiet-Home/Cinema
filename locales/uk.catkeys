@@ -1,4 +1,4 @@
-1	ukrainian	application/x-vnd.atomozero-Cinema	3335016301
+1	ukrainian	application/x-vnd.atomozero-Cinema	3879561304
 YouTube could not be reached: is the network on?	Window		Не вдається з'єднатися з YouTube: чи увімкнена мережа?
 Video quality:	Settings		Якість відео:
 Downloaded	Detail		Завантажено
@@ -17,12 +17,14 @@ No subtitles	Player		Без субтитрів
 Library	Settings		Бібліотека
 Cinema settings	Settings		Налаштування Cinema
 BitTorrent downloads need aria2c, which is not installed.	Window		Для завантажень BitTorrent потрібен aria2c, який не встановлено.
+Cancel	Window		Скасувати
 Back	Detail		Назад
 Documentaries	Categories		Документальні фільми
 Play the videos in Cinema, not in MediaPlayer	Settings		Відтворювати відео в Cinema, а не в MediaPlayer
 TMDB does not accept this key.	Settings		TMDB не приймає цей ключ.
 technology review	Categories		огляд технологій
 Continue watching	Window		Продовжити перегляд
+Move to Trash	Window		Перемістити до смітника
 Getting the video ready	Player		Підготовка відео
 %eta% left	Window		лишилось %eta%
 The video could not be moved to the Trash: %error%	Window		Не вдалося перемістити відео до смітника: %error%
@@ -51,9 +53,10 @@ Downloaded	Categories		Завантажені
 This video can't be played here, try another one.	Window		Це відео не можна відтворити тут, спробуйте інше.
 TV series	Window		Серіали
 No subtitles available	Player		Немає доступних субтитрів
+Move \"%title%\" to the Trash?	Window		Перемістити «%title%» до смітника?
+Show the latest videos	Grid		Показати останні відео
 Music	Categories		Музика
 The key works.	Settings		Ключ працює.
-Show the latest videos	Grid		Показати останні відео
 Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: відео для Haiku та RenkuOS з YouTube, Internet Archive, PeerTube, BitTorrent і ваших власних тек.
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Для Cinema потрібні yt-dlp і python3, а також cinema-helper.py поруч
 Download	Detail		Завантажити

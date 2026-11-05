@@ -821,6 +821,7 @@ VideoGrid::_ShowMenu(int32 index, BPoint where)
 		BMessage* trash = new BMessage(kMsgTrash);
 		trash->AddString("id", video.id);
 		trash->AddString("path", video.path);
+		trash->AddString("title", video.title);
 		menu->AddItem(new BMenuItem(B_TRANSLATE("Move to Trash"), trash));
 	}
 	menu->SetTargetForItems(Window());

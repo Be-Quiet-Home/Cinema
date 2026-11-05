@@ -1,4 +1,4 @@
-1	spanish	application/x-vnd.atomozero-Cinema	3335016301
+1	spanish	application/x-vnd.atomozero-Cinema	3879561304
 YouTube could not be reached: is the network on?	Window		No se puede acceder a YouTube: ¿está activa la red?
 Video quality:	Settings		Calidad de vídeo:
 Downloaded	Detail		Descargado
@@ -17,12 +17,14 @@ No subtitles	Player		Sin subtítulos
 Library	Settings		Biblioteca
 Cinema settings	Settings		Ajustes de Cinema
 BitTorrent downloads need aria2c, which is not installed.	Window		Las descargas BitTorrent necesitan aria2c, que no está instalado.
+Cancel	Window		Cancelar
 Back	Detail		Atrás
 Documentaries	Categories		Documentales
 Play the videos in Cinema, not in MediaPlayer	Settings		Reproducir los vídeos en Cinema, no en MediaPlayer
 TMDB does not accept this key.	Settings		TMDB no acepta esta clave.
 technology review	Categories		análisis tecnología
 Continue watching	Window		Seguir viendo
+Move to Trash	Window		Mover a la papelera
 Getting the video ready	Player		Preparando el vídeo
 %eta% left	Window		quedan %eta%
 The video could not be moved to the Trash: %error%	Window		No se pudo mover el vídeo a la papelera: %error%
@@ -51,9 +53,10 @@ Downloaded	Categories		Descargados
 This video can't be played here, try another one.	Window		Este vídeo no se puede ver aquí, prueba con otro.
 TV series	Window		Series
 No subtitles available	Player		No hay subtítulos disponibles
+Move \"%title%\" to the Trash?	Window		¿Mover «%title%» a la papelera?
+Show the latest videos	Grid		Mostrar los últimos vídeos
 Music	Categories		Música
 The key works.	Settings		La clave funciona.
-Show the latest videos	Grid		Mostrar los últimos vídeos
 Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: vídeos para Haiku y RenkuOS, desde YouTube, el Internet Archive, PeerTube, BitTorrent y tus propias carpetas.
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema necesita yt-dlp y python3, y cinema-helper.py a su lado
 Download	Detail		Descargar

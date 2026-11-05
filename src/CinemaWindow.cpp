@@ -7,6 +7,7 @@
 #include "CinemaWindow.h"
 
 #include <Alert.h>
+#include <Invoker.h>
 #include <Application.h>
 #include <Autolock.h>
 #include <Bitmap.h>
@@ -1964,6 +1965,28 @@ CinemaWindow::_Trash(BMessage* message)
 	auto file = fDownloaded.find(id);
 	if (path.IsEmpty() && file != fDownloaded.end())
 		path = file->second;
+
+	// asked first: the answer comes back as this message, with "which"
+	if (!message->GetBool("asked", false)) {
+		BString title = message->GetString("title", "");
+		if (title.IsEmpty())
+			title = BPath(path.String()).Leaf();
+		BString text(B_TRANSLATE("Move \"%title%\" to the Trash?"));
+		text.ReplaceFirst("%title%", title);
+		BAlert* alert = new BAlert("Cinema", text.String(),
+			B_TRANSLATE("Cancel"), B_TRANSLATE("Move to Trash"), NULL,
+			B_WIDTH_AS_USUAL, B_WARNING_ALERT);
+		alert->SetShortcut(0, B_ESCAPE);
+		BMessage* answer = new BMessage(*message);
+		answer->AddBool("asked", true);
+		if (!path.IsEmpty() && !answer->HasString("path"))
+			answer->AddString("path", path);
+		alert->Go(new BInvoker(answer, this));
+		return;
+	}
+	if (message->GetInt32("which", 0) != 1)
+		return;
+
 	status_t status = Downloads::MoveToTrash(path.String());
 	if (status != B_OK) {
 		BString text(B_TRANSLATE("The video could not be moved to the Trash: "
@@ -1976,12 +1999,13 @@ CinemaWindow::_Trash(BMessage* message)
 	fDetail->SetDownloaded(id.String(), false);
 	fGrid->SetDownloaded(id.String(), false);
 	fHome->SetDownloaded(id.String(), false);
+	fDownloaded.erase(id);
 	if (_ShowingDownloads())
 		_ShowDownloads();
-	else {
-		fDownloaded.erase(id);
-		if (fCard == 2 && !fDetailsShown)
-			_ShowHome();
+	else if ((fDetailsShown ? fDetailsReturn : fCard) == 2) {
+		// the home, under the page of the video too: its shelf of the
+		// downloads without the one gone
+		_LoadHome();
 	}
 }
 

@@ -1,4 +1,4 @@
-1	english	application/x-vnd.atomozero-Cinema	3335016301
+1	english	application/x-vnd.atomozero-Cinema	3879561304
 YouTube could not be reached: is the network on?	Window		YouTube could not be reached: is the network on?
 Video quality:	Settings		Video quality:
 Downloaded	Detail		Downloaded
@@ -17,12 +17,14 @@ No subtitles	Player		No subtitles
 Library	Settings		Library
 Cinema settings	Settings		Cinema settings
 BitTorrent downloads need aria2c, which is not installed.	Window		BitTorrent downloads need aria2c, which is not installed.
+Cancel	Window		Cancel
 Back	Detail		Back
 Documentaries	Categories		Documentaries
 Play the videos in Cinema, not in MediaPlayer	Settings		Play the videos in Cinema, not in MediaPlayer
 TMDB does not accept this key.	Settings		TMDB does not accept this key.
 technology review	Categories		technology review
 Continue watching	Window		Continue watching
+Move to Trash	Window		Move to Trash
 Getting the video ready	Player		Getting the video ready
 %eta% left	Window		%eta% left
 The video could not be moved to the Trash: %error%	Window		The video could not be moved to the Trash: %error%
@@ -51,9 +53,10 @@ Downloaded	Categories		Downloaded
 This video can't be played here, try another one.	Window		This video can't be played here, try another one.
 TV series	Window		TV series
 No subtitles available	Player		No subtitles available
+Move \"%title%\" to the Trash?	Window		Move \"%title%\" to the Trash?
+Show the latest videos	Grid		Show the latest videos
 Music	Categories		Music
 The key works.	Settings		The key works.
-Show the latest videos	Grid		Show the latest videos
 Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.	Window		Cinema: videos for Haiku and RenkuOS, from YouTube, the Internet Archive, PeerTube, BitTorrent and your own folders.
 Cinema needs yt-dlp and python3, and cinema-helper.py next to it	Window		Cinema needs yt-dlp and python3, and cinema-helper.py next to it
 Download	Detail		Download
