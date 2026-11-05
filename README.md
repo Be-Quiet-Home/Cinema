@@ -34,7 +34,8 @@ watched and a red bar what was started. Space pauses, the arrows go back and on
 by 10 seconds and change the volume, **F** goes to full screen, **Esc** closes
 the video and **M** plays it in MediaPlayer instead. Subtitles come from
 YouTube, from a subtitle file next to the video, or from the text tracks inside
-it: the **CC** button chooses one and **V** turns them on and off. The video
+it: the **CC** button chooses one and **V** turns them on and off. The star
+next to it, or **S**, keeps the video among the favorites. The video
 quality is in the settings: Automatic means 360p on 32-bit ARM and 720p
 elsewhere, and you can ask for anything from 360p to 1080p. Above 360p YouTube
 sends the picture and the sound apart, and `ffmpeg` puts them back together for
@@ -93,7 +94,7 @@ The [releases](https://github.com/atomozero/Cinema/releases) have packages for
 x86_64 and for 32-bit ARM (ARMv7 with VFPv3-D16, such as the AC100):
 
 ```sh
-pkgman install cinema-1.3.0-1-x86_64.hpkg
+pkgman install cinema-1.4.0-1-x86_64.hpkg
 ```
 
 On x86_64, pkgman brings Python, the yt-dlp module and FFmpeg 6 from
@@ -136,6 +137,9 @@ machine's architecture. Without a package, put `objects/Cinema` and
 `~/config/non-packaged/apps/Cinema/`, and the catalogs from
 `objects/catalogs/` in
 `~/config/non-packaged/data/locale/catalogs/x-vnd.atomozero-Cinema/`.
+
+If Cinema ever stops answering, `~/config/cache/Cinema/freeze-reports.txt`
+says what each of its threads was doing then: worth attaching to a report.
 
 To translate, `make catkeys` writes `locales/en.catkeys`, and
 `tools/update-catkeys.py <language>` brings a translation up to date with it.
