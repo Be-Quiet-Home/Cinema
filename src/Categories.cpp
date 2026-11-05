@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <Catalog.h>
@@ -170,12 +171,20 @@ LoadCategories()
 			return categories;
 	}
 
-	char line[512];
-	while (fgets(line, sizeof(line), file) != NULL) {
+	// lines of any length: the address of a TV list may be long
+	char* line = NULL;
+	size_t size = 0;
+	while (getline(&line, &size, file) >= 0) {
 		BString text(line);
 		text.RemoveAll("\n").RemoveAll("\r");
+		if (text.ByteAt(0) == '#')
+			continue;
+		// a name that starts with # was written after a backslash, so as
+		// not to be taken for a comment
+		if (text.ByteAt(0) == '\\')
+			text.Remove(0, 1);
 		int32 equals = text.FindFirst('=');
-		if (equals <= 0 || text.ByteAt(0) == '#')
+		if (equals <= 0)
 			continue;
 		Category category;
 		text.CopyInto(category.name, 0, equals);
@@ -203,6 +212,7 @@ LoadCategories()
 			&& (!category.query.IsEmpty() || category.IsChannel()))
 			categories.push_back(category);
 	}
+	free(line);
 	fclose(file);
 	localize_defaults(categories);
 	return categories;
@@ -220,11 +230,13 @@ SaveCategories(const std::vector<Category>& categories)
 	BString comments;
 	FILE* file = fopen(path.Path(), "r");
 	if (file != NULL) {
-		char line[512];
-		while (fgets(line, sizeof(line), file) != NULL) {
+		char* line = NULL;
+		size_t size = 0;
+		while (getline(&line, &size, file) >= 0) {
 			if (line[0] == '#')
 				comments << line;
 		}
+		free(line);
 		fclose(file);
 	}
 
@@ -237,15 +249,23 @@ SaveCategories(const std::vector<Category>& categories)
 	for (const Category& category : categories) {
 		BString name(category.name);
 		name.ReplaceAll("=", "-");
+		// one line each, and not a comment
+		name.ReplaceAll('\n', ' ').ReplaceAll('\r', ' ');
+		if (name.ByteAt(0) == '#' || name.ByteAt(0) == '\\')
+			name.Prepend("\\");
+		BString query(category.query);
+		query.ReplaceAll('\n', ' ').ReplaceAll('\r', ' ');
+		BString channel(category.channel);
+		channel.ReplaceAll('\n', ' ').ReplaceAll('\r', ' ');
 		BString provider;
 		if (!category.provider.IsEmpty())
 			provider << "@" << category.provider << " ";
 		if (category.IsChannel()) {
 			fprintf(file, "%s = %s%s%s\n", name.String(), provider.String(),
-				kChannelPrefix, category.channel.String());
+				kChannelPrefix, channel.String());
 		} else {
 			fprintf(file, "%s = %s%s\n", name.String(), provider.String(),
-				category.query.String());
+				query.String());
 		}
 	}
 	// on the disk before it takes the place of the old one: a power cut

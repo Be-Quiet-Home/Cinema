@@ -2416,6 +2416,46 @@ def watch_parent():
 			os._exit(0)
 
 
+def prune_cache():
+	"""What the cache keeps for nothing: the small pictures and posters of
+	videos not seen for two months (got again if they are), lists and pages
+	older than a month (stale after a week anyway), and the addresses of
+	videos that expired. The pictures of the library and what TMDB said
+	stay: they are slow to make again, or needed without the network."""
+	time.sleep(120)
+	wait_for_play()
+	if not cache:
+		return
+	now = time.time()
+	removed = 0
+	for name in os.listdir(cache):
+		path = os.path.join(cache, name)
+		if name.startswith(("local-", "tmdb-")) or not os.path.isfile(path):
+			continue
+		if name.endswith(".jpg"):
+			most = 60 * 24 * 60 * 60
+		elif name.startswith(("videos-", "details-")) \
+				and name.endswith(".json"):
+			most = 30 * 24 * 60 * 60
+		elif name.startswith("stream-") and name.endswith(".json"):
+			# they last six hours or so
+			most = 24 * 60 * 60
+		elif ".part" in name:
+			# what a write that was cut short left
+			most = 24 * 60 * 60
+		else:
+			continue
+		try:
+			if now - os.path.getmtime(path) > most:
+				os.remove(path)
+				removed += 1
+		except OSError:
+			pass
+		if removed % 50 == 49:
+			# a pause now and then: the AC100 has other things to do
+			time.sleep(0.2)
+
+
 def ignore_errors(function):
 	try:
 		function()
@@ -2434,6 +2474,8 @@ def serve():
 	if youtube is not None:
 		threading.Thread(target=lambda: ignore_errors(youtube.warm_up),
 			daemon=True).start()
+	threading.Thread(target=lambda: ignore_errors(prune_cache),
+		daemon=True).start()
 	for raw in sys.stdin.buffer:
 		line = raw.decode("utf-8", "surrogateescape").strip()
 		if not line:

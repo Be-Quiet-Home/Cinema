@@ -214,9 +214,8 @@ CinemaWindow::CinemaWindow()
 	MoveTo(frame.left + S(20), frame.top + S(30));
 	ResizeTo(frame.Width() - S(40), frame.Height() - S(60));
 
-	// which videos can be watched offline
-	for (MediaItem& video : Downloads::Load(&fDownloaded))
-		delete video.picture;
+	// which videos can be watched offline: their names only
+	Downloads::Load(&fDownloaded, 0);
 	_ShowHome();
 	// the torrents interrupted when Cinema went away go on
 	for (BMessage& download : Downloads::LoadPending()) {
@@ -315,7 +314,7 @@ void
 CinemaWindow::_Search(const char* query, const char* provider)
 {
 	_CloseDetails();
-	fCards->SetVisibleItem(0);
+	fCards->SetVisibleItem((int32)0);
 	fCard = 0;
 	fGeneration++;
 	fGrid->SetMessage(B_TRANSLATE("Looking for the videos" B_UTF8_ELLIPSIS));
@@ -396,7 +395,7 @@ CinemaWindow::_ShowCategory(int32 index)
 	if (index < 0 || index >= (int32)fCategories.size())
 		return;
 	_CloseDetails();
-	fCards->SetVisibleItem(0);
+	fCards->SetVisibleItem((int32)0);
 	fCard = 0;
 	fCategoryBar->SetSelected(fCategoryBar->CategoryTab(index));
 	fChannelId = "";
@@ -419,7 +418,7 @@ CinemaWindow::_ShowChannel(const char* name, const char* id)
 	if (id[0] == '\0')
 		return;
 	_CloseDetails();
-	fCards->SetVisibleItem(0);
+	fCards->SetVisibleItem((int32)0);
 	fCard = 0;
 	// one of the tabs already?
 	for (size_t i = 0; i < fCategories.size(); i++) {
@@ -662,7 +661,13 @@ CinemaWindow::_LoadHome()
 	}
 
 	fDownloaded.clear();
-	std::vector<MediaItem> downloads = Downloads::Load(&fDownloaded);
+	// the latest on the shelf, with their pictures: all of them would hold
+	// the window on a slow machine with many files
+	static const int32 kShelfDownloads = 24;
+	std::vector<MediaItem> downloads = Downloads::Load(&fDownloaded,
+		kShelfDownloads);
+	if (downloads.size() > (size_t)kShelfDownloads)
+		downloads.resize(kShelfDownloads);
 	if (!downloads.empty()) {
 		ShelfSpec spec;
 		spec.title = B_TRANSLATE("Downloaded");
@@ -1216,6 +1221,9 @@ CinemaWindow::MessageReceived(BMessage* message)
 			break;
 
 		case kMsgPlayerOpened:
+			// of a video closed since: nothing to do with this one
+			if (message->GetInt32("session", -1) != fPlayer->Session())
+				break;
 			fPlayerView->SetOpened(true);
 			fPlayerView->SetOverlay(fPlayer->Overlay());
 			fPlayerView->RefreshSubtitles();
@@ -1313,7 +1321,10 @@ CinemaWindow::MessageReceived(BMessage* message)
 			break;
 		case kMsgPlayerReopen:
 		{
-			// only the last of the steps asked one after the other
+			// only the last of the steps asked one after the other, and
+			// for the video playing
+			if (message->GetInt32("session", -1) != fPlayer->Session())
+				break;
 			if (!fPlayerShown
 				|| MessageQueue()->FindMessage(kMsgPlayerReopen, 0) != NULL)
 				break;
@@ -1327,6 +1338,9 @@ CinemaWindow::MessageReceived(BMessage* message)
 			break;
 		case kMsgPlayerEnded:
 		{
+			// of a video closed since: nothing to do with this one
+			if (message->GetInt32("session", -1) != fPlayer->Session())
+				break;
 			// watched to the end
 			if (fPlayer->Duration() > 0)
 				Positions::Set(fPlayingId, fPlayer->Duration(),
@@ -1356,6 +1370,9 @@ CinemaWindow::MessageReceived(BMessage* message)
 		}
 		case kMsgPlayerError:
 		{
+			// of a video closed since: nothing to do with this one
+			if (message->GetInt32("session", -1) != fPlayer->Session())
+				break;
 			BString address = fPlayingAddress;
 			BString title = fPlayingTitle;
 			BString id = fPlayingId;
@@ -1786,8 +1803,8 @@ CinemaWindow::_DirectBlitLocked(BBitmap* picture)
 		return;
 	float scale = std::min((float)windowWidth / sourceWidth,
 		(float)windowHeight / sourceHeight);
-	int32 width = std::max(1, (int32)(sourceWidth * scale + 0.5f));
-	int32 height = std::max(1, (int32)(sourceHeight * scale + 0.5f));
+	int32 width = std::max((int32)1, (int32)(sourceWidth * scale + 0.5f));
+	int32 height = std::max((int32)1, (int32)(sourceHeight * scale + 0.5f));
 	int32 left = (windowWidth - width) / 2;
 	int32 top = (windowHeight - height) / 2;
 
@@ -1953,7 +1970,7 @@ void
 CinemaWindow::_ShowDownloads()
 {
 	_CloseDetails();
-	fCards->SetVisibleItem(0);
+	fCards->SetVisibleItem((int32)0);
 	fCard = 0;
 	fCategoryBar->SetSelected(fCategoryBar->DownloadsIndex());
 	fChannelId = "";

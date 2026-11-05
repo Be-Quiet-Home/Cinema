@@ -57,7 +57,7 @@ picture_path(const char* id)
 
 
 std::vector<MediaItem>
-Load(std::map<BString, BString>* files)
+Load(std::map<BString, BString>* files, int32 pictures)
 {
 	struct Found {
 		MediaItem	video;
@@ -107,8 +107,10 @@ Load(std::map<BString, BString>* files)
 		[](const Found& a, const Found& b) { return a.time > b.time; });
 	std::vector<MediaItem> videos;
 	for (Found& file : found) {
-		file.video.picture = Pictures::Load(
-			picture_path(file.video.id).String());
+		if ((int32)videos.size() < pictures) {
+			file.video.picture = Pictures::Load(
+				picture_path(file.video.id).String());
+		}
 		videos.push_back(file.video);
 	}
 	return videos;

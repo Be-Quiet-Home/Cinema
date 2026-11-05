@@ -562,7 +562,7 @@ Player::_OpenLive()
 		opened.AddInt32("width", fFront->Bounds().IntegerWidth() + 1);
 		opened.AddInt32("height", fFront->Bounds().IntegerHeight() + 1);
 	}
-	Deliver(fTarget, &opened, &fQuit);
+	_Tell(&opened);
 
 	if (fQuit)
 		return true;
@@ -1174,6 +1174,12 @@ Player::_LiveLoop()
 			// the end: what is still there. The sound too, and then the
 			// clock goes on without it
 			fAudioEnded = true;
+			// an empty packet: the decoder gives the pictures it still
+			// holds, the last ones of the video
+			if (video >= 0) {
+				if (AVPacket* flush = av_packet_alloc())
+					packets.push_back(flush);
+			}
 			while (!fQuit && !failed && (!packets.empty() || !frames.empty())) {
 				if (!pumpVideo(true) || !showFrames(true))
 					failed = true;
@@ -1292,8 +1298,8 @@ Player::_LiveLoop()
 	bool broken = readFailed && !fLive && fAddress.ByteAt(0) != '/'
 		&& fDuration > 0 && Position() < fDuration - 5000000;
 	if (!fQuit && !fEndSent.exchange(true))
-		Deliver(fTarget, (started || !failed) && !broken ? kMsgPlayerEnded
-			: kMsgPlayerError, &fQuit);
+		_Tell((started || !failed) && !broken ? kMsgPlayerEnded
+			: kMsgPlayerError);
 }
 
 

@@ -58,6 +58,9 @@ public:
 									// in a thread of its own: an address
 									// may take a while
 			void				Close();
+			int32				Session() const { return fSession; }
+									// in its messages: the window drops
+									// those of a video closed since
 
 			void				SetPaused(bool paused);
 			bool				IsPaused() const { return fPaused; }
@@ -140,6 +143,8 @@ private:
 			void				_CheckEnded();
 			void				_FreeClock();
 			void				_Failed();
+			status_t			_Tell(BMessage* message);
+			status_t			_Tell(uint32 what);
 			bool				_SetUpVideo();
 			void				_ShowFrame();
 			bigtime_t			_StreamTime(bigtime_t time);
@@ -258,6 +263,7 @@ private:
 
 			std::atomic<bool>	fPaused;
 			std::atomic<bool>	fQuit;
+			std::atomic<int32>	fSession;	// one more each time it opens
 			std::atomic<bool>	fOpened;
 			std::atomic<bool>	fShowNext;		// even when paused: after a seek
 			std::atomic<int32>	fGeneration;	// changes with a seek

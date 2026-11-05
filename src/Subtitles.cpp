@@ -212,7 +212,7 @@ language_of_name(const BString& leaf, const BString& videoBase)
 	if (rest == stem) {
 		tokens.clear();
 		tokens_of(stem, tokens);
-		int32 first = std::max(0, (int32)tokens.size() - 4);
+		int32 first = std::max((int32)0, (int32)tokens.size() - 4);
 		for (int32 i = first; i < (int32)tokens.size(); i++) {
 			BString code = code_of(tokens[i]);
 			if (!code.IsEmpty())

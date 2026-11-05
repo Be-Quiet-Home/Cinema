@@ -198,9 +198,9 @@ Helper::Search(int32 generation, int32 count, const char* query,
 {
 	Json request = Json::MakeObject();
 	request.Set("type", "search");
-	request.Set("tag", generation);
+	request.Set("tag", (int)generation);
 	request.Set("provider", _Provider(provider).String());
-	request.Set("count", count);
+	request.Set("count", (int)count);
 	request.Set("query", query);
 	_Send(request);
 }
@@ -212,9 +212,9 @@ Helper::Channel(int32 generation, int32 count, const char* id,
 {
 	Json request = Json::MakeObject();
 	request.Set("type", "channel");
-	request.Set("tag", generation);
+	request.Set("tag", (int)generation);
 	request.Set("provider", _Provider(provider).String());
-	request.Set("count", count);
+	request.Set("count", (int)count);
 	request.Set("channel", id);
 	_Send(request);
 }

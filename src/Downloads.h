@@ -7,6 +7,7 @@
 
 
 #include <Message.h>
+#include <SupportDefs.h>
 #include <String.h>
 
 #include <map>
@@ -26,9 +27,12 @@ namespace Downloads {
 
 BString				Folder();
 						// made if needed; empty if it can't be
-std::vector<MediaItem>	Load(std::map<BString, BString>* files);
+std::vector<MediaItem>	Load(std::map<BString, BString>* files,
+							int32 pictures = INT32_MAX);
 						// the newest first, with their files and pictures;
-						// files: their paths, by id
+						// files: their paths, by id. The pictures of the
+						// first ones only: decoding them all would hold a
+						// slow machine with many files
 void				KeepPicture(const char* cache, const char* id);
 void				Describe(const char* path, const BMessage& video);
 						// "id", "title", "channel", "channel id", "duration"

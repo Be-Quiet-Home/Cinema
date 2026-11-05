@@ -95,6 +95,7 @@ Player::Player(const BMessenger& target)
 	fPausedClock(0),
 	fPaused(false),
 	fQuit(false),
+	fSession(0),
 	fOpened(false),
 	fShowNext(false),
 	fGeneration(0),
@@ -138,6 +139,8 @@ Player::_Start(const char* address, bigtime_t startAt, bool sameVideo)
 	// tracks the helper gave and their text, stay
 	fSameVideo = sameVideo;
 	_Close(sameVideo);
+	// its threads are gone: what they sent is of a session before
+	fSession++;
 	fStatStart = 0;
 	fAddress = address;
 	fStartAt = startAt;
@@ -396,7 +399,7 @@ Player::_Open()
 		opened.AddInt32("width", fFront->Bounds().IntegerWidth() + 1);
 		opened.AddInt32("height", fFront->Bounds().IntegerHeight() + 1);
 	}
-	Deliver(fTarget, &opened, &fQuit);
+	_Tell(&opened);
 
 	if (fQuit)
 		return;
@@ -420,12 +423,29 @@ Player::_Open()
 }
 
 
+/*!	A message to the window, with the session it belongs to. */
+status_t
+Player::_Tell(BMessage* message)
+{
+	message->AddInt32("session", fSession);
+	return Deliver(fTarget, message, &fQuit);
+}
+
+
+status_t
+Player::_Tell(uint32 what)
+{
+	BMessage message(what);
+	return _Tell(&message);
+}
+
+
 void
 Player::_Failed()
 {
 	// closing: the window waits for us, and does not want to know
 	if (!fQuit)
-		Deliver(fTarget, kMsgPlayerError, &fQuit);
+		_Tell(kMsgPlayerError);
 }
 
 
@@ -653,7 +673,10 @@ Player::Seek(bigtime_t time)
 		time = std::max((bigtime_t)0, std::min(time, fDuration - 1000000));
 		BMessage reopen(kMsgPlayerReopen);
 		reopen.AddInt64("time", time);
-		Deliver(fTarget, &reopen, &fQuit);
+		reopen.AddInt32("session", fSession);
+		// from the window to itself: without waiting, it would wait for
+		// itself
+		fTarget.SendMessage(&reopen, (BHandler*)NULL, 0);
 		return;
 	}
 	_SeekTracks(time);
@@ -996,7 +1019,7 @@ Player::_CheckEnded()
 			return;
 	}
 	if (!fEndSent.exchange(true))
-		Deliver(fTarget, kMsgPlayerEnded, &fQuit);
+		_Tell(kMsgPlayerEnded);
 }
 
 
