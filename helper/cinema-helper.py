@@ -213,30 +213,66 @@ def multiline(text):
 		"\t", " ").strip()
 
 
+STALE_TIME = 7 * 24 * 60 * 60
+REFRESHING = set()
+REFRESHING_LOCK = threading.Lock()
+
+
+def store_videos(path, videos):
+	temporary = path + ".part.%d" % threading.get_ident()
+	try:
+		with open(temporary, "w", encoding="utf-8") as file:
+			for video in videos:
+				file.write(json.dumps(video, ensure_ascii=False) + "\n")
+		os.replace(temporary, path)
+	except OSError:
+		pass
+
+
 def cached(name, fetch):
-	"""The videos fetch() gives, from the cache when it is recent enough."""
+	"""The videos fetch() gives, from the cache when it is recent enough.
+	Older than CACHE_TIME but not than STALE_TIME, they are given at once
+	all the same, and fetched again in the background for the next time:
+	the shelves of the home show without waiting for yt-dlp."""
 	path = None
 	if cache:
 		key = hashlib.sha1(name.encode()).hexdigest()
 		path = os.path.join(cache, "videos-%s.json" % key[:16])
 		try:
-			if time.time() - os.path.getmtime(path) < CACHE_TIME:
+			age = time.time() - os.path.getmtime(path)
+			if age < STALE_TIME:
 				with open(path, encoding="utf-8") as file:
-					return [json.loads(line) for line in file if line.strip()]
+					videos = [json.loads(line) for line in file if line.strip()]
+				if videos and age >= CACHE_TIME:
+					refresh_later(path, fetch)
+				if videos:
+					return videos
 		except (OSError, ValueError):
 			pass
 
 	videos = fetch()
 	if path and videos:
-		temporary = path + ".part"
-		try:
-			with open(temporary, "w", encoding="utf-8") as file:
-				for video in videos:
-					file.write(json.dumps(video, ensure_ascii=False) + "\n")
-			os.replace(temporary, path)
-		except OSError:
-			pass
+		store_videos(path, videos)
 	return videos
+
+
+def refresh_later(path, fetch):
+	with REFRESHING_LOCK:
+		if path in REFRESHING:
+			return
+		REFRESHING.add(path)
+
+	def work():
+		try:
+			videos = fetch()
+			if videos:
+				store_videos(path, videos)
+		except Exception:
+			pass
+		finally:
+			with REFRESHING_LOCK:
+				REFRESHING.discard(path)
+	threading.Thread(target=work, daemon=True).start()
 
 
 def cached_details(name, fetch):
@@ -592,6 +628,12 @@ class YouTubeProvider(Provider):
 					continue
 				if not any(f.get("url") for f in formats or []):
 					continue
+				# YouTube answers 429 to the tracks it translates by itself
+				# (tlang in the address): only the automatic one in the
+				# language of the video can be fetched
+				if automatic and all("tlang=" in (f.get("url") or "")
+						for f in formats if f.get("url")):
+					continue
 				name = ""
 				for f in formats:
 					if f.get("name"):
@@ -600,7 +642,11 @@ class YouTubeProvider(Provider):
 				tracks.append({"language": language, "name": clean(name),
 					"automatic": automatic})
 				seen.add(language)
-		return tracks
+		# "it-orig" and "it" are often the same automatic track
+		automatic = {t["language"] for t in tracks if t["automatic"]}
+		return [t for t in tracks if not (t["automatic"]
+			and t["language"].endswith("-orig")
+			and t["language"][:-len("-orig")] in automatic)]
 
 	def subtitle(self, media_id, kind, language, automatic):
 		info = self.video_info(media_id, False)
