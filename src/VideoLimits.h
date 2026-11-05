@@ -21,9 +21,12 @@ VideoHeightLimit()
 #endif
 	BScreen screen(B_MAIN_SCREEN_ID);
 	if (screen.IsValid()) {
+		// a tenth above the screen still: 1080p on 1050 lines is scaled by
+		// 3%, while the next quality down would be a whole step worse
 		int32 screenHeight = (int32)screen.Frame().Height() + 1;
-		if (screenHeight > 0 && screenHeight < limit)
-			limit = screenHeight;
+		int32 fits = screenHeight + screenHeight / 10;
+		if (screenHeight > 0 && fits < limit)
+			limit = fits;
 	}
 	const char* wanted = getenv("CINEMA_MAX_HEIGHT");
 	if (wanted != NULL) {

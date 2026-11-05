@@ -86,6 +86,19 @@ get_hw_format(AVCodecContext* context, const enum AVPixelFormat* formats)
 		if (*format == wanted)
 			return *format;
 	}
+	// the hardware does not take this stream (its codec or its profile):
+	// decoded in software then, rather than not at all
+	for (const enum AVPixelFormat* format = formats;
+		format != NULL && *format != AV_PIX_FMT_NONE; format++) {
+		const AVPixFmtDescriptor* description = av_pix_fmt_desc_get(*format);
+		if (description != NULL
+			&& (description->flags & AV_PIX_FMT_FLAG_HWACCEL) == 0) {
+			if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+				fprintf(stderr, "live: hardware refused, software %s\n",
+					description->name);
+			return *format;
+		}
+	}
 	return AV_PIX_FMT_NONE;
 }
 

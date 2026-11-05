@@ -97,7 +97,10 @@ public:
 
 private:
 			void				_Start(const char* address,
-									bigtime_t startAt);
+									bigtime_t startAt,
+									bool sameVideo = false);
+			void				_Close(bool keepSubtitles);
+			bool				fSameVideo = false;
 	static	status_t			_OpenEntry(void* data);
 			void				_Open();
 	static	status_t			_VideoEntry(void* data);

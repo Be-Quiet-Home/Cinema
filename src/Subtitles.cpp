@@ -1080,6 +1080,30 @@ Subtitles::_Embedded(const char* video)
 		return;
 	}
 
+	// where the file starts, which the player counts from: without
+	// avformat_find_stream_info() (skipped for MP4 and Matroska) the format
+	// does not say it, so the first packets do, before going back
+	int64 origin = format->start_time;
+	if (origin == AV_NOPTS_VALUE) {
+		AVPacket* first = av_packet_alloc();
+		for (int32 i = 0; first != NULL && i < 64 && !fStop
+				&& av_read_frame(format, first) >= 0; i++) {
+			int64 time = first->pts != AV_NOPTS_VALUE ? first->pts : first->dts;
+			if (time != AV_NOPTS_VALUE) {
+				time = av_rescale_q(time,
+					format->streams[first->stream_index]->time_base,
+					AV_TIME_BASE_Q);
+				if (origin == AV_NOPTS_VALUE || time < origin)
+					origin = time;
+			}
+			av_packet_unref(first);
+		}
+		av_packet_free(&first);
+		av_seek_frame(format, -1, INT64_MIN, AVSEEK_FLAG_BACKWARD);
+	}
+	if (origin == AV_NOPTS_VALUE)
+		origin = 0;
+
 	for (unsigned i = 0; i < format->nb_streams; i++) {
 		bool wanted = false;
 		for (const EmbeddedStream& stream : streams) {
@@ -1115,6 +1139,10 @@ Subtitles::_Embedded(const char* video)
 						AV_TIME_BASE_Q);
 				if (time == AV_NOPTS_VALUE)
 					time = 0;
+				// from the start of the file, as the player counts: an
+				// MPEG-TS file starts at 1.4 s or so
+				else
+					time -= origin;
 				bigtime_t start = time > 0 ? time : 0;
 				start += (bigtime_t)subtitle.start_display_time * 1000;
 				uint32_t shown = std::max<uint32_t>(

@@ -129,9 +129,12 @@ Player::Open(const char* address, bigtime_t startAt)
 
 
 void
-Player::_Start(const char* address, bigtime_t startAt)
+Player::_Start(const char* address, bigtime_t startAt, bool sameVideo)
 {
-	Close();
+	// the same video opened again (without the overlay): its subtitles, the
+	// tracks the helper gave and their text, stay
+	fSameVideo = sameVideo;
+	_Close(sameVideo);
 	fStatStart = 0;
 	fAddress = address;
 	fStartAt = startAt;
@@ -162,6 +165,13 @@ Player::_Start(const char* address, bigtime_t startAt)
 void
 Player::Close()
 {
+	_Close(false);
+}
+
+
+void
+Player::_Close(bool keepSubtitles)
+{
 	fQuit = true;
 	status_t status;
 	if (fOpenThread >= 0) {
@@ -182,7 +192,8 @@ Player::Close()
 		fAudioThread = -1;
 	}
 	_CloseLive();
-	fSubtitles.Clear();
+	if (!keepSubtitles)
+		fSubtitles.Clear();
 	if (fFile != NULL) {
 		if (fVideoTrack != NULL)
 			fFile->ReleaseTrack(fVideoTrack);
@@ -341,7 +352,7 @@ Player::_Open()
 	fShowNext = true;
 	fOpened = true;
 
-	if (fAddress.ByteAt(0) == '/') {
+	if (fAddress.ByteAt(0) == '/' && !fSameVideo) {
 		fSubtitles.LoadSidecars(fAddress.String());
 		fSubtitles.StartEmbedded(fAddress.String());
 	}
@@ -456,7 +467,7 @@ Player::DisableOverlay()
 		return;
 	// for this video only: Open() tries the overlay again for the next one
 	BString address(fAddress);
-	_Start(address.String(), Position());
+	_Start(address.String(), Position(), true);
 }
 
 
