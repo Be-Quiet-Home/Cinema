@@ -1,3 +1,4 @@
 objects/
 __pycache__/
 objects-arm/
+objects-x86_64/
