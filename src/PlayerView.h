@@ -84,6 +84,9 @@ private:
 			bool				fControls;
 			bigtime_t			fControlsUntil;
 			BPoint				fLastMouse;
+			bigtime_t			fMouseMovedAt = 0;
+			BPoint				fTickPointer;
+			bool				fCursorObscured = false;
 			BMessageRunner*		fTicker;
 			std::vector<BString> fSubtitleLines;
 			BRect				fSubtitleRect;

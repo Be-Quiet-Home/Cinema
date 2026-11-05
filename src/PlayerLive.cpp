@@ -243,6 +243,9 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 
 	BAutolock locker(fFrameLock);
 
+	if (fNoOverlay)
+		_DropKeptBitmaps();
+
 	if (!fNoOverlay) {
 		int32 sizes[3][2] = { { width, height } };
 		int32 count = 1;
@@ -264,6 +267,22 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 			int32 height = sizes[i][1];
 			if (width < 2 || height < 2)
 				continue;
+			// the overlay of the same video before a seek, rather than
+			// freeing it and finding the contiguous memory for another
+			if (fKeptOverlay != NULL
+				&& fKeptOverlay->Bounds().IntegerWidth() + 1 == width
+				&& fKeptOverlay->Bounds().IntegerHeight() + 1 == height) {
+				fOverlay = fKeptOverlay;
+				fFront = fKeptFront;
+				fBack = fKeptBack;
+				fKeptOverlay = fKeptFront = fKeptBack = NULL;
+				fLivePixels = AV_PIX_FMT_YUYV422;
+				if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
+					fprintf(stderr, "live: %dx%d 422 overlay kept\n", width,
+						height);
+				}
+				return true;
+			}
 			BRect bounds(0, 0, width - 1, height - 1);
 			BBitmap* overlay = new BBitmap(bounds, B_BITMAP_WILL_OVERLAY
 				| B_BITMAP_RESERVE_OVERLAY_CHANNEL, B_YCbCr422);
@@ -285,12 +304,15 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 			fFront = front;
 			fBack = back;
 			fLivePixels = AV_PIX_FMT_YUYV422;
+			// a bigger one was found: the kept one goes
+			_DropKeptBitmaps();
 			if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
 				fprintf(stderr, "live: %dx%d 422 overlay\n", width, height);
 			return true;
 		}
 	}
 
+	_DropKeptBitmaps();
 	BRect bounds(0, 0, width - 1, height - 1);
 	fFront = new BBitmap(bounds, 0, B_RGB32);
 	fBack = new BBitmap(bounds, 0, B_RGB32);
@@ -301,14 +323,23 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 }
 
 
-void
+bool
 Player::_OpenLive()
 {
+	// live TV from its address, or a file, a stream of YouTube or the relay
 	LiveAddress live;
-	if (!LiveAddress::Parse(fAddress.String(), live)) {
-		_Failed();
-		return;
+	if (fLive) {
+		if (!LiveAddress::Parse(fAddress.String(), live)) {
+			_Failed();
+			return false;
+		}
+	} else {
+		live.url = fAddress;
+		if (fRelay && fStartAt > 0)
+			live.url << "?t=" << (double)fStartAt / 1000000;
 	}
+	// set when the last stream stopped: it would stop this one opening
+	fLiveStopRead = false;
 	static bool sNetwork = false;
 	if (!sNetwork) {
 		avformat_network_init();
@@ -337,6 +368,11 @@ Player::_OpenLive()
 		int status = avformat_open_input(&format, live.url.String(), NULL,
 			&options);
 		av_dict_free(&options);
+		if (status < 0 && getenv("CINEMA_PLAYER_DEBUG") != NULL) {
+			char text[AV_ERROR_MAX_STRING_SIZE];
+			av_strerror(status, text, sizeof(text));
+			fprintf(stderr, "player: ffmpeg open: %s\n", text);
+		}
 		// the context is gone with a failure
 		if (status < 0)
 			format = NULL;
@@ -346,9 +382,13 @@ Player::_OpenLive()
 	if (format == NULL || fQuit) {
 		if (format != NULL)
 			avformat_close_input(&format);
-		if (!fQuit)
+		// a file the Media Kit may open instead
+		if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+			fprintf(stderr, "player: ffmpeg could not open %s%s\n",
+				live.url.String(), fQuit ? " (closing)" : "");
+		if (!fQuit && fLive)
 			_Failed();
-		return;
+		return false;
 	}
 	fLiveFormat = format;
 
@@ -408,6 +448,13 @@ Player::_OpenLive()
 			fRing.resize((size_t)((int64)rate * kSoundAhead / 1000000)
 				* fFrameSize);
 			fRingRead = fRingFill = 0;
+			// a new sound player: the clock counts from its start again
+			fPerformanceStart = 0;
+			{
+				BAutolock locker(fFillLock);
+				fFillCount = fFillNext = 0;
+				fSentFrames = 0;
+			}
 			fSoundPlayer = new BSoundPlayer(&fSound, "Cinema", &_PlayBuffer,
 				NULL, this);
 			if (fSoundPlayer->InitCheck() != B_OK) {
@@ -427,8 +474,20 @@ Player::_OpenLive()
 	}
 
 	if (fLiveVideoIndex < 0 && fLiveAudioIndex < 0) {
+		if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
+			fprintf(stderr, "player: ffmpeg found no stream to play (video "
+				"%p, audio %p, sound player %p)\n", fLiveVideo, fLiveAudio,
+				fSoundPlayer);
+		}
+		if (!fLive) {
+			// for the Media Kit to try
+			delete fSoundPlayer;
+			fSoundPlayer = NULL;
+			_CloseLive();
+			return false;
+		}
 		_Failed();
-		return;
+		return false;
 	}
 
 	fVideoEnded = fLiveVideoIndex < 0;
@@ -439,12 +498,44 @@ Player::_OpenLive()
 	fClockStart = system_time();
 	fLiveBase = AV_NOPTS_VALUE;
 	fLiveSoundEnd = AV_NOPTS_VALUE;
+	fLiveSkipBefore = INT64_MIN;
 	fDuration = 0;
+	if (!fLive) {
+		// the clock counts the time of the video, from where it starts
+		fClockBase = fStartAt;
+		fPausedClock = fStartAt;
+		if (fRelay)
+			fDuration = fRelayDuration;
+		else {
+			if (format->duration > 0)
+				fDuration = format->duration;
+			// the times of the streams count from the start of the file
+			int64 start = format->start_time != AV_NOPTS_VALUE
+				? format->start_time : 0;
+			fLiveBase = start;
+			fLiveSoundEnd = start + fStartAt;
+			if (fStartAt > 0) {
+				// from the key frame before, what comes before is not played
+				av_seek_frame(format, -1, start + fStartAt,
+					AVSEEK_FLAG_BACKWARD);
+				fLiveSkipBefore = start + fStartAt;
+			}
+		}
+		if (fAddress.ByteAt(0) == '/' && !fSameVideo) {
+			fSubtitles.LoadSidecars(fAddress.String());
+			fSubtitles.StartEmbedded(fAddress.String());
+		}
+	}
 	fShowNext = true;
 	fOpened = true;
+	if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
+		fprintf(stderr, "player: ffmpeg %s, %.1f s, from %.1f s\n",
+			fLive ? "live" : fRelay ? "relay" : "file", fDuration / 1e6,
+			fStartAt / 1e6);
+	}
 
 	BMessage opened(kMsgPlayerOpened);
-	opened.AddInt64("duration", 0);
+	opened.AddInt64("duration", fDuration);
 	opened.AddBool("overlay", fOverlay != NULL);
 	if (fFront != NULL) {
 		opened.AddInt32("width", fFront->Bounds().IntegerWidth() + 1);
@@ -453,14 +544,20 @@ Player::_OpenLive()
 	fTarget.SendMessage(&opened);
 
 	if (fQuit)
-		return;
+		return true;
 	fVideoThread = spawn_thread(&_LiveEntry, "player live", B_DISPLAY_PRIORITY,
 		this);
 	resume_thread(fVideoThread);
 	if (fSoundPlayer != NULL) {
+		// as BSoundPlayer::Start() starts its node (see _Clock())
+		bigtime_t performance = fSoundPlayer->PerformanceTime();
+		bigtime_t latency = fSoundPlayer->Latency();
 		fSoundPlayer->Start();
+		if (performance > 0)
+			fPerformanceStart = performance + latency + 5000;
 		fSoundPlayer->SetHasData(true);
 	}
+	return true;
 }
 
 
@@ -565,7 +662,7 @@ Player::_LiveSkip(int level)
 void
 Player::_LiveLateness(bool late)
 {
-	if (_LiveClock() < kSettling)
+	if (_LiveClock() - fClockBase < kSettling)
 		return;
 	int base = kSlowProcessor ? 1 : 0;
 	if (late) {
@@ -857,11 +954,17 @@ Player::_LiveLoop()
 				continue;
 			while (avcodec_receive_frame(fLiveVideo, frame) == 0) {
 				int64 micros = _LiveFrameMicros(video, frame);
+				if (micros != AV_NOPTS_VALUE && fLiveSkipBefore != INT64_MIN
+					&& micros < fLiveSkipBefore - 20000) {
+					// between the key frame and where it was asked to start
+					dropped++;
+					av_frame_unref(frame);
+					continue;
+				}
 				if (audio < 0 && fLiveBase == AV_NOPTS_VALUE
 					&& micros != AV_NOPTS_VALUE) {
 					// without sound the clock starts with the pictures
-					fLiveBase = micros;
-					fClockBase = 0;
+					fLiveBase = micros - fClockBase;
 					fClockStart = system_time();
 				}
 				AVFrame* decodedFrame = frame;
@@ -1007,8 +1110,15 @@ Player::_LiveLoop()
 			while (status >= 0 && !fQuit
 				&& avcodec_receive_frame(fLiveAudio, frame) == 0) {
 				int64 micros = _LiveFrameMicros(audio, frame);
+				if (micros != AV_NOPTS_VALUE && micros < fLiveSkipBefore) {
+					// before where it was asked to start
+					av_frame_unref(frame);
+					continue;
+				}
 				if (fLiveBase == AV_NOPTS_VALUE && micros != AV_NOPTS_VALUE) {
-					fLiveBase = micros;
+					// the clock starts where the sound does (the relay
+					// from fStartAt)
+					fLiveBase = micros - fClockBase;
 					fLiveSoundEnd = micros;
 				}
 				audioFrames++;
@@ -1094,4 +1204,56 @@ Player::_LiveLoop()
 	if (!fQuit && !fEndSent.exchange(true))
 		fTarget.SendMessage(started || !failed ? kMsgPlayerEnded
 			: kMsgPlayerError);
+}
+
+
+BBitmap*
+Player::PausedPicture()
+{
+	if (!fPaused || fOverlay == NULL)
+		return NULL;
+	BAutolock locker(fFrameLock);
+	if (!fHasFrame || fFront == NULL || fFront->ColorSpace() != B_YCbCr422)
+		return NULL;
+	if (fPausedPicture != NULL && fPausedPictureOf == fShownCount)
+		return fPausedPicture;
+
+	BRect bounds = fFront->Bounds();
+	int width = bounds.IntegerWidth() + 1;
+	int height = bounds.IntegerHeight() + 1;
+	if (fPausedPicture == NULL || fPausedPicture->Bounds() != bounds) {
+		delete fPausedPicture;
+		fPausedPicture = new BBitmap(bounds, B_RGB32);
+		if (fPausedPicture->InitCheck() != B_OK) {
+			delete fPausedPicture;
+			fPausedPicture = NULL;
+			return NULL;
+		}
+	}
+	// Haiku's B_YCbCr422 is FFmpeg's YUYV422
+	fPauseScaler = sws_getCachedContext(fPauseScaler, width, height,
+		AV_PIX_FMT_YUYV422, width, height, AV_PIX_FMT_BGRA, SWS_POINT, NULL,
+		NULL, NULL);
+	if (fPauseScaler == NULL)
+		return NULL;
+	const uint8_t* from[4] = { (const uint8_t*)fFront->Bits(), NULL, NULL,
+		NULL };
+	int fromStrides[4] = { (int)fFront->BytesPerRow(), 0, 0, 0 };
+	uint8_t* to[4] = { (uint8_t*)fPausedPicture->Bits(), NULL, NULL, NULL };
+	int toStrides[4] = { (int)fPausedPicture->BytesPerRow(), 0, 0, 0 };
+	sws_scale(fPauseScaler, from, fromStrides, 0, height, to, toStrides);
+	fPausedPictureOf = fShownCount;
+	return fPausedPicture;
+}
+
+
+void
+Player::_DropPausedPicture()
+{
+	delete fPausedPicture;
+	fPausedPicture = NULL;
+	fPausedPictureOf = -1;
+	if (fPauseScaler != NULL)
+		sws_freeContext(fPauseScaler);
+	fPauseScaler = NULL;
 }

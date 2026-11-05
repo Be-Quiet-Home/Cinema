@@ -67,6 +67,7 @@ Settings::Load()
 	settings.videoHeight = archive.GetInt32("video height", 0);
 	settings.tvOffered = archive.GetBool("tv offered", false);
 	settings.volume = archive.GetFloat("volume", 1.0f);
+	settings.subtitleLanguage = archive.GetString("subtitle language", "");
 	return settings;
 }
 
@@ -84,6 +85,7 @@ Settings::Save() const
 	archive.AddInt32("video height", videoHeight);
 	archive.AddBool("tv offered", tvOffered);
 	archive.AddFloat("volume", volume);
+	archive.AddString("subtitle language", subtitleLanguage);
 	write_file(path, &archive, NULL);
 }
 

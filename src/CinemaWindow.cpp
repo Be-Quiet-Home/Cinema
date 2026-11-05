@@ -156,6 +156,7 @@ CinemaWindow::CinemaWindow()
 	fPlayer = new Player(BMessenger(this));
 	// as it was left the last time
 	fPlayer->SetVolume(fSettings.volume);
+	fPlayer->SetSubtitlePreference(fSettings.subtitleLanguage.String());
 	fPlayerView = new PlayerView(fPlayer);
 	fPlayerShown = false;
 	fPlayerReturn = 2;
@@ -1212,6 +1213,18 @@ CinemaWindow::MessageReceived(BMessage* message)
 			fPlayerView->RefreshSubtitles();
 			break;
 		}
+		case kMsgSubtitleChosen:
+		{
+			// the next videos start with the same language, or none
+			BString choice = fPlayer->SubtitleChoice();
+			fPlayer->SetSubtitlePreference(choice.String());
+			fSettings = Settings::Load();
+			if (fSettings.subtitleLanguage != choice) {
+				fSettings.subtitleLanguage = choice;
+				fSettings.Save();
+			}
+			break;
+		}
 		case kMsgSubtitleRequest:
 			_RequestSubtitle(message->GetString("language", ""),
 				message->GetBool("automatic", false));
@@ -1250,8 +1263,8 @@ CinemaWindow::MessageReceived(BMessage* message)
 				|| MessageQueue()->FindMessage(kMsgPlayerReopen, 0) != NULL)
 				break;
 			fPlayerView->ClearOverlay();
-			fPlayer->Open(fPlayingAddress.String(),
-				message->GetInt64("time", 0));
+			// the same video, with its subtitles
+			fPlayer->Reopen(message->GetInt64("time", 0));
 			break;
 		}
 		case kMsgPlayerSave:

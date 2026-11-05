@@ -62,6 +62,11 @@ public:
 			void				SetPaused(bool paused);
 			bool				IsPaused() const { return fPaused; }
 			void				Seek(bigtime_t time);
+			void				Reopen(bigtime_t time);
+									// the same video from there, keeping
+									// its subtitles: how a video played
+									// with FFmpeg seeks (kMsgPlayerReopen
+									// asks the window, for the overlay)
 			bigtime_t			Position() const;
 			bigtime_t			Duration() const { return fDuration; }
 			bool				IsOpen() const { return fOpened; }
@@ -75,6 +80,10 @@ public:
 			int32				SelectedSubtitle() const;
 			void				SelectSubtitle(int32 index);
 			void				ToggleSubtitles();
+			void				SetSubtitlePreference(const char* language)
+									{ fSubtitles.SetPreference(language); }
+			BString				SubtitleChoice() const
+									{ return fSubtitles.Choice(); }
 			BString				SubtitleText(bigtime_t time) const;
 			int32				AddSubtitleTrack(const char* language,
 									const char* name, bool automatic);
@@ -86,6 +95,12 @@ public:
 									// UnlockFrame() afterwards in any case
 			void				UnlockFrame();
 			BBitmap*			Overlay() const { return fOverlay; }
+			BBitmap*			PausedPicture();
+									// paused with the overlay: the picture
+									// in RGB, for the view to draw instead
+									// of the key color, so that a screenshot
+									// shows it. NULL otherwise. In the
+									// thread of the window only.
 									// the picture the screen shows by
 									// itself, when the overlay was free:
 									// LockFrame() is not needed then
@@ -100,6 +115,15 @@ private:
 									bigtime_t startAt,
 									bool sameVideo = false);
 			void				_Close(bool keepSubtitles);
+			void				_DropKeptBitmaps();
+			BBitmap*			fPausedPicture = NULL;
+			int64				fPausedPictureOf = -1;	// fShownCount
+			std::atomic<int64>	fShownCount{0};
+			SwsContext*			fPauseScaler = NULL;
+			void				_DropPausedPicture();
+			BBitmap*			fKeptOverlay = NULL;	// see _Close()
+			BBitmap*			fKeptFront = NULL;
+			BBitmap*			fKeptBack = NULL;
 			bool				fSameVideo = false;
 	static	status_t			_OpenEntry(void* data);
 			void				_Open();
@@ -121,7 +145,7 @@ private:
 			bool				_SetUpBitmaps(int32 width, int32 height);
 
 			// live, with FFmpeg (PlayerLive.cpp)
-			void				_OpenLive();
+			bool				_OpenLive();
 			void				_CloseLive();
 		static	status_t			_LiveEntry(void* data);
 			void				_LiveLoop();
@@ -154,7 +178,14 @@ private:
 			bigtime_t			fStatFrameTime = 0;
 			int32				fFormatsAsked = 0;
 
-			bool				fLive;			// played with FFmpeg
+			bool				fLive;			// live TV, played with FFmpeg
+			bool				fFFmpeg = false;	// a file, YouTube or the
+										// relay played with FFmpeg too:
+										// its times can be trusted, and the
+										// overlay comes in YCbCr422
+			int64				fLiveSkipBefore = 0;	// stream microseconds:
+										// what comes before, after a seek,
+										// is not played; INT64_MIN for none
 			std::atomic<bool>	fNoOverlay;
 
 			AVFormatContext*	fLiveFormat;

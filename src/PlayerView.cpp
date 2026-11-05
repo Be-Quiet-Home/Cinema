@@ -8,9 +8,11 @@
 
 #include <algorithm>
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <Application.h>
 #include <Bitmap.h>
 #include <Catalog.h>
 #include <Menu.h>
@@ -377,8 +379,16 @@ PlayerView::Draw(BRect updateRect)
 		FillRect(BRect(bounds.left, frame.top, frame.left - 1, frame.bottom));
 		FillRect(BRect(frame.right + 1, frame.top, bounds.right,
 			frame.bottom));
-		SetHighColor(fKey);
-		FillRect(frame);
+		// paused: the picture itself, which a screenshot can take, rather
+		// than the key color the screen replaces
+		BBitmap* still = fPlayer->IsPaused() ? fPlayer->PausedPicture()
+			: NULL;
+		if (still != NULL)
+			DrawBitmap(still, still->Bounds(), frame);
+		else {
+			SetHighColor(fKey);
+			FillRect(frame);
+		}
 		_DrawSubtitle(this);
 		if (fControls || fPlayer->IsPaused())
 			_DrawControls(this);
@@ -625,6 +635,7 @@ PlayerView::_ChooseSubtitle(int32 index)
 	_UpdateSubtitle();
 	Invalidate();
 	_ShowControls();
+	Window()->PostMessage(kMsgSubtitleChosen);
 }
 
 
@@ -703,6 +714,8 @@ PlayerView::_TogglePause()
 	fPlayer->SetPaused(!fPlayer->IsPaused());
 	_UpdateSubtitle();
 	_ShowControls();
+	// the picture in place of the key color, or the key color back
+	Invalidate();
 }
 
 
@@ -757,6 +770,7 @@ PlayerView::KeyDown(const char* bytes, int32 count)
 			_UpdateSubtitle();
 			Invalidate(_SubtitleButtonFrame());
 			_ShowControls();
+			Window()->PostMessage(kMsgSubtitleChosen);
 			break;
 		default:
 			BView::KeyDown(bytes, count);
@@ -804,6 +818,8 @@ PlayerView::MouseMoved(BPoint where, uint32 transit,
 {
 	if (where != fLastMouse) {
 		fLastMouse = where;
+		fMouseMovedAt = system_time();
+		fCursorObscured = false;
 		_ShowControls();
 	}
 }
@@ -843,6 +859,56 @@ PlayerView::MessageReceived(BMessage* message)
 			} else if (fControls || fPlayer->IsPaused())
 				Invalidate(_BarFrame());
 			_UpdateSubtitle();
+			// the pointer out of the picture after 10 s still, while it
+			// plays: the app_server shows it again when the mouse moves
+			{
+				// where the pointer is now: MouseMoved() only tells once it
+				// moves over this view, not where it already rests
+				BPoint pointer;
+				uint32 buttons;
+				GetMouse(&pointer, &buttons, false);
+				if (fMouseMovedAt == 0 || pointer != fTickPointer) {
+					fTickPointer = pointer;
+					fMouseMovedAt = system_time();
+					fCursorObscured = false;
+				}
+			}
+			if (!fCursorObscured && fOpened && !fPlayer->IsPaused()
+				&& Window()->IsActive() && Bounds().Contains(fTickPointer)
+				&& system_time() - fMouseMovedAt > 10000000) {
+				be_app->ObscureCursor();
+				fCursorObscured = true;
+				if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+					fprintf(stderr, "player: pointer hidden\n");
+			}
+			{
+				// CINEMA_TEST_SEEK=<seconds>: a step on that often, to try
+				// seeking without the keys
+				static const int32 every = getenv("CINEMA_TEST_SEEK") != NULL
+					? atoi(getenv("CINEMA_TEST_SEEK")) : 0;
+				// CINEMA_TEST_PAUSE=<seconds>: paused once after that long
+				static const int32 pauseAfter
+					= getenv("CINEMA_TEST_PAUSE") != NULL
+						? atoi(getenv("CINEMA_TEST_PAUSE")) : 0;
+				static bigtime_t pauseAt = 0;
+				if (pauseAfter > 0 && fOpened && pauseAt >= 0) {
+					if (pauseAt == 0)
+						pauseAt = system_time() + pauseAfter * 1000000LL;
+					else if (system_time() > pauseAt) {
+						pauseAt = -1;
+						_TogglePause();
+					}
+				}
+				static bigtime_t next = 0;
+				if (every > 0 && fOpened && !fPlayer->IsPaused()) {
+					if (next == 0)
+						next = system_time() + every * 1000000LL;
+					else if (system_time() > next) {
+						next = system_time() + every * 1000000LL;
+						_SeekBy(kStep);
+					}
+				}
+			}
 			break;
 		default:
 			BView::MessageReceived(message);

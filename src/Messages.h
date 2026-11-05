@@ -79,6 +79,8 @@ enum {
 									// "text"
 	kMsgSubtitleRequest	= 'pltr',	// "language", "automatic": its text
 	kMsgSubtitlePick	= 'pltp',	// "track": chosen in the player
+	kMsgSubtitleChosen	= 'pltc',	// a track or none chosen: kept for
+										// the next videos
 
 	// the settings
 	kMsgShowSettings	= 'stng',

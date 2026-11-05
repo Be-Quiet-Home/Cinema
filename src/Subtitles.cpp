@@ -597,6 +597,24 @@ Subtitles::Select(int32 index)
 
 
 void
+Subtitles::SetPreference(const char* language)
+{
+	BAutolock locker(fLock);
+	fPreference = language != NULL ? language : "";
+}
+
+
+BString
+Subtitles::Choice() const
+{
+	BAutolock locker(fLock);
+	if (fSelected < 0 || fSelected >= (int32)fTracks.size())
+		return "off";
+	return primary(fTracks[fSelected].language);
+}
+
+
+void
 Subtitles::Toggle()
 {
 	BAutolock locker(fLock);
@@ -654,8 +672,17 @@ Subtitles::_SelectPreferred()
 {
 	if (fChosen)
 		return;
+	// none, as the last video was left
+	if (fPreference == "off") {
+		fSelected = -1;
+		return;
+	}
 	int32 selected = -1;
-	for (const BString& preferred : fPreferred) {
+	std::vector<BString> languages;
+	if (!fPreference.IsEmpty())
+		languages.push_back(fPreference);
+	languages.insert(languages.end(), fPreferred.begin(), fPreferred.end());
+	for (const BString& preferred : languages) {
 		// the subtitles made by hand before the automatic ones
 		for (int32 automatic = 0; automatic < 2 && selected < 0;
 			automatic++) {

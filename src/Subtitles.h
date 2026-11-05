@@ -57,6 +57,12 @@ public:
 
 			int32				Selected() const;
 			void				Select(int32 index);
+			void				SetPreference(const char* language);
+									// chosen once, before the languages of
+									// the system: a code such as "en",
+									// "off" for none, empty for the system's
+			BString				Choice() const;
+									// what is chosen now, for SetPreference()
 			void				Toggle();
 
 			BString				TextAt(bigtime_t time) const;
@@ -103,6 +109,7 @@ private:
 			int32				fSelected;
 			bool				fChosen;	// somebody chose, not the locale
 			std::vector<BString> fPreferred;
+			BString				fPreference;
 
 			std::atomic<bool>	fStop;
 			thread_id			fThread;

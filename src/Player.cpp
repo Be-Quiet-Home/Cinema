@@ -113,6 +113,7 @@ Player::Player(const BMessenger& target)
 Player::~Player()
 {
 	Close();
+	_DropPausedPicture();
 }
 
 
@@ -205,10 +206,20 @@ Player::_Close(bool keepSubtitles)
 	fVideoTrack = NULL;
 	fAudioTrack = NULL;
 
+	_DropPausedPicture();
 	BAutolock locker(fFrameLock);
-	delete fFront;
-	delete fBack;
-	delete fOverlay;
+	_DropKeptBitmaps();
+	if (keepSubtitles && fFFmpeg && fOverlay != NULL) {
+		// the same video again (a seek): its overlay may be taken again, as
+		// tegra_dc may not find the contiguous memory for a new one
+		fKeptOverlay = fOverlay;
+		fKeptFront = fFront;
+		fKeptBack = fBack;
+	} else {
+		delete fFront;
+		delete fBack;
+		delete fOverlay;
+	}
 	fFront = NULL;
 	fBack = NULL;
 	fOverlay = NULL;
@@ -231,9 +242,19 @@ Player::_OpenEntry(void* data)
 void
 Player::_Open()
 {
-	if (fLive) {
-		_OpenLive();
-		return;
+	// FFmpeg plays files and streams too (YouTube, the relay): it gives
+	// YCbCr pictures for the overlay and times that can be trusted, where
+	// the Media Kit's add-on gives RGB32 only. The Media Kit if FFmpeg
+	// cannot open it, or with CINEMA_MEDIA_KIT=1.
+	const char* mediaKit = getenv("CINEMA_MEDIA_KIT");
+	bool tryFFmpeg = !fLive && (mediaKit == NULL || strcmp(mediaKit, "0") == 0)
+		&& (fAddress.ByteAt(0) == '/' || fAddress.StartsWith("http://")
+			|| fAddress.StartsWith("https://"));
+	fFFmpeg = tryFFmpeg;
+	if (fLive || tryFFmpeg) {
+		if (_OpenLive() || fLive || fQuit)
+			return;
+		fFFmpeg = false;
 	}
 	if (fAddress.ByteAt(0) == '/') {
 		entry_ref ref;
@@ -457,6 +478,8 @@ Player::SetPaused(bool paused)
 		}
 	}
 	fPaused = paused;
+	if (!paused)
+		_DropPausedPicture();
 }
 
 
@@ -606,7 +629,7 @@ Player::Seek(bigtime_t time)
 {
 	if (!fOpened || fLive)
 		return;
-	if (fRelay) {
+	if (fRelay || fFFmpeg) {
 		if (fDuration <= 0)
 			return;
 		// opened again from there, by the window: the bitmap of the
@@ -618,6 +641,29 @@ Player::Seek(bigtime_t time)
 		return;
 	}
 	_SeekTracks(time);
+}
+
+
+/*!	The bitmaps of the overlay kept by _Close(), when they are not taken
+	again. With fFrameLock.
+*/
+void
+Player::_DropKeptBitmaps()
+{
+	delete fKeptFront;
+	delete fKeptBack;
+	delete fKeptOverlay;
+	fKeptFront = fKeptBack = fKeptOverlay = NULL;
+}
+
+
+void
+Player::Reopen(bigtime_t time)
+{
+	if (fAddress.IsEmpty())
+		return;
+	BString address(fAddress);
+	_Start(address.String(), std::max((bigtime_t)0, time), true);
 }
 
 
@@ -942,6 +988,10 @@ Player::UnlockFrame()
 bool
 Player::_SetUpVideo()
 {
+	{
+		BAutolock locker(fFrameLock);
+		_DropKeptBitmaps();
+	}
 	// each format the decoder is asked for may cost it pictures: it gives
 	// RGB32 only, for Haiku's ffmpeg add-on, and the two tries took the
 	// first 8 pictures of a video, 0.32 s ahead of the sound then. A file
@@ -1039,6 +1089,7 @@ Player::_ShowFrame()
 	BAutolock locker(fFrameLock);
 	std::swap(fFront, fBack);
 	fHasFrame = true;
+	fShownCount++;
 	if (fOverlay == NULL || fOverlay->LockBits() != B_OK)
 		return;
 	const uint8* from = (const uint8*)fFront->Bits();

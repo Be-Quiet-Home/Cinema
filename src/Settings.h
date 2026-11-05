@@ -23,6 +23,8 @@ struct Settings {
 	bool		tvOffered;		// the free channels of the country were
 								// given a tab once
 	float		volume;			// of the player, 0 to 1, kept between runs
+	BString		subtitleLanguage;	// as last chosen: a code, "off", or
+								// empty for the languages of the system
 
 				Settings() : playInCinema(true), resume(true),
 					videoHeight(0), tvOffered(false), volume(1.0f) {}
