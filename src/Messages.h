@@ -35,8 +35,10 @@ enum {
 	kMsgFetchPicture	= 'fpic',	// "id", "url": a big picture, for the
 									// detail view
 	kMsgPicture			= 'pict',	// "id", "path"
-	kMsgFollow			= 'folw',	// "id", "url"
+	kMsgFollow			= 'folw',	// "id", "url", or "title" and "url"
+									// for MediaPlayer
 	kMsgStreamReady		= 'strm',	// "id", "url"
+	kMsgFollowed		= 'flwd',	// "title", "url": for MediaPlayer
 
 	// in the window
 	kMsgPlay			= 'play',	// "id", "title", "path" if downloaded,

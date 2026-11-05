@@ -219,7 +219,11 @@ Worker::_Follow(BMessage* message)
 		url = final;
 
 	BMessage ready(kMsgStreamReady);
-	ready.AddString("id", message->GetString("id", ""));
+	if (message->HasString("title")) {
+		ready.what = kMsgFollowed;
+		ready.AddString("title", message->GetString("title", ""));
+	} else
+		ready.AddString("id", message->GetString("id", ""));
 	ready.AddString("url", url);
 	fTarget.SendMessage(&ready);
 }

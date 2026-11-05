@@ -213,6 +213,32 @@ def multiline(text):
 		"\t", " ").strip()
 
 
+# a video being opened, or its page: the lists of the home and their
+# refreshes wait meanwhile, as threads of Python share one interpreter and
+# the AC100 two slow cores
+PLAYING = [0]
+PLAYING_CONDITION = threading.Condition()
+
+
+class playing:
+	def __enter__(self):
+		with PLAYING_CONDITION:
+			PLAYING[0] += 1
+
+	def __exit__(self, *details):
+		with PLAYING_CONDITION:
+			PLAYING[0] -= 1
+			PLAYING_CONDITION.notify_all()
+
+
+def wait_for_play(most=60):
+	"""Until no video is being opened, for most seconds at most."""
+	deadline = time.time() + most
+	with PLAYING_CONDITION:
+		while PLAYING[0] > 0 and time.time() < deadline:
+			PLAYING_CONDITION.wait(deadline - time.time())
+
+
 STALE_TIME = 7 * 24 * 60 * 60
 REFRESHING = set()
 REFRESHING_LOCK = threading.Lock()
@@ -264,6 +290,7 @@ def refresh_later(path, fetch):
 
 	def work():
 		try:
+			wait_for_play()
 			videos = fetch()
 			if videos:
 				store_videos(path, videos)
@@ -273,6 +300,48 @@ def refresh_later(path, fetch):
 			with REFRESHING_LOCK:
 				REFRESHING.discard(path)
 	threading.Thread(target=work, daemon=True).start()
+
+
+def stream_path(media_id):
+	if not cache:
+		return None
+	key = hashlib.sha1(media_id.encode()).hexdigest()[:16]
+	return os.path.join(cache, "stream-%s.json" % key)
+
+
+def stream_expiry(url):
+	"""When the address of a stream of YouTube expires (its expire=), or 0."""
+	found = re.search(r"[?&/]expire[=/](\d+)", url)
+	return int(found.group(1)) if found else 0
+
+
+def kept_stream(media_id):
+	"""The address found for the video before, if it still has half an hour:
+	it plays at once, after Cinema started again too."""
+	path = stream_path(media_id)
+	try:
+		with open(path, encoding="utf-8") as file:
+			kept = json.load(file)
+		if kept.get("id") == media_id \
+				and kept.get("expire", 0) - time.time() > 30 * 60:
+			return kept.get("url")
+	except (OSError, ValueError, TypeError):
+		pass
+	return None
+
+
+def keep_stream(media_id, url):
+	path = stream_path(media_id)
+	expire = stream_expiry(url)
+	if not path or not expire:
+		return
+	temporary = path + ".part.%d" % threading.get_ident()
+	try:
+		with open(temporary, "w", encoding="utf-8") as file:
+			json.dump({"id": media_id, "url": url, "expire": expire}, file)
+		os.replace(temporary, path)
+	except OSError:
+		pass
 
 
 def cached_details(name, fetch):
@@ -512,45 +581,102 @@ class YouTubeProvider(Provider):
 		video["poster"] = self.picture(info)
 		return video
 
+	# the YoutubeDL objects, kept for the next extraction: making one costs
+	# most of a second on the AC100, and its extractors are slow the first
+	# time they work. Each is lent to one thread at a time.
+	EXTRACTORS = {}
+	EXTRACTORS_LOCK = threading.Lock()
+	# the videos being extracted, so that the page, playing and the
+	# subtitles of one wait for a single extraction
+	EXTRACTING = {}
+
+	class borrowed:
+		def __init__(self, provider, key, options):
+			self.provider, self.key, self.options = provider, key, options
+
+		def __enter__(self):
+			with self.provider.EXTRACTORS_LOCK:
+				free = self.provider.EXTRACTORS.setdefault(self.key, [])
+				self.ydl = free.pop() if free else None
+			if self.ydl is None:
+				self.ydl = yt_dlp.YoutubeDL(self.options)
+			return self.ydl
+
+		def __exit__(self, *details):
+			with self.provider.EXTRACTORS_LOCK:
+				free = self.provider.EXTRACTORS[self.key]
+				if len(free) < 2:
+					free.append(self.ydl)
+
+	def extractor(self, client, formatted):
+		"""A YoutubeDL to lend that describes a video, from a client of
+		YouTube ("" the web client) and with or without Cinema's format."""
+		arguments = {"youtube": {"player_skip": ["webpage"]}}
+		if client:
+			arguments["youtube"]["player_client"] = [client]
+		options = dict(self.OPTIONS, extractor_args=arguments)
+		if formatted:
+			options["format"] = self.FORMAT
+		if not client:
+			options["js_runtimes"] = {"quickjs": {}}
+		return self.borrowed(self, ("video", client, formatted), options)
+
+	def warm_up(self):
+		"""Makes ready what the first video played needs, while nothing
+		else is asked: seconds less for it on the AC100."""
+		wait_for_play()
+		with self.extractor("android", True) as ydl:
+			ydl.get_info_extractor("Youtube")
+
 	def video_info(self, media_id, playable):
 		"""What yt-dlp says of a video, from INFO_CACHE when it is there.
 		With the format Cinema plays, so that info["url"] is its address;
 		without it too when playable is False and no format fits, for the
-		page and the subtitles of such a video."""
-		now = time.time()
-		with INFO_LOCK:
+		page and the subtitles of such a video. Without the page of the
+		video, which the Android client does not need: half the time."""
+		def known():
 			found = INFO_CACHE.get(media_id)
-			if found is not None and now - found[0] < INFO_CACHE_TIME \
+			if found is not None and time.time() - found[0] < INFO_CACHE_TIME \
 					and (found[2] or not playable):
 				return found[1]
+			return None
 
-		url = "https://www.youtube.com/watch?v=" + media_id
-		clients = [
-			{"youtube": {"player_client": ["android"]}},
-			{"youtube": {}},
-		]
-		for formatted in ((True,) if playable else (True, False)):
-			for arguments in clients:
-				options = dict(self.OPTIONS, extractor_args=arguments)
-				if formatted:
-					options["format"] = self.FORMAT
-				if not arguments["youtube"]:
-					options["js_runtimes"] = {"quickjs": {}}
-				try:
-					with yt_dlp.YoutubeDL(options) as ydl:
-						info = ydl.extract_info(url, download=False)
-				except Exception:
-					continue
-				if not info or (formatted and not info.get("url")):
-					continue
-				with INFO_LOCK:
-					INFO_CACHE[media_id] = (now, info, formatted)
-					for old in sorted(INFO_CACHE,
-							key=lambda key: INFO_CACHE[key][0])[
-								:max(0, len(INFO_CACHE) - INFO_CACHE_SIZE)]:
-						del INFO_CACHE[old]
-				return info
-		return None
+		while True:
+			with INFO_LOCK:
+				info = known()
+				if info is not None:
+					return info
+				busy = self.EXTRACTING.get(media_id)
+				if busy is None:
+					busy = threading.Event()
+					self.EXTRACTING[media_id] = busy
+					break
+			# another thread is at it: its answer, then
+			busy.wait(120)
+
+		try:
+			url = "https://www.youtube.com/watch?v=" + media_id
+			for formatted in ((True,) if playable else (True, False)):
+				for client in ("android", ""):
+					try:
+						with self.extractor(client, formatted) as ydl:
+							info = ydl.extract_info(url, download=False)
+					except Exception:
+						continue
+					if not info or (formatted and not info.get("url")):
+						continue
+					with INFO_LOCK:
+						INFO_CACHE[media_id] = (time.time(), info, formatted)
+						for old in sorted(INFO_CACHE,
+								key=lambda key: INFO_CACHE[key][0])[
+									:max(0, len(INFO_CACHE) - INFO_CACHE_SIZE)]:
+							del INFO_CACHE[old]
+					return info
+			return None
+		finally:
+			with INFO_LOCK:
+				self.EXTRACTING.pop(media_id, None)
+			busy.set()
 
 	def details(self, media_id, kind="video"):
 		info = self.video_info(media_id, False)
@@ -559,7 +685,7 @@ class YouTubeProvider(Provider):
 	def videos_of(self, url, count, channel_name="", channel_id=""):
 		options = dict(self.OPTIONS, extract_flat="in_playlist",
 			playlistend=count)
-		with yt_dlp.YoutubeDL(options) as ydl:
+		with self.borrowed(self, ("list", count), options) as ydl:
 			info = ydl.extract_info(url, download=False)
 		videos = []
 		for entry in info.get("entries") or []:
@@ -619,8 +745,14 @@ class YouTubeProvider(Provider):
 			found = self.find_separate(url, wanted_height())
 			if found:
 				return found
+		kept = kept_stream(media_id)
+		if kept:
+			return kept
 		info = self.video_info(media_id, True)
-		return info.get("url") if info else None
+		url = info.get("url") if info else None
+		if url:
+			keep_stream(media_id, url)
+		return url
 
 	def subtitles(self, media_id, kind="video"):
 		info = self.video_info(media_id, False)
@@ -2059,7 +2191,8 @@ register(LibraryProvider)
 def job_search(provider, tag, count, query):
 	try:
 		name = "%s search %d %s" % (provider.id, count, query)
-		items = cached(name, lambda: provider.search(query, count))
+		items = cached(name,
+			lambda: (wait_for_play(), provider.search(query, count))[1])
 		answer({"type": "results", "tag": tag, "items": items})
 	except Exception:
 		answer({"type": "nothing", "tag": tag})
@@ -2069,8 +2202,10 @@ def job_channel(provider, tag, count, channel_id):
 	try:
 		name = "%s channel %d %s" % (provider.id, count, channel_id)
 		if getattr(provider, "cache_channels", True):
-			items = cached(name, lambda: provider.channel(channel_id, count))
+			items = cached(name, lambda: (wait_for_play(),
+				provider.channel(channel_id, count))[1])
 		else:
+			wait_for_play()
 			items = provider.channel(channel_id, count)
 		answer({"type": "results", "tag": tag, "items": items})
 	except Exception:
@@ -2078,6 +2213,11 @@ def job_channel(provider, tag, count, channel_id):
 
 
 def job_details(provider, media_id, kind):
+	with playing():
+		job_details_now(provider, media_id, kind)
+
+
+def job_details_now(provider, media_id, kind):
 	try:
 		name = "%s details %s %s" % (provider.id, kind, media_id)
 		item = cached_details(name,
@@ -2088,6 +2228,11 @@ def job_details(provider, media_id, kind):
 
 
 def job_find(provider, media_id, kind):
+	with playing():
+		job_find_now(provider, media_id, kind)
+
+
+def job_find_now(provider, media_id, kind):
 	try:
 		url = provider.find(media_id, kind)
 	except Exception:
@@ -2226,11 +2371,22 @@ def watch_parent():
 			os._exit(0)
 
 
+def ignore_errors(function):
+	try:
+		function()
+	except Exception:
+		pass
+
+
 def serve():
 	threading.Thread(target=watch_parent, daemon=True).start()
 	answer({"type": "providers",
 		"providers": [provider.describe() for provider in PROVIDERS.values()]})
 	answer({"type": "ready"})
+	youtube = PROVIDERS.get("youtube")
+	if youtube is not None:
+		threading.Thread(target=lambda: ignore_errors(youtube.warm_up),
+			daemon=True).start()
 	for line in sys.stdin:
 		line = line.strip()
 		if not line:

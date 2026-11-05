@@ -909,10 +909,20 @@ CinemaWindow::_Play(const char* url, const char* title, const char* id)
 
 
 void
-CinemaWindow::_PlayInMediaPlayer(const char* address, const char* title)
+CinemaWindow::_PlayInMediaPlayer(const char* address, const char* title,
+	bool followed)
 {
 	// a live stream as it is: MediaPlayer opens it by itself
 	BString url = LiveAddress::Url(address);
+	// YouTube's addresses redirect, which MediaPlayer does not follow: the
+	// worker follows them first
+	if (!followed && url.FindFirst(".googlevideo.com/") >= 0) {
+		BMessage follow(kMsgFollow);
+		follow.AddString("title", title);
+		follow.AddString("url", url);
+		fWorker->PostMessage(&follow);
+		return;
+	}
 	const char* argv[] = { url.String() };
 	status_t status = be_roster->Launch(kMediaPlayer, 1, argv);
 	if (status != B_OK && status != B_ALREADY_RUNNING) {
@@ -1383,11 +1393,26 @@ CinemaWindow::MessageReceived(BMessage* message)
 		}
 		case kMsgFound:
 		{
+			// the player of Cinema follows the redirects of YouTube by
+			// itself: only MediaPlayer and the Media Kit need them followed
+			// first, which takes a second or two
 			BMessage follow(*message);
-			follow.what = kMsgFollow;
-			fWorker->PostMessage(&follow);
+			const char* mediaKit = getenv("CINEMA_MEDIA_KIT");
+			if (fSettings.playInCinema
+				&& (mediaKit == NULL || strcmp(mediaKit, "0") == 0))
+				follow.what = kMsgStreamReady;
+			else
+				follow.what = kMsgFollow;
+			if (follow.what == kMsgStreamReady)
+				PostMessage(&follow);
+			else
+				fWorker->PostMessage(&follow);
 			break;
 		}
+		case kMsgFollowed:
+			_PlayInMediaPlayer(message->GetString("url", ""),
+				message->GetString("title", ""), true);
+			break;
 		case kMsgStreamReady:
 		{
 			BString id = message->GetString("id", "");

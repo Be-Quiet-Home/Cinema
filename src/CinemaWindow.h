@@ -88,7 +88,7 @@ private:
 			void				_AddLibraryTabs();
 			void				_ShowAbout();
 			void				_PlayInMediaPlayer(const char* address,
-									const char* title);
+									const char* title, bool followed = false);
 			void				_SetProviders(BMessage* message);
 			void				_ShowCategory(int32 index);
 			void				_ShowChannel(const char* name,
