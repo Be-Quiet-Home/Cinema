@@ -26,6 +26,7 @@
 #include <Url.h>
 
 #include <algorithm>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -153,6 +154,8 @@ CinemaWindow::CinemaWindow()
 
 	// the player, the fourth card
 	fPlayer = new Player(BMessenger(this));
+	// as it was left the last time
+	fPlayer->SetVolume(fSettings.volume);
 	fPlayerView = new PlayerView(fPlayer);
 	fPlayerShown = false;
 	fPlayerReturn = 2;
@@ -2333,6 +2336,12 @@ CinemaWindow::_ClosePlayer(bool save)
 	fPlayerSaver = NULL;
 	fPlayerView->ClearOverlay();
 	fPlayer->Close();
+	// the volume, for the next videos and the next time Cinema starts
+	if (fabsf(fPlayer->Volume() - fSettings.volume) > 0.01f) {
+		fSettings = Settings::Load();
+		fSettings.volume = fPlayer->Volume();
+		fSettings.Save();
+	}
 	fSubtitlesAsked.clear();
 	fSubtitleRetries.clear();
 	fPlayerShown = false;

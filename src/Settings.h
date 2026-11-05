@@ -22,9 +22,10 @@ struct Settings {
 								// suits the machine
 	bool		tvOffered;		// the free channels of the country were
 								// given a tab once
+	float		volume;			// of the player, 0 to 1, kept between runs
 
 				Settings() : playInCinema(true), resume(true),
-					videoHeight(0), tvOffered(false) {}
+					videoHeight(0), tvOffered(false), volume(1.0f) {}
 
 	static	Settings	Load();
 			void		Save() const;

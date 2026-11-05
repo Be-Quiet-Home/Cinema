@@ -66,6 +66,7 @@ Settings::Load()
 	settings.searchSource = archive.GetString("search source", "");
 	settings.videoHeight = archive.GetInt32("video height", 0);
 	settings.tvOffered = archive.GetBool("tv offered", false);
+	settings.volume = archive.GetFloat("volume", 1.0f);
 	return settings;
 }
 
@@ -82,6 +83,7 @@ Settings::Save() const
 	archive.AddString("search source", searchSource);
 	archive.AddInt32("video height", videoHeight);
 	archive.AddBool("tv offered", tvOffered);
+	archive.AddFloat("volume", volume);
 	write_file(path, &archive, NULL);
 }
 
