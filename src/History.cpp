@@ -8,6 +8,7 @@
 #include "Pictures.h"
 #include "PictureName.h"
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -111,7 +112,8 @@ load(const char* cache)
 		if (!item.path.IsEmpty() && !BEntry(item.path.String()).Exists())
 			item.path = "";
 		item.downloaded = !item.path.IsEmpty();
-		item.picture = picture(item.id, cache);
+		// none without a cache: Remember() only rewrites the file
+		item.picture = cache != NULL ? picture(item.id, cache) : NULL;
 		items.push_back(item);
 		if ((int32)items.size() >= kMost)
 			break;
@@ -164,6 +166,10 @@ Remember(const MediaItem& item, const char* cache)
 			video.duration, field(video.path).String(),
 			(int64)time(NULL));
 	}
+	// on the disk before it takes the place of the old one: a power cut
+	// would leave an empty file otherwise
+	fflush(file);
+	fsync(fileno(file));
 	if (fclose(file) == 0)
 		rename(temporary.String(), path.Path());
 	else

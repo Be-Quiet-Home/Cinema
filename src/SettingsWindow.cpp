@@ -334,6 +334,14 @@ SettingsWindow::_SetFolders(const BMessage* message)
 void
 SettingsWindow::_Changed()
 {
+	// what this window shows over what is saved now: the volume and the
+	// language of the subtitles change meanwhile, in the player
+	Settings saved = Settings::Load();
+	saved.playInCinema = fSettings.playInCinema;
+	saved.resume = fSettings.resume;
+	saved.searchSource = fSettings.searchSource;
+	saved.videoHeight = fSettings.videoHeight;
+	fSettings = saved;
 	fSettings.Save();
 	fTarget.SendMessage(kMsgSettingsChanged);
 }

@@ -1022,6 +1022,13 @@ Subtitles::StartEmbedded(const char* video)
 }
 
 
+int
+Subtitles::_Interrupt(void* data)
+{
+	return ((Subtitles*)data)->fStop ? 1 : 0;
+}
+
+
 void
 Subtitles::StopEmbedded()
 {
@@ -1044,7 +1051,13 @@ Subtitles::_Embedded(const char* video)
 	if (fStop)
 		return;
 
-	AVFormatContext* format = NULL;
+	// stopped while it opens or probes too: a big file on a slow disk
+	// would hold the window that waits for it
+	AVFormatContext* format = avformat_alloc_context();
+	if (format == NULL)
+		return;
+	format->interrupt_callback.callback = &_Interrupt;
+	format->interrupt_callback.opaque = this;
 	if (avformat_open_input(&format, video, NULL, NULL) < 0)
 		return;
 	// MP4 and Matroska name their streams in the header: probing them

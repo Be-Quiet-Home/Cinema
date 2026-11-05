@@ -832,17 +832,22 @@ PlayerView::MessageReceived(BMessage* message)
 		case kMsgPlayerFrame:
 			if (fOverlay == NULL) {
 				_UpdateSubtitle();
+				// locked whether there is a picture or not: the lock held
+				// would stop the player, and Close() wait for it for ever
 				BBitmap* picture = fPlayer->LockFrame();
-				if (picture != NULL) {
+				if (picture != NULL)
 					Invalidate(_PictureFrame(picture));
-					fPlayer->UnlockFrame();
-				} else
+				else
 					Invalidate();
+				fPlayer->UnlockFrame();
 			} else if (!fOverlayShown) {
-				// the first picture: the key color, once
+				// the first picture: the key color, once; taken too, so
+				// that the next one comes whatever Draw() does
 				fOverlayShown = true;
 				_UpdateSubtitle();
 				Invalidate();
+				fPlayer->LockFrame();
+				fPlayer->UnlockFrame();
 			} else {
 				// nothing to draw: only taken, so that the next one comes
 				fPlayer->LockFrame();

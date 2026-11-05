@@ -6,6 +6,7 @@
 
 #include "Positions.h"
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -104,6 +105,10 @@ save(const std::vector<Entry>& entries)
 			entry.position.watched ? 1 : 0, (long long)entry.position.when,
 			id.String());
 	}
+	// on the disk before it takes the place of the old one: a power cut
+	// would leave an empty file otherwise
+	fflush(file);
+	fsync(fileno(file));
 	if (fclose(file) == 0)
 		rename(temporary.String(), path.Path());
 	else

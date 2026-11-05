@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "Deliver.h"
 #include "Messages.h"
 #include "Pictures.h"
 #include "Process.h"
@@ -101,8 +102,9 @@ Worker::_Thumbnails(BMessage* message)
 	message->GetInfo("id", &type, &count);
 
 	for (int32 first = 0; first < count && !fStopping; first += kBatch) {
-		if (first > 0 && MessageQueue()->FindMessage(kMsgThumbnails, 0)
-				!= NULL) {
+		// whatever else waits goes first: the pictures of another search,
+		// the big one of a page, the address of a video to play
+		if (first > 0 && !MessageQueue()->IsEmpty()) {
 			BMessage rest(kMsgThumbnails);
 			rest.AddInt32("generation", generation);
 			rest.AddFloat("largest", largest);
@@ -135,13 +137,15 @@ Worker::_Thumbnails(BMessage* message)
 			arguments.push_back(url);
 		}
 		if (arguments.size() > 4) {
-			// curl goes on after a picture that fails: each is looked at
-			RunProgram(arguments);
+			// curl goes on after a picture that fails: each is looked at.
+			// Out of time, the last may be half there: none is kept then.
+			bool late = RunProgram(arguments) == 28;
 			for (const BString& path : paths) {
 				BString temporary(path);
 				temporary << ".part";
 				BEntry part(temporary.String());
-				if (part.Exists() && part.Rename(path.String(), true) != B_OK)
+				if (part.Exists()
+					&& (late || part.Rename(path.String(), true) != B_OK))
 					part.Remove();
 			}
 		}
@@ -162,9 +166,12 @@ Worker::_Thumbnails(BMessage* message)
 				// without app_server: the window makes it one of its own
 				picture = Pictures::Read(path.String(), largest);
 			}
+			// not a picture, or a broken one: got again the next time
+			if (picture == NULL)
+				BEntry(path.String()).Remove();
 			if (picture != NULL)
 				thumbnail.AddPointer("picture", picture);
-			if (fTarget.SendMessage(&thumbnail) != B_OK)
+			if (Deliver(fTarget, &thumbnail, &fStopping) != B_OK)
 				delete picture;
 		}
 	}
@@ -199,7 +206,7 @@ Worker::_Picture(BMessage* message)
 	BMessage picture(kMsgPicture);
 	picture.AddString("id", id);
 	picture.AddString("path", path);
-	fTarget.SendMessage(&picture);
+	Deliver(fTarget, &picture, &fStopping);
 }
 
 
@@ -225,5 +232,5 @@ Worker::_Follow(BMessage* message)
 	} else
 		ready.AddString("id", message->GetString("id", ""));
 	ready.AddString("url", url);
-	fTarget.SendMessage(&ready);
+	Deliver(fTarget, &ready, &fStopping);
 }

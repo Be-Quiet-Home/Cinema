@@ -57,6 +57,7 @@
 #include "Style.h"
 #include "TvLists.h"
 #include "VideoGrid.h"
+#include "Watchdog.h"
 #include "Worker.h"
 #include "PictureName.h"
 
@@ -206,6 +207,7 @@ CinemaWindow::CinemaWindow()
 		script.Append("cinema-helper.py");
 	fHelper->SetHeight(fSettings.videoHeight);
 	fHelper->Start(script.Path(), fWorker->Cache());
+	Watchdog::Start(fWorker->Cache(), BMessenger(this));
 
 	// nearly the whole screen
 	BRect frame = BScreen(this).Frame();
@@ -227,6 +229,8 @@ CinemaWindow::CinemaWindow()
 
 CinemaWindow::~CinemaWindow()
 {
+	// a quit that hangs is said too
+	Watchdog::Enter('quit');
 	delete fGamepad;
 	delete fPrefetchRunner;
 	delete fPlayerSaver;
@@ -247,6 +251,7 @@ CinemaWindow::~CinemaWindow()
 void
 CinemaWindow::DispatchMessage(BMessage* message, BHandler* handler)
 {
+	Watchdog::Scope watched(message->what);
 	// Esc goes back from the details, then leaves the full screen, and F
 	// still toggles it on the details, wherever the focus is. F6 and Tab
 	// move between the tabs and the videos, also with the gamepad.
@@ -280,7 +285,9 @@ CinemaWindow::DispatchMessage(BMessage* message, BHandler* handler)
 					return;
 				}
 			}
-			if (fDetailsShown && (bytes[0] == 'f' || bytes[0] == 'F')) {
+			// not while typing a search
+			if (fDetailsShown && (bytes[0] == 'f' || bytes[0] == 'F')
+				&& !fSearchField->TextView()->IsFocus()) {
 				_SetFullScreen(!fFullScreen);
 				return;
 			}
@@ -462,12 +469,24 @@ CinemaWindow::_AddChannel(const char* name, const char* id)
 		fChannelId = "";
 	} else if (selected >= 0)
 		fCategoryBar->SetSelected(selected);
+	_HomeChanged();
+}
+
+
+/*!	The tabs changed: the shelves of the home, which know them by their
+	place, are made again, now or when the page of a video over them closes.
+*/
+void
+CinemaWindow::_HomeChanged()
+{
 	fHomeLoaded = false;
 	fHomeRequests.clear();
 	fHomeQueue.clear();
 	fHomeActive = 0;
 	if (fCard == 2 && !fDetailsShown)
 		_ShowHome();
+	else if (fDetailsShown && fDetailsReturn == 2)
+		fHomeStale = true;
 }
 
 
@@ -487,12 +506,7 @@ CinemaWindow::_RemoveCategory(int32 index)
 		fCategoryBar->SetSelected(-1);
 	else if (selected > tab)
 		fCategoryBar->SetSelected(selected - 1);
-	fHomeLoaded = false;
-	fHomeRequests.clear();
-	fHomeQueue.clear();
-	fHomeActive = 0;
-	if (fCard == 2 && !fDetailsShown)
-		_ShowHome();
+	_HomeChanged();
 }
 
 
@@ -633,6 +647,7 @@ CinemaWindow::_ToggleCategoryFocus()
 void
 CinemaWindow::_LoadHome()
 {
+	fHomeStale = false;
 	fHomeRequests.clear();
 	fHomeQueue.clear();
 	fHomeActive = 0;
@@ -855,6 +870,8 @@ CinemaWindow::_CloseDetails()
 	fCards->SetVisibleItem(fDetailsReturn);
 	fCard = fDetailsReturn;
 	fDetail->SetItem(MediaItem());
+	if (fDetailsReturn == 2 && fHomeStale)
+		_LoadHome();
 	if (fDetailsReturn == 2) {
 		if (!fHome->MoveFocus(fDetailsId.String(), 0))
 			fHome->MakeFirstFocus();
@@ -899,6 +916,13 @@ CinemaWindow::_PrefetchWanted()
 void
 CinemaWindow::_Play(const char* url, const char* title, const char* id)
 {
+	// a video still being looked for is not wanted any more: its address
+	// would close this one when it comes
+	if (!fWaiting.IsEmpty()) {
+		fWaiting = "";
+		fGrid->SetBusy(NULL);
+		fHome->ClearBusy();
+	}
 	if (!fSettings.playInCinema) {
 		_PlayInMediaPlayer(url, title);
 		return;
@@ -1321,7 +1345,8 @@ CinemaWindow::MessageReceived(BMessage* message)
 				// more, on another network say: found again, once
 				fStreams.erase(stream);
 				fRetried = id;
-				_ClosePlayer(false);
+				// from where it stopped, if it played
+				_ClosePlayer(fPlayer->Position() > 0);
 				fWaiting = id;
 				fWaitingTitle = title;
 				fGrid->SetBusy(title.String());
@@ -1463,16 +1488,56 @@ CinemaWindow::MessageReceived(BMessage* message)
 			_PrefetchWanted();
 			break;
 		}
+		case kMsgWatchdogPing:
+			// only to show the window takes its messages
+			break;
 		case kMsgHelperGone:
+		{
 			fHomeQueue.clear();
 			fHomeActive = 0;
+			fFinding.clear();
+			// a helper that worked and then went, a crash say: another one,
+			// unless that keeps happening
+			bigtime_t now = system_time();
+			if (now - fHelperRestarted > 60000000LL)
+				fHelperRestarts = 0;
+			if (fHelper->WasReady() && fHelperRestarts < 3
+				&& fHelper->Restart() == B_OK) {
+				fHelperRestarts++;
+				fHelperRestarted = now;
+				fHelper->SetHeight(fSettings.videoHeight);
+				// the downloads go on from where they were
+				BString folder = Downloads::Folder();
+				for (const auto& entry : fDownloading)
+					fHelper->Download(entry.first.String(), folder.String(),
+						entry.second.GetString("provider",
+							_ProviderOf(entry.first).String()));
+				if (!fWaiting.IsEmpty())
+					_Find(fWaiting);
+				fHomeLoaded = false;
+				if (fCard == 2)
+					_LoadHome();
+				break;
+			}
+			fWaiting = "";
 			fGrid->SetBusy(NULL);
 			fHome->ClearBusy();
+			fDetail->SetLoading(false);
+			// nothing more comes for the downloads
+			std::vector<BString> downloads;
+			for (const auto& entry : fDownloading)
+				downloads.push_back(entry.first);
+			for (const BString& id : downloads) {
+				BMessage failed(kMsgDownloadFailed);
+				failed.AddString("id", id);
+				_DownloadFailed(&failed);
+			}
 			fHome->FailPending(B_TRANSLATE("Cinema needs yt-dlp and "
 				"python3, and cinema-helper.py next to it"));
 			fGrid->SetMessage(B_TRANSLATE("Cinema needs yt-dlp and python3, "
 				"and cinema-helper.py next to it"));
 			break;
+		}
 
 		default:
 			BDirectWindow::MessageReceived(message);
@@ -1810,11 +1875,11 @@ CinemaWindow::_DirectDrawLocked()
 		|| fDirectBits == NULL)
 		return;
 	_DirectFillLocked(0xFF000000);
+	// locked with a picture or without: unlocked either way
 	BBitmap* picture = fPlayer->LockFrame();
-	if (picture != NULL) {
+	if (picture != NULL)
 		_DirectBlitLocked(picture);
-		fPlayer->UnlockFrame();
-	}
+	fPlayer->UnlockFrame();
 	if (fPlayerView->HasOverlayContent()) {
 		_DirectCreateLayerLocked();
 	}
@@ -2235,6 +2300,8 @@ CinemaWindow::_ToggleFavorite(BMessage* message)
 		// the tab chosen moved one on
 		if (selected >= fCategoryBar->CategoryTab(0))
 			fCategoryBar->SetSelected(selected + 1);
+		// so did the shelves of the home, which find them by their place
+		_HomeChanged();
 		return;
 	}
 	// the favorites shown: without the one taken away

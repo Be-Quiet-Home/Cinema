@@ -41,6 +41,7 @@ extern "C" {
 #include <mutex>
 #include <thread>
 
+#include "Deliver.h"
 #include "LiveAddress.h"
 #include "Messages.h"
 #include "VideoLimits.h"
@@ -369,6 +370,7 @@ Player::_OpenLive()
 		av_dict_set(&options, "rw_timeout", "15000000", 0);
 		av_dict_set(&options, "reconnect", "1", 0);
 		av_dict_set(&options, "reconnect_streamed", "1", 0);
+		av_dict_set(&options, "reconnect_on_network_error", "1", 0);
 		int status = avformat_open_input(&format, live.url.String(), NULL,
 			&options);
 		av_dict_free(&options);
@@ -504,6 +506,7 @@ Player::_OpenLive()
 
 	fVideoEnded = fLiveVideoIndex < 0;
 	fAudioEnded = fLiveAudioIndex < 0;
+	fClockFree = false;
 	fClockBase = 0;
 	fPlayed = 0;
 	fLastFill = 0;
@@ -528,9 +531,15 @@ Player::_OpenLive()
 			fLiveSoundEnd = start + fStartAt;
 			if (fStartAt > 0) {
 				// from the key frame before, what comes before is not played
-				av_seek_frame(format, -1, start + fStartAt,
-					AVSEEK_FLAG_BACKWARD);
-				fLiveSkipBefore = start + fStartAt;
+				if (av_seek_frame(format, -1, start + fStartAt,
+						AVSEEK_FLAG_BACKWARD) >= 0)
+					fLiveSkipBefore = start + fStartAt;
+				else {
+					// it cannot be moved in: from the start, rather than
+					// decoding all that comes before in the dark
+					fClockBase = fPausedClock = 0;
+					fLiveSoundEnd = start;
+				}
 			}
 		}
 		if (fAddress.ByteAt(0) == '/' && !fSameVideo) {
@@ -553,7 +562,7 @@ Player::_OpenLive()
 		opened.AddInt32("width", fFront->Bounds().IntegerWidth() + 1);
 		opened.AddInt32("height", fFront->Bounds().IntegerHeight() + 1);
 	}
-	fTarget.SendMessage(&opened);
+	Deliver(fTarget, &opened, &fQuit);
 
 	if (fQuit)
 		return true;
@@ -678,7 +687,10 @@ Player::_LiveLateness(bool late)
 		return;
 	int base = kSlowProcessor ? 1 : 0;
 	if (late) {
-		fLiveOnTime = 0;
+		// a late picture now and then, after the network held the stream
+		// a moment say, does not keep the decoding low with time to spare:
+		// it only sets the way back further
+		fLiveOnTime = std::max(0, fLiveOnTime - 10);
 		if (++fLiveLate >= 4 && fLiveSkipLevel < 2) {
 			_LiveSkip(2);
 			fLiveLate = 0;
@@ -734,8 +746,9 @@ Player::_LiveRender(AVFrame* frame)
 		planes, strides);
 	_ShowFrame();
 	fShowNext = false;
-	if (!fFramePending.exchange(true))
-		fTarget.SendMessage(kMsgPlayerFrame);
+	if (!fFramePending.exchange(true)
+		&& Deliver(fTarget, kMsgPlayerFrame, &fQuit) != B_OK)
+		fFramePending = false;
 	return true;
 }
 
@@ -784,6 +797,38 @@ Player::_LiveAlignSound(int64 micros)
 void
 Player::_LivePushSound(AVFrame* frame)
 {
+	// a channel may go from 5.1 to stereo, or AAC double its rate: the
+	// resampler made again for what comes now, to the same sound out
+	AVChannelLayout in;
+	int64_t inRate = 0;
+	AVSampleFormat inFormat = AV_SAMPLE_FMT_NONE;
+	memset(&in, 0, sizeof(in));
+	bool same = fLiveResampler != NULL
+		&& av_opt_get_chlayout(fLiveResampler, "in_chlayout", 0, &in) >= 0
+		&& av_opt_get_int(fLiveResampler, "in_sample_rate", 0, &inRate) >= 0
+		&& av_opt_get_sample_fmt(fLiveResampler, "in_sample_fmt", 0,
+			&inFormat) >= 0
+		&& av_channel_layout_compare(&in, &frame->ch_layout) == 0
+		&& inRate == frame->sample_rate && inFormat == frame->format;
+	av_channel_layout_uninit(&in);
+	if (!same) {
+		if (frame->sample_rate <= 0 || frame->ch_layout.nb_channels <= 0)
+			return;
+		AVChannelLayout out;
+		av_channel_layout_default(&out, fSound.channel_count);
+		swr_free(&fLiveResampler);
+		swr_alloc_set_opts2(&fLiveResampler, &out, AV_SAMPLE_FMT_S16,
+			(int)fSound.frame_rate, &frame->ch_layout,
+			(AVSampleFormat)frame->format, frame->sample_rate, 0, NULL);
+		av_channel_layout_uninit(&out);
+		if (fLiveResampler == NULL || swr_init(fLiveResampler) < 0) {
+			swr_free(&fLiveResampler);
+			return;
+		}
+		if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
+			fprintf(stderr, "player: sound now %d channels at %d Hz\n",
+				frame->ch_layout.nb_channels, frame->sample_rate);
+	}
 	int most = swr_get_out_samples(fLiveResampler, frame->nb_samples);
 	if (most <= 0)
 		return;
@@ -791,7 +836,7 @@ Player::_LivePushSound(AVFrame* frame)
 	fLivePcm.resize(before + most * fFrameSize);
 	uint8_t* planes[1] = { fLivePcm.data() + before };
 	int written = swr_convert(fLiveResampler, planes, most,
-		(const uint8_t**)frame->data, frame->nb_samples);
+		(const uint8_t**)frame->extended_data, frame->nb_samples);
 	if (written <= 0) {
 		fLivePcm.resize(before);
 		return;
@@ -879,6 +924,18 @@ Player::_LiveLoop()
 		return av_rescale_q(time, format->streams[video]->time_base,
 			AVRational{ 1, 1000000 });
 	};
+	// when the last sound was read: a file whose sound ends before its
+	// pictures has the clock go on without it, two seconds of nothing
+	// later, or the pictures would wait for it and the reading for them
+	bigtime_t lastSound = system_time();
+	auto soundOver = [&]() {
+		if (audio < 0 || fAudioEnded || system_time() - lastSound < 2000000)
+			return;
+		BAutolock ring(fRingLock);
+		if (fRingFill == 0)
+			fAudioEnded = true;
+	};
+
 	auto queuedSpan = [&]() -> int64 {
 		if (packets.size() < 2)
 			return 0;
@@ -914,6 +971,8 @@ Player::_LiveLoop()
 					int64 delay = at - _LiveClock();
 					if (delay <= 0)
 						break;
+					if (started)
+						soundOver();
 					bigtime_t sleep = (bigtime_t)std::min(delay,
 						(int64)50000);
 					snooze_until(system_time() + sleep, B_SYSTEM_TIMEBASE);
@@ -1046,6 +1105,8 @@ Player::_LiveLoop()
 	std::mutex readLock;
 	std::deque<AVPacket*> read;
 	bool readEnded = false;
+	// the network failed, rather than the video ending
+	bool readFailed = false;
 	fLiveStopRead = false;
 	std::thread reader([&]() {
 		AVPacket* got = av_packet_alloc();
@@ -1060,8 +1121,14 @@ Player::_LiveLoop()
 					B_SYSTEM_TIMEBASE);
 				continue;
 			}
-			if (av_read_frame(format, got) < 0)
+			int status = av_read_frame(format, got);
+			if (status < 0) {
+				if (status != AVERROR_EOF && !fQuit && !fLiveStopRead) {
+					std::lock_guard<std::mutex> locker(readLock);
+					readFailed = true;
+				}
 				break;
+			}
 			if (got->stream_index != video && got->stream_index != audio) {
 				av_packet_unref(got);
 				continue;
@@ -1104,7 +1171,9 @@ Player::_LiveLoop()
 			av_packet_free(&next);
 		}
 		if (ended) {
-			// the end: what is still there
+			// the end: what is still there. The sound too, and then the
+			// clock goes on without it
+			fAudioEnded = true;
 			while (!fQuit && !failed && (!packets.empty() || !frames.empty())) {
 				if (!pumpVideo(true) || !showFrames(true))
 					failed = true;
@@ -1117,6 +1186,7 @@ Player::_LiveLoop()
 				packets.push_back(copy);
 			av_packet_unref(packet);
 		} else if (packet->stream_index == audio && audio >= 0) {
+			lastSound = system_time();
 			int status = avcodec_send_packet(fLiveAudio, packet);
 			av_packet_unref(packet);
 			while (status >= 0 && !fQuit
@@ -1185,6 +1255,10 @@ Player::_LiveLoop()
 			nextReport += 5000000;
 		}
 
+		// the sound of the file over before its pictures: their queue full
+		if (started && video >= 0 && queuedSpan() >= maxQueuedVideo)
+			soundOver();
+
 		// without sound nothing else paces the reading
 		if (!failed && video >= 0 && frames.size() >= maxDecodedFrames
 			&& queuedSpan() >= maxQueuedVideo && !showFrames(true))
@@ -1213,9 +1287,13 @@ Player::_LiveLoop()
 		}
 		snooze_until(system_time() + 20000, B_SYSTEM_TIMEBASE);
 	}
+	// a video from the network that stopped halfway is not over: the
+	// window finds it again, or says so
+	bool broken = readFailed && !fLive && fAddress.ByteAt(0) != '/'
+		&& fDuration > 0 && Position() < fDuration - 5000000;
 	if (!fQuit && !fEndSent.exchange(true))
-		fTarget.SendMessage(started || !failed ? kMsgPlayerEnded
-			: kMsgPlayerError);
+		Deliver(fTarget, (started || !failed) && !broken ? kMsgPlayerEnded
+			: kMsgPlayerError, &fQuit);
 }
 
 

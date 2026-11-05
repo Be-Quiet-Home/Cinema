@@ -161,8 +161,12 @@ INFO_CACHE_SIZE = 8
 def answer(message):
 	line = json.dumps(message, ensure_ascii=False)
 	with output:
-		sys.stdout.write(line + "\n")
-		sys.stdout.flush()
+		try:
+			sys.stdout.write(line + "\n")
+			sys.stdout.flush()
+		except (OSError, ValueError):
+			# Cinema is gone: watch_parent and the end of stdin stop us
+			pass
 
 
 def as_int(value, fallback):
@@ -391,7 +395,7 @@ def cached_details(name, fetch):
 
 	item = fetch()
 	if path and item:
-		temporary = path + ".part"
+		temporary = path + ".part.%d" % threading.get_ident()
 		try:
 			with open(temporary, "w", encoding="utf-8") as file:
 				json.dump(item, file, ensure_ascii=False)
@@ -466,7 +470,7 @@ RUNNING = {}
 def http_download(url, path, size=0, progress=None):
 	"""Downloads url to path, through a .part file that goes away if it
 	fails. size is used when the server does not tell the length."""
-	temporary = path + ".part"
+	temporary = path + ".part.%d" % threading.get_ident()
 	request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
 	try:
 		with urllib.request.urlopen(request, timeout=60) as response, \
@@ -907,7 +911,8 @@ class YouTubeProvider(Provider):
 				if os.path.exists(path):
 					return path
 			except Exception:
-				pass
+				if media_id in CANCELLED:
+					raise
 			# the web client, as find() does
 			options["extractor_args"] = {"youtube": {}}
 			options["js_runtimes"] = {"quickjs": {}}
@@ -1340,6 +1345,9 @@ class Relay:
 				start = key + 0.001
 		for entry in inputs:
 			command += self.http_options(entry)
+			# a connection gone quiet ends ffmpeg, and the stream, rather
+			# than holding both forever
+			command += ["-rw_timeout", "15000000"]
 			if start > 0:
 				command += ["-ss", "%.3f" % start]
 			command += ["-i", entry["url"]]
@@ -1649,6 +1657,12 @@ class TorrentProvider(Provider):
 							eta=field("ETA"))
 			except Exception:
 				process.terminate()
+				try:
+					process.wait(5)
+				except Exception:
+					process.kill()
+				with CHILDREN_LOCK:
+					CHILDREN.discard(process)
 				raise
 			finally:
 				with CHILDREN_LOCK:
@@ -1714,9 +1728,10 @@ class LocalProvider(Provider):
 			return
 		with self.lock:
 			try:
-				with open(self.path + ".part", "w", encoding="utf-8") as file:
+				temporary = self.path + ".part.%d" % threading.get_ident()
+				with open(temporary, "w", encoding="utf-8") as file:
 					json.dump(self.known, file)
-				os.replace(self.path + ".part", self.path)
+				os.replace(temporary, self.path)
 			except OSError:
 				pass
 
@@ -1995,9 +2010,10 @@ class LibraryProvider(Provider):
 			return None
 		if cached_path:
 			try:
-				with open(cached_path + ".part", "w", encoding="utf-8") as file:
+				temporary = cached_path + ".part.%d" % threading.get_ident()
+				with open(temporary, "w", encoding="utf-8") as file:
 					json.dump(response, file)
-				os.replace(cached_path + ".part", cached_path)
+				os.replace(temporary, cached_path)
 			except OSError:
 				pass
 		return response
@@ -2385,7 +2401,8 @@ def work(request):
 			request.get("folder", "")))
 	else:
 		return
-	threading.Thread(target=thread[0], args=thread[1], daemon=True).start()
+	threading.Thread(target=lambda: ignore_errors(lambda: thread[0](*thread[1])),
+		daemon=True).start()
 
 
 def watch_parent():
@@ -2407,6 +2424,8 @@ def ignore_errors(function):
 
 
 def serve():
+	# the names of files that are not UTF-8 go to Cinema as they are
+	sys.stdout.reconfigure(errors="surrogateescape")
 	threading.Thread(target=watch_parent, daemon=True).start()
 	answer({"type": "providers",
 		"providers": [provider.describe() for provider in PROVIDERS.values()]})
@@ -2415,8 +2434,8 @@ def serve():
 	if youtube is not None:
 		threading.Thread(target=lambda: ignore_errors(youtube.warm_up),
 			daemon=True).start()
-	for line in sys.stdin:
-		line = line.strip()
+	for raw in sys.stdin.buffer:
+		line = raw.decode("utf-8", "surrogateescape").strip()
 		if not line:
 			continue
 		try:
@@ -2424,7 +2443,10 @@ def serve():
 		except ValueError:
 			continue
 		if isinstance(request, dict):
-			work(request)
+			try:
+				work(request)
+			except Exception:
+				pass
 	# Cinema is gone: so are its downloads
 	stop_children()
 

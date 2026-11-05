@@ -246,6 +246,10 @@ void
 VideoGrid::SetMessage(const char* message)
 {
 	_Clear();
+	// nothing left to point at
+	fSelected = 0;
+	fHover = -1;
+	fHoverChannel = -1;
 	fMessage = message;
 	ScrollTo(0, 0);
 	_UpdateScrollBar();
@@ -332,6 +336,8 @@ line_height(const BFont& font)
 BRect
 VideoGrid::_ChannelFrame(int32 index) const
 {
+	if (index < 0 || index >= (int32)fVideos.size())
+		return BRect();
 	const MediaItem& video = fVideos[index];
 	if (video.channel.IsEmpty() || video.channelId.IsEmpty())
 		return BRect();

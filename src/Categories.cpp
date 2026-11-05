@@ -6,6 +6,7 @@
 
 #include "Categories.h"
 
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -247,6 +248,10 @@ SaveCategories(const std::vector<Category>& categories)
 				category.query.String());
 		}
 	}
+	// on the disk before it takes the place of the old one: a power cut
+	// would leave an empty file otherwise
+	fflush(file);
+	fsync(fileno(file));
 	if (fclose(file) == 0)
 		rename(temporary.String(), path.Path());
 	else

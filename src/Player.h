@@ -138,6 +138,7 @@ private:
 			bigtime_t			_Clock() const;
 			void				_SeekTracks(bigtime_t time);
 			void				_CheckEnded();
+			void				_FreeClock();
 			void				_Failed();
 			bool				_SetUpVideo();
 			void				_ShowFrame();
@@ -262,6 +263,8 @@ private:
 			std::atomic<int32>	fGeneration;	// changes with a seek
 			std::atomic<bool>	fVideoEnded;
 			std::atomic<bool>	fAudioEnded;
+			std::atomic<bool>	fClockFree;	// the sound is over: the clock
+										// goes on by itself
 			std::atomic<bool>	fEndSent;
 			std::atomic<bool>	fFramePending;	// a kMsgPlayerFrame on its way
 			float				fVolume;

@@ -6,6 +6,7 @@
 
 #include "Json.h"
 
+#include <limits.h>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -479,7 +480,11 @@ Json::GetInt(const char* key, int fallback) const
 	const Json* value = Find(key);
 	if (value == NULL || value->GetType() != kNumber)
 		return fallback;
-	return (int)value->fNumber;
+	// out of range, or not a number: the cast would be undefined
+	double number = value->fNumber;
+	if (!(number >= INT_MIN && number <= INT_MAX))
+		return fallback;
+	return (int)number;
 }
 
 

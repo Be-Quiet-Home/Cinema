@@ -10,6 +10,8 @@
 #include <Messenger.h>
 #include <String.h>
 
+#include <atomic>
+
 
 class Json;
 
@@ -27,6 +29,10 @@ public:
 								~Helper();
 
 			status_t			Start(const char* script, const char* cache);
+			status_t			Restart();
+									// after kMsgHelperGone: a new helper
+			bool				WasReady() const { return fReady; }
+									// whether the last one ever worked
 			void				SetProvider(const char* id);
 									// the one the next requests are for
 			void				SetHeight(int32 height);
@@ -62,6 +68,7 @@ private:
 			void				_Handle(const BString& line);
 			void				_Send(const Json& request);
 			BString				_Provider(const char* provider);
+			void				_Stop();
 
 			BMessenger			fTarget;
 			BLocker				fLock;
@@ -71,6 +78,10 @@ private:
 			int					fOutput;	// its standard output
 			pid_t				fProcess;
 			thread_id			fReader;
+			BString				fScript;
+			BString				fCache;
+			volatile bool		fReady;		// it said "ready"
+			std::atomic<bool>	fStopping;
 };
 
 

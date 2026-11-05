@@ -6,6 +6,7 @@
 
 #include "Helper.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/wait.h>
@@ -15,6 +16,7 @@
 #include <LocaleRoster.h>
 #include <Message.h>
 
+#include "Deliver.h"
 #include "Json.h"
 #include "Messages.h"
 #include "VideoLimits.h"
@@ -29,31 +31,82 @@ Helper::Helper(BMessenger target)
 	fInput(-1),
 	fOutput(-1),
 	fProcess(-1),
-	fReader(-1)
+	fReader(-1),
+	fReady(false),
+	fStopping(false)
 {
 }
 
 
 Helper::~Helper()
 {
-	if (fInput >= 0)
-		close(fInput);
+	_Stop();
+}
+
+
+void
+Helper::_Stop()
+{
+	// the reader gives up a message the window does not take any more
+	fStopping = true;
+	{
+		BAutolock locker(fLock);
+		if (fInput >= 0)
+			close(fInput);
+		fInput = -1;
+	}
 	if (fProcess > 0) {
-		kill(fProcess, SIGTERM);
-		waitpid(fProcess, NULL, 0);
+		// the end of its input: it stops its downloads and its relay, in
+		// three seconds at most, and goes
+		bool gone = false;
+		for (int i = 0; i < 80 && !gone; i++) {
+			gone = waitpid(fProcess, NULL, WNOHANG) == fProcess;
+			if (!gone)
+				snooze(50000);
+		}
+		if (!gone) {
+			kill(fProcess, SIGTERM);
+			for (int i = 0; i < 20 && !gone; i++) {
+				gone = waitpid(fProcess, NULL, WNOHANG) == fProcess;
+				if (!gone)
+					snooze(50000);
+			}
+		}
+		if (!gone) {
+			kill(fProcess, SIGKILL);
+			waitpid(fProcess, NULL, 0);
+		}
+		fProcess = -1;
 	}
 	if (fReader >= 0) {
 		status_t status;
 		wait_for_thread(fReader, &status);
+		fReader = -1;
 	}
 	if (fOutput >= 0)
 		close(fOutput);
+	fOutput = -1;
+}
+
+
+status_t
+Helper::Restart()
+{
+	_Stop();
+	return Start(fScript.String(), fCache.String());
 }
 
 
 status_t
 Helper::Start(const char* script, const char* cache)
 {
+	fScript = script;
+	fCache = cache;
+	fReady = false;
+	fStopping = false;
+	// a helper gone would end Cinema at the next request
+	signal(SIGPIPE, SIG_IGN);
+
 	int toHelper[2];
 	int fromHelper[2];
 	if (pipe(toHelper) != 0)
@@ -95,7 +148,13 @@ Helper::Start(const char* script, const char* cache)
 
 	close(toHelper[0]);
 	close(fromHelper[1]);
-	fInput = toHelper[1];
+	// not for the programs Cinema starts later, such as a second helper
+	fcntl(toHelper[1], F_SETFD, FD_CLOEXEC);
+	fcntl(fromHelper[0], F_SETFD, FD_CLOEXEC);
+	{
+		BAutolock locker(fLock);
+		fInput = toHelper[1];
+	}
 	fOutput = fromHelper[0];
 
 	fReader = spawn_thread(&_ReaderEntry, "cinema-helper reader",
@@ -271,7 +330,10 @@ Helper::_Read()
 	BString pending;
 	char buffer[4096];
 	ssize_t bytes;
-	while ((bytes = read(fOutput, buffer, sizeof(buffer))) > 0) {
+	while ((bytes = read(fOutput, buffer, sizeof(buffer))) > 0
+		|| (bytes < 0 && errno == EINTR)) {
+		if (bytes < 0)
+			continue;
 		pending.Append(buffer, bytes);
 		int32 end;
 		while ((end = pending.FindFirst('\n')) >= 0) {
@@ -282,7 +344,13 @@ Helper::_Read()
 		}
 	}
 	// it is gone: nothing more will be found
-	fTarget.SendMessage(kMsgHelperGone);
+	{
+		BAutolock locker(fLock);
+		if (fInput >= 0)
+			close(fInput);
+		fInput = -1;
+	}
+	Deliver(fTarget, kMsgHelperGone, &fStopping);
 }
 
 
@@ -326,6 +394,13 @@ Helper::_Handle(const BString& line)
 		return;
 
 	BString type(answer.GetString("type", "").c_str());
+	// a copy: the window changes it meanwhile
+	BString fallback = _Provider(NULL);
+
+	if (type == "ready") {
+		fReady = true;
+		return;
+	}
 
 	if (type == "providers") {
 		BMessage message(kMsgProviders);
@@ -343,7 +418,7 @@ Helper::_Handle(const BString& line)
 				message.AddMessage("provider", &one);
 			}
 		}
-		fTarget.SendMessage(&message);
+		Deliver(fTarget, &message, &fStopping);
 		return;
 	}
 
@@ -353,8 +428,8 @@ Helper::_Handle(const BString& line)
 		const Json* items = answer.Find("items");
 		if (items != NULL && items->IsArray())
 			for (const Json& item : items->Elements())
-				add_item(results, item, fProvider.String());
-		fTarget.SendMessage(&results);
+				add_item(results, item, fallback.String());
+		Deliver(fTarget, &results, &fStopping);
 		return;
 	}
 
@@ -365,15 +440,15 @@ Helper::_Handle(const BString& line)
 		bool found = item != NULL && item->IsObject();
 		details.AddBool("found", found);
 		if (found)
-			add_item(details, *item, fProvider.String());
-		fTarget.SendMessage(&details);
+			add_item(details, *item, fallback.String());
+		Deliver(fTarget, &details, &fStopping);
 		return;
 	}
 
 	if (type == "nothing") {
 		BMessage failed(kMsgSearchFailed);
 		failed.AddInt32("generation", answer.GetInt("tag", -1));
-		fTarget.SendMessage(&failed);
+		Deliver(fTarget, &failed, &fStopping);
 		return;
 	}
 
@@ -381,14 +456,14 @@ Helper::_Handle(const BString& line)
 		BMessage found(kMsgFound);
 		found.AddString("id", answer.GetString("id", "").c_str());
 		found.AddString("url", answer.GetString("url", "").c_str());
-		fTarget.SendMessage(&found);
+		Deliver(fTarget, &found, &fStopping);
 		return;
 	}
 
 	if (type == "lost") {
 		BMessage lost(kMsgLost);
 		lost.AddString("id", answer.GetString("id", "").c_str());
-		fTarget.SendMessage(&lost);
+		Deliver(fTarget, &lost, &fStopping);
 		return;
 	}
 
@@ -408,7 +483,7 @@ Helper::_Handle(const BString& line)
 				subtitles.AddMessage("track", &one);
 			}
 		}
-		fTarget.SendMessage(&subtitles);
+		Deliver(fTarget, &subtitles, &fStopping);
 		return;
 	}
 
@@ -421,7 +496,7 @@ Helper::_Handle(const BString& line)
 			answer.GetBool("automatic", false));
 		subtitle.AddString("text", answer.GetString("text", "").c_str());
 		subtitle.AddBool("failed", answer.GetBool("failed", false));
-		fTarget.SendMessage(&subtitle);
+		Deliver(fTarget, &subtitle, &fStopping);
 		return;
 	}
 
@@ -432,21 +507,21 @@ Helper::_Handle(const BString& line)
 		for (const char* field : { "done", "total", "speed", "eta" })
 			progress.AddString(field, answer.GetString(field, "").c_str());
 		progress.AddInt32("peers", answer.GetInt("peers", -1));
-		fTarget.SendMessage(&progress);
+		Deliver(fTarget, &progress, &fStopping);
 		return;
 	}
 
 	if (type == "checked") {
 		BMessage checked(kMsgTmdbChecked);
 		checked.AddBool("ok", answer.GetBool("ok", false));
-		fTarget.SendMessage(&checked);
+		Deliver(fTarget, &checked, &fStopping);
 		return;
 	}
 
 	if (type == "cancelled") {
 		BMessage cancelled(kMsgDownloadCancelled);
 		cancelled.AddString("id", answer.GetString("id", "").c_str());
-		fTarget.SendMessage(&cancelled);
+		Deliver(fTarget, &cancelled, &fStopping);
 		return;
 	}
 
@@ -454,13 +529,13 @@ Helper::_Handle(const BString& line)
 		BMessage saved(kMsgDownloaded);
 		saved.AddString("id", answer.GetString("id", "").c_str());
 		saved.AddString("path", answer.GetString("path", "").c_str());
-		fTarget.SendMessage(&saved);
+		Deliver(fTarget, &saved, &fStopping);
 		return;
 	}
 
 	if (type == "failed") {
 		BMessage failed(kMsgDownloadFailed);
 		failed.AddString("id", answer.GetString("id", "").c_str());
-		fTarget.SendMessage(&failed);
+		Deliver(fTarget, &failed, &fStopping);
 	}
 }

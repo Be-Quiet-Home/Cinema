@@ -120,6 +120,7 @@ private:
 			void				_Trash(BMessage* message);
 			void				_ShowResults(BMessage* message);
 			bool				_Ready(const BString& id) const;
+			void				_HomeChanged();
 			void				_Find(const BString& id);
 			void				_PrefetchWanted();
 			void				_Play(const char* url, const char* title,
@@ -180,6 +181,9 @@ private:
 			BString				fWaiting;		// clicked, not found yet
 			BString				fWaitingTitle;
 			BString				fRetried;	// found again after a failure
+			bool				fHomeStale = false;	// made again when the details close
+			int32				fHelperRestarts = 0;
+			bigtime_t			fHelperRestarted = 0;
 			BString				fWanted;		// chosen: worth finding
 			BMessageRunner*		fPrefetchRunner;
 			bool				fFullScreen;

@@ -102,6 +102,7 @@ private:
 									std::set<BString>& seen);
 
 	static	status_t			_EmbeddedEntry(void* data);
+	static	int					_Interrupt(void* data);
 			void				_Embedded(const char* video);
 
 			mutable BLocker		fLock;

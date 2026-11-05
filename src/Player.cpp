@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "Deliver.h"
 #include "LiveAddress.h"
 #include "Messages.h"
 
@@ -99,6 +100,7 @@ Player::Player(const BMessenger& target)
 	fGeneration(0),
 	fVideoEnded(false),
 	fAudioEnded(false),
+	fClockFree(false),
 	fEndSent(false),
 	fFramePending(false),
 	fVolume(1.0f),
@@ -156,6 +158,8 @@ Player::_Start(const char* address, bigtime_t startAt, bool sameVideo)
 	fQuit = false;
 	fPaused = false;
 	fEndSent = false;
+	// a picture announced to the last session counts for nothing now
+	fFramePending = false;
 	fOpenThread = spawn_thread(&_OpenEntry, "player open", B_NORMAL_PRIORITY,
 		this);
 	if (fOpenThread >= 0)
@@ -179,11 +183,8 @@ Player::_Close(bool keepSubtitles)
 		wait_for_thread(fOpenThread, &status);
 		fOpenThread = -1;
 	}
-	if (fSoundPlayer != NULL) {
+	if (fSoundPlayer != NULL)
 		fSoundPlayer->Stop();
-		delete fSoundPlayer;
-		fSoundPlayer = NULL;
-	}
 	if (fVideoThread >= 0) {
 		wait_for_thread(fVideoThread, &status);
 		fVideoThread = -1;
@@ -192,6 +193,9 @@ Player::_Close(bool keepSubtitles)
 		wait_for_thread(fAudioThread, &status);
 		fAudioThread = -1;
 	}
+	// after the threads that ask it the time
+	delete fSoundPlayer;
+	fSoundPlayer = NULL;
 	_CloseLive();
 	if (!keepSubtitles)
 		fSubtitles.Clear();
@@ -255,6 +259,12 @@ Player::_Open()
 		if (_OpenLive() || fLive || fQuit)
 			return;
 		fFFmpeg = false;
+		// what FFmpeg cannot get from the network the Media Kit, which uses
+		// it too, cannot either, and it could not be interrupted
+		if (fAddress.ByteAt(0) != '/') {
+			_Failed();
+			return;
+		}
 	}
 	if (fAddress.ByteAt(0) == '/') {
 		entry_ref ref;
@@ -361,6 +371,7 @@ Player::_Open()
 
 	fVideoEnded = fVideoTrack == NULL;
 	fAudioEnded = fAudioTrack == NULL;
+	fClockFree = false;
 	fClockBase = 0;
 	fPlayed = 0;
 	fClockStart = system_time();
@@ -385,7 +396,7 @@ Player::_Open()
 		opened.AddInt32("width", fFront->Bounds().IntegerWidth() + 1);
 		opened.AddInt32("height", fFront->Bounds().IntegerHeight() + 1);
 	}
-	fTarget.SendMessage(&opened);
+	Deliver(fTarget, &opened, &fQuit);
 
 	if (fQuit)
 		return;
@@ -412,13 +423,17 @@ Player::_Open()
 void
 Player::_Failed()
 {
-	fTarget.SendMessage(kMsgPlayerError);
+	// closing: the window waits for us, and does not want to know
+	if (!fQuit)
+		Deliver(fTarget, kMsgPlayerError, &fQuit);
 }
 
 
 bigtime_t
 Player::_Clock() const
 {
+	if (fClockFree)
+		return fPaused ? fPausedClock : fClockBase + system_time() - fClockStart;
 	if (fSoundPlayer != NULL && fPerformanceStart > 0) {
 		// the frame heard now, and the sound of the video it carries
 		double rate = std::max(1.0f, fSound.frame_rate);
@@ -469,7 +484,7 @@ Player::SetPaused(bool paused)
 {
 	if (paused == fPaused)
 		return;
-	if (fSoundPlayer == NULL) {
+	if (fSoundPlayer == NULL || fClockFree) {
 		if (paused)
 			fPausedClock = _Clock();
 		else {
@@ -587,9 +602,9 @@ Player::_SeekTracks(bigtime_t time)
 	BAutolock video(fVideoLock);
 	BAutolock audio(fAudioLock);
 	fGeneration++;
-	time = std::max((bigtime_t)0, time);
 	if (fDuration > 0)
 		time = std::min(time, fDuration - 1000000);
+	time = std::max((bigtime_t)0, time);
 	bigtime_t wanted = time;
 	if (fVideoTrack != NULL)
 		fVideoTrack->SeekToTime(&time, B_MEDIA_SEEK_CLOSEST_BACKWARD);
@@ -619,6 +634,7 @@ Player::_SeekTracks(bigtime_t time)
 	fPausedClock = time;
 	fVideoEnded = fVideoTrack == NULL;
 	fAudioEnded = fAudioTrack == NULL;
+	fClockFree = false;
 	fEndSent = false;
 	fShowNext = true;
 }
@@ -637,7 +653,7 @@ Player::Seek(bigtime_t time)
 		time = std::max((bigtime_t)0, std::min(time, fDuration - 1000000));
 		BMessage reopen(kMsgPlayerReopen);
 		reopen.AddInt64("time", time);
-		fTarget.SendMessage(&reopen);
+		Deliver(fTarget, &reopen, &fQuit);
 		return;
 	}
 	_SeekTracks(time);
@@ -773,8 +789,26 @@ Player::_FillSound(void* buffer, size_t size)
 	fFillTime = (bigtime_t)(size / std::max((size_t)1, fFrameSize)) * 1000000LL
 		/ (int64)std::max(1.0f, fSound.frame_rate);
 	fLastFill = system_time();
-	if (fRingFill == 0 && fAudioEnded)
+	if (fRingFill == 0 && fAudioEnded) {
+		_FreeClock();
 		_CheckEnded();
+	}
+}
+
+
+/*!	The sound is over, before the pictures maybe: the clock goes on from
+	where the sound left it, or the last pictures would wait for it.
+*/
+void
+Player::_FreeClock()
+{
+	if (fClockFree)
+		return;
+	bigtime_t now = _Clock();
+	fClockStart = system_time();
+	fClockBase = now;
+	fPausedClock = now;
+	fClockFree = true;
 }
 
 
@@ -871,9 +905,10 @@ Player::_VideoLoop()
 		fStatCopyTime += system_time() - lastShown;
 		fStatShown++;
 		fShowNext = false;
-		if (!fFramePending.exchange(true))
-			fTarget.SendMessage(kMsgPlayerFrame);
-		else
+		if (!fFramePending.exchange(true)) {
+			if (Deliver(fTarget, kMsgPlayerFrame, &fQuit) != B_OK)
+				fFramePending = false;
+		} else
 			fStatMerged++;
 		_Stats();
 	}
@@ -961,7 +996,7 @@ Player::_CheckEnded()
 			return;
 	}
 	if (!fEndSent.exchange(true))
-		fTarget.SendMessage(kMsgPlayerEnded);
+		Deliver(fTarget, kMsgPlayerEnded, &fQuit);
 }
 
 
