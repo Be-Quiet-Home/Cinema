@@ -279,8 +279,8 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 				fKeptOverlay = fKeptFront = fKeptBack = NULL;
 				fLivePixels = AV_PIX_FMT_YUYV422;
 				if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
-					fprintf(stderr, "live: %dx%d 422 overlay kept\n", width,
-						height);
+					fprintf(stderr, "live: %dx%d 422 overlay kept\n",
+						(int)width, (int)height);
 				}
 				return true;
 			}
@@ -308,7 +308,8 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 			// a bigger one was found: the kept one goes
 			_DropKeptBitmaps();
 			if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
-				fprintf(stderr, "live: %dx%d 422 overlay\n", width, height);
+				fprintf(stderr, "live: %dx%d 422 overlay\n", (int)width,
+					(int)height);
 			return true;
 		}
 	}
@@ -319,7 +320,7 @@ Player::_SetUpBitmaps(int32 width, int32 height)
 	fBack = new BBitmap(bounds, 0, B_RGB32);
 	fLivePixels = AV_PIX_FMT_BGRA;
 	if (getenv("CINEMA_PLAYER_DEBUG") != NULL)
-		fprintf(stderr, "live: %dx%d bgra\n", width, height);
+		fprintf(stderr, "live: %dx%d bgra\n", (int)width, (int)height);
 	return fFront->InitCheck() == B_OK && fBack->InitCheck() == B_OK;
 }
 

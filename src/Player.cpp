@@ -1077,7 +1077,7 @@ Player::_SetUpVideo()
 			| B_BITMAP_RESERVE_OVERLAY_CHANNEL, space);
 		if (fStatsOn) {
 			fprintf(stderr, "player: overlay %#x %dx%d: %s\n", space,
-				display.line_width, display.line_count,
+				(int)display.line_width, (int)display.line_count,
 				strerror(overlay->InitCheck()));
 		}
 		if (overlay->InitCheck() != B_OK) {
@@ -1101,7 +1101,7 @@ Player::_SetUpVideo()
 		fDuration = std::max(fDuration, fVideoTrack->Duration());
 		if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
 			fprintf(stderr, "player: %dx%d %s overlay\n",
-				display.line_width, display.line_count,
+				(int)display.line_width, (int)display.line_count,
 				space == B_YCbCr420 ? "420" : "422");
 		}
 		return true;
@@ -1131,8 +1131,8 @@ Player::_SetUpVideo()
 	fBack = back;
 	fDuration = std::max(fDuration, fVideoTrack->Duration());
 	if (getenv("CINEMA_PLAYER_DEBUG") != NULL) {
-		fprintf(stderr, "player: %dx%d rgb\n", display.line_width,
-			display.line_count);
+		fprintf(stderr, "player: %dx%d rgb\n", (int)display.line_width,
+			(int)display.line_count);
 	}
 	return true;
 }
