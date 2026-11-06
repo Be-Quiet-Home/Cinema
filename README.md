@@ -5,8 +5,9 @@ Cinema is a video player for [Haiku](https://www.haiku-os.org) and
 [yt-dlp](https://github.com/yt-dlp/yt-dlp)), the public domain films and
 cartoons of the [Internet Archive](https://archive.org), the free video sites
 of [PeerTube](https://joinpeertube.org), live TV channels, torrents and the
-videos in your own folders, all in a player of its own. It runs on x86_64, and
-on 32-bit ARM with RenkuOS, where it was tuned on a Toshiba AC100.
+videos in your own folders, all in a player of its own. It runs on x86_64, on
+32-bit x86, and on 32-bit ARM with RenkuOS, where it was tuned on a Toshiba
+AC100.
 
 ![The videos of a category](screenshots/main.png)
 
@@ -91,14 +92,15 @@ font such as `noto_sans_cjk_jp`.
 ## Installing
 
 The [releases](https://github.com/atomozero/Cinema/releases) have packages for
-x86_64 and for 32-bit ARM (ARMv7 with VFPv3-D16, such as the AC100):
+x86_64, for 32-bit x86 (`x86_gcc2`, built for the gcc 13 side of the hybrid)
+and for 32-bit ARM (ARMv7 with VFPv3-D16, such as the AC100):
 
 ```sh
-pkgman install cinema-1.4.0-1-x86_64.hpkg
+pkgman install cinema-1.4.1-1-x86_64.hpkg
 ```
 
-On x86_64, pkgman brings Python, the yt-dlp module and FFmpeg 6 from
-HaikuPorts too. HaikuPorts has no yt-dlp for ARM, so there you put the
+On x86_64 and 32-bit x86, pkgman brings Python, the yt-dlp module and FFmpeg
+6 from HaikuPorts too. HaikuPorts has no yt-dlp for ARM, so there you put the
 single-file release of yt-dlp in the `PATH`:
 
 ```sh
