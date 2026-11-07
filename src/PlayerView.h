@@ -22,7 +22,8 @@ class Player;
 	bottom. They show with the mouse or a key, and hide while it plays.
 
 	Space or Enter pauses, the arrows go back and on by 10 seconds (a minute
-	with Shift) and change the volume, M plays it in MediaPlayer instead, V
+	with Shift) and change the volume (shown upright at the right, as the
+	keys; the wheel and a click on it change it too), M plays it in MediaPlayer instead, V
 	chooses the subtitles, S gives the video a star; a click on the bar goes
 	there, on CC chooses the subtitles, on the star next to it gives or
 	takes the star, a click elsewhere pauses. The window closes it, with Esc.
@@ -65,6 +66,8 @@ private:
 			BRect				_TrackFrame(const BRect& bounds) const;
 			BRect				_SubtitleButtonFrame() const;
 			BRect				_SubtitleButtonFrame(const BRect& bounds) const;
+			BRect				_VolumeFrame(const BRect& bounds) const;
+			BRect				_VolumeTrack(const BRect& bounds) const;
 			BRect				_FavoriteButtonFrame() const;
 			BRect				_FavoriteButtonFrame(const BRect& bounds) const;
 			void				_ShowControls();

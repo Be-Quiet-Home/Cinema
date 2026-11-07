@@ -362,6 +362,36 @@ PlayerView::_SubtitleButtonFrame(const BRect& bounds) const
 }
 
 
+/*!	The volume at the right, between the title and the bar, when there is
+	room for it.
+*/
+BRect
+PlayerView::_VolumeFrame(const BRect& bounds) const
+{
+	float top = bounds.top + S(kBaseTitleHeight) + S(12);
+	float bottom = bounds.bottom - S(kBaseBarHeight) - S(12);
+	float height = std::min(S(180), bottom - top);
+	if (height < S(90))
+		return BRect();
+	float middle = (top + bottom) / 2;
+	return BRect(bounds.right - S(16) - S(48), middle - height / 2,
+		bounds.right - S(16), middle + height / 2);
+}
+
+
+/*!	Where the level is drawn in it, and clicked: the percent below. */
+BRect
+PlayerView::_VolumeTrack(const BRect& bounds) const
+{
+	BRect panel = _VolumeFrame(bounds);
+	if (!panel.IsValid())
+		return BRect();
+	float center = (panel.left + panel.right) / 2;
+	return BRect(center - S(3), panel.top + S(14), center + S(3),
+		panel.bottom - S(34));
+}
+
+
 BRect
 PlayerView::_FavoriteButtonFrame() const
 {
@@ -467,32 +497,33 @@ PlayerView::_DrawControls(BView* target)
 		composite ? B_ALPHA_COMPOSITE : B_ALPHA_OVERLAY);
 	target->SetHighColor(0, 0, 0, 170);
 	target->FillRect(top);
-	// the volume, at the right of the title: the arrow keys up and down
+	// the volume, upright at the right as the arrow keys that change it
 	BFont small = Font(14);
 	font_height smallHeight;
 	small.GetHeight(&smallHeight);
-	BString percent;
-	percent.SetToFormat("%d%%", (int)roundf(fPlayer->Volume() * 100));
-	float percentWidth = small.StringWidth("100%");
-	BRect level(top.right - S(16) - percentWidth - S(8) - S(80),
-		top.top + S(kBaseTitleHeight) / 2 - S(3),
-		top.right - S(16) - percentWidth - S(8),
-		top.top + S(kBaseTitleHeight) / 2 + S(3));
-	FillRound(target, level, S(3), (rgb_color){ 255, 255, 255, 60 },
-		composite);
-	if (fPlayer->Volume() > 0) {
-		BRect done = level;
-		done.right = level.left + level.Width() * fPlayer->Volume();
-		FillRound(target, done, S(3), kAccent, composite);
+	BRect panel = _VolumeFrame(bounds);
+	if (panel.IsValid()) {
+		FillRound(target, panel, S(10), (rgb_color){ 0, 0, 0, 170 },
+			composite);
+		BRect level = _VolumeTrack(bounds);
+		FillRound(target, level, S(3), (rgb_color){ 255, 255, 255, 60 },
+			composite);
+		if (fPlayer->Volume() > 0) {
+			BRect done = level;
+			done.top = level.bottom - level.Height() * fPlayer->Volume();
+			FillRound(target, done, S(3), kAccent, composite);
+		}
+		BString percent;
+		percent.SetToFormat("%d%%", (int)roundf(fPlayer->Volume() * 100));
+		BRect text(panel.left, level.bottom + S(4), panel.right,
+			panel.bottom - S(4));
+		DrawCentered(target, percent.String(), text, small, kText, composite);
 	}
-	DrawText(target, percent.String(), BPoint(level.right + S(8),
-		top.top + (S(kBaseTitleHeight) + smallHeight.ascent
-			- smallHeight.descent) / 2), small, kText, composite);
 
 	BString title(fTitle);
 	BFont font = Font(16, true);
 	font.TruncateString(&title, B_TRUNCATE_END,
-		level.left - top.left - S(32));
+		top.Width() - S(32));
 	font_height height;
 	font.GetHeight(&height);
 	DrawText(target, title.String(), BPoint(top.left + S(16),
@@ -857,6 +888,17 @@ PlayerView::MouseDown(BPoint where)
 		_ShowSubtitleMenu();
 		return;
 	}
+	BRect volume = _VolumeFrame(Bounds());
+	if ((fControls || fPlayer->IsPaused()) && volume.IsValid()
+		&& volume.Contains(where)) {
+		// from the bottom of the level, in tenths
+		BRect track = _VolumeTrack(Bounds());
+		float fraction = (track.bottom - where.y) / std::max(1.0f,
+			track.Height());
+		fPlayer->SetVolume(std::max(0.0f, std::min(1.0f, fraction)));
+		_ShowControls();
+		return;
+	}
 	if ((fControls || fPlayer->IsPaused()) && fFavorite >= 0
 		&& _FavoriteButtonFrame().Contains(where)) {
 		Window()->PostMessage(kMsgPlayerFavorite);
@@ -901,6 +943,17 @@ void
 PlayerView::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
+		case B_MOUSE_WHEEL_CHANGED:
+		{
+			// up louder, as the arrow key
+			float delta = message->GetFloat("be:wheel_delta_y", 0);
+			if (delta != 0) {
+				fPlayer->SetVolume(fPlayer->Volume()
+					+ (delta < 0 ? 0.1f : -0.1f));
+				_ShowControls();
+			}
+			break;
+		}
 		case kMsgPlayerFrame:
 			if (fOverlay == NULL) {
 				_UpdateSubtitle();

@@ -31,8 +31,9 @@ Archive), `Blender = @peertube channel:blender_open_movies@video.blender.org`
 or `Home videos = @local channel:/boot/home/Videos`.
 
 Videos play in Cinema, from where they were left; a check marks what was
-watched and a red bar what was started. Space pauses, the arrows go back and on
-by 10 seconds and change the volume, **F** goes to full screen, **Esc** closes
+watched and a red bar what was started. Space pauses, the left and right arrows
+go back and on by 10 seconds, up and down (or the mouse wheel) change the
+volume, shown upright at the right, **F** goes to full screen, **Esc** closes
 the video and **M** plays it in MediaPlayer instead. Subtitles come from
 YouTube, from a subtitle file next to the video, or from the text tracks inside
 it: the **CC** button chooses one and **V** turns them on and off. The star
